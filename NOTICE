@@ -1,0 +1,9 @@
+Copyright 2026 Action Manifest contributors
+
+This product is licensed under the Apache License, Version 2.0.
+See LICENSE.
+
+License choice: Apache-2.0 over MIT because this library is intended for
+embedding in other products (Otayori and others). The express patent grant
+reduces surprise for commercial consumers. There was no strong reason to
+prefer MIT-only simplicity over that grant.

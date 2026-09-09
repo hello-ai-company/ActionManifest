@@ -4,6 +4,7 @@ import {
   validateActionManifest,
   type Action,
   type ActionManifest,
+  type ActionVerificationResult,
   type CanonicalDocument,
   type Temporal,
   type VerificationFlags,
@@ -72,12 +73,37 @@ function dateSupportedByEvidence(action: Action, source: string): boolean {
   return true;
 }
 
-function actorSupported(action: Action): boolean {
+/**
+ * Actor verification (Phase 1.1 hardening).
+ * - unknown: never invent an actor; always supported.
+ * - implicit: actor.text optional; not forced to appear verbatim in evidence.
+ * - explicit: actor.text is REQUIRED and MUST appear in the Action's evidence.
+ */
+function actorCheck(action: Action): { ok: boolean; issue?: VerificationIssue } {
+  const certainty = action.actor.certainty;
+  if (certainty === "unknown" || certainty === "implicit") return { ok: true };
+
+  const text = action.actor.text?.trim();
+  if (!text) {
+    return {
+      ok: false,
+      issue: issue(
+        "ACTOR_TEXT_MISSING",
+        "actor.certainty=explicit requires a non-empty actor.text",
+        action.id,
+      ),
+    };
+  }
   const corpus = evidenceCorpus(action);
-  if (action.actor.certainty === "unknown") return true;
-  if (action.actor.certainty === "implicit") return true;
-  if (!action.actor.text) return true;
-  return sourceContainsQuote(corpus, action.actor.text) || corpus.includes(action.actor.text);
+  if (sourceContainsQuote(corpus, text) || corpus.includes(text)) return { ok: true };
+  return {
+    ok: false,
+    issue: issue(
+      "ACTOR_UNSUPPORTED",
+      "explicit actor.text is not found in this Action's evidence",
+      action.id,
+    ),
+  };
 }
 
 function modalitySupported(action: Action): boolean {
@@ -118,6 +144,114 @@ function pageValid(action: Action, doc: CanonicalDocument): boolean {
   return true;
 }
 
+function evidenceCheck(
+  action: Action,
+  source: string,
+  manifest: ActionManifest,
+  doc: CanonicalDocument,
+): { supported: boolean; issues: VerificationIssue[] } {
+  const issues: VerificationIssue[] = [];
+  if (!action.evidence?.length) {
+    issues.push(issue("MISSING_EVIDENCE", "Action has no evidence", action.id));
+    return { supported: false, issues };
+  }
+  let supported = true;
+  for (const ev of action.evidence) {
+    if (!sourceContainsQuote(source, ev.text)) {
+      supported = false;
+      issues.push(
+        issue("EVIDENCE_NOT_IN_SOURCE", "Evidence quote was not found in the source document", action.id),
+      );
+    }
+    if (ev.source_id && ev.source_id !== manifest.source.id && ev.source_id !== doc.id) {
+      issues.push(
+        issue(
+          "EVIDENCE_SOURCE_ID",
+          `Evidence source_id ${ev.source_id} does not match document`,
+          action.id,
+          "warning",
+        ),
+      );
+    }
+  }
+  return { supported, issues };
+}
+
+/**
+ * Verify a single Action independently. The result depends ONLY on this
+ * Action's own Evidence/Temporal/Actor/Modality/Negation and page refs.
+ * It never reads other Actions and never folds in the manifest-level fatal
+ * (source hash / empty document) condition — those are applied at promotion time.
+ */
+export function verifyAction(
+  action: Action,
+  doc: CanonicalDocument,
+  source: string,
+  manifest: ActionManifest,
+): ActionVerificationResult {
+  const issues: VerificationIssue[] = [];
+
+  const ev = evidenceCheck(action, source, manifest, doc);
+  issues.push(...ev.issues);
+  const evidence_supported = ev.supported;
+
+  const temporal_supported = dateSupportedByEvidence(action, source);
+  if (!temporal_supported) {
+    issues.push(
+      issue(
+        "TEMPORAL_UNSUPPORTED",
+        "Declared calendar date is not supported by evidence (possible hallucination)",
+        action.id,
+      ),
+    );
+  }
+
+  const actor = actorCheck(action);
+  const actor_supported = actor.ok;
+  if (actor.issue) issues.push(actor.issue);
+
+  const modality_supported = modalitySupported(action);
+  if (!modality_supported) {
+    issues.push(issue("MODALITY_UNSUPPORTED", "Modality is not supported by evidence", action.id));
+  }
+
+  const negation_conflict = negationConflict(action);
+  if (negation_conflict) {
+    issues.push(
+      issue(
+        "NEGATION_CONFLICT",
+        "Required action conflicts with negation in evidence and has no exemption condition",
+        action.id,
+      ),
+    );
+  }
+
+  const page_refs_valid = pageValid(action, doc);
+  if (!page_refs_valid) {
+    issues.push(issue("INVALID_PAGE_REF", "Evidence page is not in the canonical document", action.id));
+  }
+
+  const passed =
+    evidence_supported &&
+    temporal_supported &&
+    actor_supported &&
+    modality_supported &&
+    !negation_conflict &&
+    page_refs_valid;
+
+  return {
+    action_id: action.id,
+    passed,
+    evidence_supported,
+    temporal_supported,
+    actor_supported,
+    modality_supported,
+    negation_conflict,
+    page_refs_valid,
+    issues,
+  };
+}
+
 export function verifyManifest(
   manifestInput: unknown,
   doc: CanonicalDocument,
@@ -125,24 +259,18 @@ export function verifyManifest(
 ): { manifest: ActionManifest; flags: VerificationFlags } {
   const manifest = validateActionManifest(manifestInput);
   const source = canonicalText(doc);
-  const issues: VerificationIssue[] = [];
+  const manifestIssues: VerificationIssue[] = [];
 
-  let evidence_supported = true;
-  let temporal_supported = true;
-  let actor_supported = true;
-  let modality_supported = true;
-  let negation_conflict = false;
-  let page_refs_valid = true;
-
-  if (!source) {
-    evidence_supported = false;
-    issues.push(issue("EMPTY_SOURCE", "Canonical document has no text"));
+  // --- Manifest-level (cross-cutting, fatal) checks ---
+  const sourceEmpty = source.length === 0;
+  if (sourceEmpty) {
+    manifestIssues.push(issue("EMPTY_SOURCE", "Canonical document has no text"));
   }
 
   const sourceHashMatched =
     !manifest.source.hash || !doc.sourceHash || manifest.source.hash === doc.sourceHash;
   if (!sourceHashMatched) {
-    issues.push(
+    manifestIssues.push(
       issue(
         "SOURCE_HASH_MISMATCH",
         `Manifest hash ${manifest.source.hash} != document hash ${doc.sourceHash}`,
@@ -151,77 +279,34 @@ export function verifyManifest(
   }
 
   if (manifest.actions.length === 0) {
-    issues.push(issue("NO_ACTIONS", "Manifest contains no actions", undefined, "warning"));
+    manifestIssues.push(issue("NO_ACTIONS", "Manifest contains no actions", undefined, "warning"));
   }
 
-  for (const action of manifest.actions) {
-    if (!action.evidence?.length) {
-      evidence_supported = false;
-      issues.push(issue("MISSING_EVIDENCE", "Action has no evidence", action.id));
-      continue;
-    }
-    for (const ev of action.evidence) {
-      if (!sourceContainsQuote(source, ev.text)) {
-        evidence_supported = false;
-        issues.push(
-          issue(
-            "EVIDENCE_NOT_IN_SOURCE",
-            "Evidence quote was not found in the source document",
-            action.id,
-          ),
-        );
-      }
-      if (ev.source_id && ev.source_id !== manifest.source.id && ev.source_id !== doc.id) {
-        issues.push(
-          issue(
-            "EVIDENCE_SOURCE_ID",
-            `Evidence source_id ${ev.source_id} does not match document`,
-            action.id,
-            "warning",
-          ),
-        );
-      }
-    }
+  // A fatal failure means the document/manifest itself cannot be trusted, so no
+  // Action may be promoted to verified even if its per-action checks pass.
+  const fatal = sourceEmpty || !sourceHashMatched;
 
-    if (!dateSupportedByEvidence(action, source)) {
-      temporal_supported = false;
-      issues.push(
-        issue(
-          "TEMPORAL_UNSUPPORTED",
-          "Declared calendar date is not supported by evidence (possible hallucination)",
-          action.id,
-        ),
-      );
-    }
+  // --- Per-action (independent) checks ---
+  const actionResults = manifest.actions.map((a) => verifyAction(a, doc, source, manifest));
 
-    if (!actorSupported(action)) {
-      actor_supported = false;
-      issues.push(issue("ACTOR_UNSUPPORTED", "Actor text is not supported by evidence", action.id));
-    }
+  // --- Backward-compatible aggregate summary (v0.1 semantics: AND across actions) ---
+  let evidence_supported = actionResults.every((r) => r.evidence_supported);
+  if (sourceEmpty) evidence_supported = false;
+  const temporal_supported = actionResults.every((r) => r.temporal_supported);
+  const actor_supported = actionResults.every((r) => r.actor_supported);
+  const modality_supported = actionResults.every((r) => r.modality_supported);
+  const negation_conflict = actionResults.some((r) => r.negation_conflict);
+  const page_refs_valid = actionResults.every((r) => r.page_refs_valid);
 
-    if (!modalitySupported(action)) {
-      modality_supported = false;
-      issues.push(
-        issue("MODALITY_UNSUPPORTED", "Modality is not supported by evidence", action.id),
-      );
-    }
+  const allIssues = [...manifestIssues, ...actionResults.flatMap((r) => r.issues)];
 
-    if (negationConflict(action)) {
-      negation_conflict = true;
-      issues.push(
-        issue(
-          "NEGATION_CONFLICT",
-          "Required action conflicts with negation in evidence and has no exemption condition",
-          action.id,
-        ),
-      );
-    }
-
-    if (!pageValid(action, doc)) {
-      page_refs_valid = false;
-      issues.push(issue("INVALID_PAGE_REF", "Evidence page is not in the canonical document", action.id));
-    }
-  }
+  const total_actions = actionResults.length;
+  const verified_actions = fatal ? 0 : actionResults.filter((r) => r.passed).length;
+  const failed_actions = total_actions - verified_actions;
+  const warning_actions = fatal
+    ? 0
+    : actionResults.filter((r) => r.passed && r.issues.some((i) => i.severity === "warning")).length;
+  const passed = !fatal && actionResults.every((r) => r.passed);
 
   const flags: VerificationFlags = {
     evidence_supported,
@@ -232,26 +317,26 @@ export function verifyManifest(
     negation_conflict,
     page_refs_valid,
     checked_at: new Date().toISOString(),
-    issues,
+    issues: allIssues,
+    passed,
+    total_actions,
+    verified_actions,
+    failed_actions,
+    warning_actions,
+    actions: actionResults,
   };
 
   const next: ActionManifest = {
     ...manifest,
-    actions: manifest.actions.map((a) => ({
-      ...a,
-      status:
-        evidence_supported &&
-        temporal_supported &&
-        actor_supported &&
-        modality_supported &&
-        sourceHashMatched &&
-        !negation_conflict &&
-        page_refs_valid
-          ? a.status === "proposed"
-            ? "verified"
-            : a.status
-          : a.status,
-    })),
+    actions: manifest.actions.map((a, i) => {
+      // Promote each Action independently: verified only when its own checks
+      // pass AND there is no manifest-level fatal failure.
+      const promote = !fatal && (actionResults[i]?.passed ?? false);
+      return {
+        ...a,
+        status: promote && a.status === "proposed" ? "verified" : a.status,
+      };
+    }),
     receipt: {
       extraction: manifest.receipt?.extraction ?? {
         provider: "unknown",
@@ -267,7 +352,9 @@ export function verifyManifest(
   return { manifest: next, flags };
 }
 
+/** True when the manifest as a whole verified (no fatal failure and every Action passed). */
 export function verificationPassed(flags: VerificationFlags): boolean {
+  if (typeof flags.passed === "boolean") return flags.passed;
   return (
     flags.evidence_supported &&
     flags.temporal_supported &&
@@ -278,4 +365,9 @@ export function verificationPassed(flags: VerificationFlags): boolean {
     flags.page_refs_valid &&
     !(flags.issues ?? []).some((i) => i.severity === "error")
   );
+}
+
+/** True when a single Action's own verification passed (independent of the manifest). */
+export function actionVerificationPassed(result: ActionVerificationResult): boolean {
+  return result.passed;
 }

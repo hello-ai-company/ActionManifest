@@ -1,11 +1,5 @@
-# ENG-20260909-001 gates (evidence copy)
+# ENG-20260909-001
 
-| # | Gate | Result |
-| --- | --- | --- |
-| ① | Synthetic Golden only — no real user/production data | PASS |
-| ② | Public boundary documented (docs + PR; repo is public) | PASS |
-| ③ | Core has no external writes | PASS |
-| ④ | No Otayori-specific logic in code | PASS |
-| ⑤ | Completion evidence in this directory | PASS |
+Placeholder for Eng ops. Official contents of this directory are filled **after PA-03E review**.
 
-Stop conditions honored: this agent only; no merge; no new ENG ticket; no API keys committed. Real Evidence would have stopped the line before merge.
+Synthetic-fixture and Core no-write checks live in the OSS test suite, not as customer evidence.

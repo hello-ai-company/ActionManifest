@@ -39,6 +39,14 @@ describe("ENG-20260909-001 gate ① synthetic fixtures only", () => {
     expect(golden).toBe(GOLDEN);
   });
 
+  it("examples golden notice is the same synthetic text", () => {
+    const example = readFileSync(
+      join(fixturesRoot, "../../examples/golden-excursion.txt"),
+      "utf8",
+    ).trim();
+    expect(example).toBe(GOLDEN);
+  });
+
   it("packages and CLI source do not import Otayori", () => {
     const roots = [
       join(fixturesRoot, "../../packages"),

@@ -7,8 +7,10 @@ All notable changes to this project are documented here. Schema version is indep
 ### Added
 
 - ENG-20260909-001 completion gates (synthetic Golden, public boundary, Core no external writes, no Otayori logic, evidence pack)
-- `docs/PUBLIC-BOUNDARY.md`, `docs/ENG-20260909-001.md`, `evidence/ENG-20260909-001/`
+- `docs/PUBLIC-BOUNDARY.md` (public repo: OSS + synthetic fixtures + spec only)
+- Placeholder `evidence/ENG-20260909-001/` for Eng ops after PA-03E review
 - Guard tests for synthetic fixtures and Core I/O
+
 
 ## 0.1.0 — 2026-09-09
 

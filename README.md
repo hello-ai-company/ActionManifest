@@ -45,11 +45,19 @@ When you use `--provider openai`, source text **leaves the machine** toward `OPE
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/SPECIFICATION.md](docs/SPECIFICATION.md).
 
-## Public boundary
+## Public repository boundary
 
-This repo is **public**. See [docs/PUBLIC-BOUNDARY.md](docs/PUBLIC-BOUNDARY.md) for what may be committed vs keys, real documents, and Otayori internals.
+**This repository is public. Every commit is public.**
 
-ENG-20260909-001 gates: synthetic Golden only · documented public boundary · Core does not write to external systems · no Otayori product logic · evidence under `evidence/ENG-20260909-001/`. **Do not merge without President / CTO confirmation.**
+Allowed here: OSS core code, **synthetic** Golden/benchmark fixtures, and architecture/spec docs.
+
+Forbidden: real documents, customer names, real schedules copied from users, email fragments, internal memos, secrets, and Otayori-specific product features.
+
+Core never writes to calendars, email, Todoist, or other execution APIs. Exporters emit local JSON/ICS files only.
+
+Review owner: **PA-03E** (after this PR). Completion evidence path `evidence/ENG-20260909-001/` is reserved for **Eng ops to fill after review**.
+
+Full list: [docs/PUBLIC-BOUNDARY.md](docs/PUBLIC-BOUNDARY.md).
 
 ## Packages
 

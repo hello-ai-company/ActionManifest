@@ -15,3 +15,14 @@ coverage/
 .vscode/
 tmp/
 .cache/
+
+# Pack-time staged assets (scripts/pack-assets.mjs copy/clean; never committed)
+packages/*/LICENSE
+packages/*/NOTICE
+apps/cli/LICENSE
+apps/cli/NOTICE
+apps/cli/conformance/
+apps/cli/benchmark/
+
+# Release dry-run artifacts (scripts/release-dry-run.ts)
+release-artifacts/

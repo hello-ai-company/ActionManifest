@@ -23,3 +23,5 @@ Please use GitHub's private vulnerability reporting on this repository, or email
 ## Secrets
 
 Never commit `.env`. Rotate any key that was pasted into a ticket or chat.
+
+This repository is public. See [docs/PUBLIC-BOUNDARY.md](docs/PUBLIC-BOUNDARY.md). Real user documents and production Evidence are out of scope for fixtures; mixing them in is a merge blocker (ENG-20260909-001).

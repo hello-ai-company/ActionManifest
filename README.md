@@ -45,6 +45,12 @@ When you use `--provider openai`, source text **leaves the machine** toward `OPE
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/SPECIFICATION.md](docs/SPECIFICATION.md).
 
+## Public boundary
+
+This repo is **public**. See [docs/PUBLIC-BOUNDARY.md](docs/PUBLIC-BOUNDARY.md) for what may be committed vs keys, real documents, and Otayori internals.
+
+ENG-20260909-001 gates: synthetic Golden only · documented public boundary · Core does not write to external systems · no Otayori product logic · evidence under `evidence/ENG-20260909-001/`. **Do not merge without President / CTO confirmation.**
+
 ## Packages
 
 | Path | Role |

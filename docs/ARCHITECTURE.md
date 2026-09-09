@@ -61,4 +61,7 @@ Prefer omitting a confident-wrong Action over extracting more Actions.
 
 ## Monorepo
 
-See [adr/0001-phase0-language-and-architecture.md](adr/0001-phase0-language-and-architecture.md). JSON Schema is language-neutral; one TypeScript implementation in Phase 1 (Otayori + npm CLI). No dual Python port yet. Docling remains an adapter target.
+See [adr/0001-phase0-language-and-architecture.md](adr/0001-phase0-language-and-architecture.md). JSON Schema is language-neutral; one TypeScript implementation in Phase 1 (npm CLI). No dual Python port yet. Docling remains an adapter target. Otayori is a future consumer only — not an in-repo dependency.
+
+Public vs secret commit rules: [PUBLIC-BOUNDARY.md](PUBLIC-BOUNDARY.md). Completion gates: [ENG-20260909-001.md](ENG-20260909-001.md).
+

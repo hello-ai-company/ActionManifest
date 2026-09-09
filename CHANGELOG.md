@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## 0.1.1 — 2026-09-09
+
+### Added
+
+- ENG-20260909-001 completion gates (synthetic Golden, public boundary, Core no external writes, no Otayori logic, evidence pack)
+- `docs/PUBLIC-BOUNDARY.md`, `docs/ENG-20260909-001.md`, `evidence/ENG-20260909-001/`
+- Guard tests for synthetic fixtures and Core I/O
+
 ## 0.1.0 — 2026-09-09
 
 ### Added

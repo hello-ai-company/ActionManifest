@@ -1,0 +1,6 @@
+82711e2 docs: finalize Phase 1 report git status section
+c53008b docs: document architecture and OSS boundaries
+2cb1492 test(benchmark): add Japanese golden fixtures
+25368c4 feat(verifier): validate action evidence
+65520d9 feat(core): add canonical document model
+6840964 feat(schema): define action manifest v0.1

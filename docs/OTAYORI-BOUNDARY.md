@@ -29,4 +29,4 @@ Action Manifest OSS is a **shared library and CLI**. Otayori is a **product**. T
 
 Otayori SHOULD import `@actionmanifest/*`, run extract+verify locally or in its backend, then store Manifests next to documents Otayori already keeps. Otayori MUST NOT require this OSS to know what a “child” is.
 
-Phase 1 of this repository does **not** integrate Otayori.
+Phase 1 of this repository does **not** integrate Otayori. There are no Otayori packages, types, child/family models, or product rules in `packages/` or `apps/cli`. Naming Otayori in this document is a consumer-boundary note only (ENG-20260909-001 gate ④).

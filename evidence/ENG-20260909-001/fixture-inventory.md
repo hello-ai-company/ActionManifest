@@ -1,0 +1,33 @@
+# Fixture inventory (synthetic)
+
+| path | bytes |
+| --- | ---: |
+| `benchmark/fixtures/en/contract-sign-en/input.txt` | 70 |
+| `benchmark/fixtures/en/en-around-october/input.txt` | 106 |
+| `benchmark/fixtures/en/event-rsvp-en/input.txt` | 107 |
+| `benchmark/fixtures/en/gov-tax-postmark-en/input.txt` | 97 |
+| `benchmark/fixtures/en/housing-inspection-en/input.txt` | 98 |
+| `benchmark/fixtures/en/insurance-claim-en/input.txt` | 112 |
+| `benchmark/fixtures/en/invoice-payment-en/input.txt` | 80 |
+| `benchmark/fixtures/en/university-application-en/input.txt` | 87 |
+| `benchmark/fixtures/en/workplace-meeting-en/input.txt` | 95 |
+| `benchmark/fixtures/ja/event-collect-on-day/input.txt` | 76 |
+| `benchmark/fixtures/ja/event-participants-only/input.txt` | 109 |
+| `benchmark/fixtures/ja/gov-must-arrive/input.txt` | 69 |
+| `benchmark/fixtures/ja/gov-no-submit-needed/input.txt` | 79 |
+| `benchmark/fixtures/ja/gov-postmark-valid/input.txt` | 90 |
+| `benchmark/fixtures/ja/housing-contract-jp/input.txt` | 89 |
+| `benchmark/fixtures/ja/insurance-review-jp/input.txt` | 115 |
+| `benchmark/fixtures/ja/invoice-pay-jp/input.txt` | 93 |
+| `benchmark/fixtures/ja/school-already-submitted/input.txt` | 127 |
+| `benchmark/fixtures/ja/school-applicants-only/input.txt` | 94 |
+| `benchmark/fixtures/ja/school-around-october/input.txt` | 87 |
+| `benchmark/fixtures/ja/school-backup-date/input.txt` | 71 |
+| `benchmark/fixtures/ja/school-bring-own/input.txt` | 85 |
+| `benchmark/fixtures/ja/school-deadline-until/input.txt` | 95 |
+| `benchmark/fixtures/ja/school-early-october/input.txt` | 102 |
+| `benchmark/fixtures/ja/school-golden-excursion/input.txt` | 365 |
+| `benchmark/fixtures/ja/school-rain-postponement/input.txt` | 84 |
+| `benchmark/fixtures/ja/school-reiwa-date/input.txt` | 83 |
+| `benchmark/fixtures/ja/university-deadline-jp/input.txt` | 80 |
+| `benchmark/fixtures/ja/workplace-submit-later/input.txt` | 82 |

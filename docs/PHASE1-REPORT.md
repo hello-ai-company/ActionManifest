@@ -85,6 +85,20 @@ Hallucination failures: none on Golden. Remaining 1.7% is a single fixture (`sch
 
 Live OpenAI-compatible calls are not run in CI (no API key; fail closed if selected without a key).
 
+## ENG-20260909-001 completion gates
+
+| Gate | Status |
+| --- | --- |
+| ① Synthetic Golden only | PASS — no user/production documents in fixtures |
+| ② Public boundary documented | PASS — `docs/PUBLIC-BOUNDARY.md` + PR + this report |
+| ③ Core has no external writes | PASS — Core is local validation/hashing only |
+| ④ No Otayori-specific logic | PASS — Otayori named in docs as consumer only |
+| ⑤ Evidence under `evidence/ENG-20260909-001/` | PASS |
+
+Stop conditions: this agent only; real Evidence would block merge; **PR is not merged** (President / CTO confirmation required); no new ENG ticket; no API keys committed.
+
+See `docs/ENG-20260909-001.md`.
+
 ## Security / Privacy
 
 - Synthetic fixtures only; no real PII
@@ -118,6 +132,6 @@ New TypeScript monorepo: `packages/{schema,core,adapters,temporal,extractor,veri
 ## Git Status (branch, commit, working tree)
 
 - Branch: `cursor/phase1-action-manifest-edf9` (from `main`)
-- HEAD: `c53008b`
-- Working tree: clean
-- Commits: schema → core → verifier/extractor/CLI → golden fixtures → docs
+- PR: https://github.com/hello-ai-company/ActionManifest/pull/1 — **open, not merged**
+- Evidence: `evidence/ENG-20260909-001/`
+- Commits: schema → core → verifier/CLI → golden fixtures → docs → ENG-20260909-001 gates

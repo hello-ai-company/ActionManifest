@@ -33,7 +33,11 @@ Node 20+. pnpm workspaces. Default extractor is deterministic (no network).
 
 ## Fixtures
 
-Synthetic text only. No real names, schools, invoices, or copyrighted notices. Keep evidence quotes short.
+Synthetic text only (ENG-20260909-001 gate ①). No real names, schools, invoices, user mail, or copyrighted notices. Keep evidence quotes short. `pnpm test` includes `benchmark/synthetic-guard.test.ts`.
+
+## Merge policy (ENG-20260909-001)
+
+Do **not** merge until the President / CTO confirms. Do not file additional ENG tickets for this work. Do not commit API keys.
 
 ## PRs
 

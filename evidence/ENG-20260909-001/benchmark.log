@@ -1,0 +1,46 @@
+
+> action-manifest@0.1.0 benchmark /workspace
+> tsx apps/cli/src/index.ts benchmark
+
+Action Manifest benchmark
+fixtures: 29 (JP 20 / EN 9)
+Action Recall:      96.6%
+Action Precision:   77.0%
+Deadline Accuracy:  89.7%
+Actor Accuracy:     92.0%
+Modality Accuracy:  60.3%
+Evidence Match:     100.0%
+Hallucination Rate: 1.7%  ← lower is better
+Ambiguity Preserve: 100.0%  ← higher is better
+Verifier pass rate: 100.0%
+Golden fixture:     PASS
+
+- contract-sign-en [en/contract] R=100.0% P=100.0% H=0.0% A=100.0%
+- en-around-october [en/workplace] R=100.0% P=100.0% H=0.0% A=100.0%
+- event-collect-on-day [ja/event] R=100.0% P=100.0% H=0.0% A=100.0%
+- event-participants-only [ja/event] R=0.0% P=100.0% H=0.0% A=100.0%
+- event-rsvp-en [en/event] R=100.0% P=100.0% H=0.0% A=100.0%
+- gov-must-arrive [ja/government] R=100.0% P=100.0% H=0.0% A=100.0%
+- gov-no-submit-needed [ja/government] R=100.0% P=100.0% H=0.0% A=100.0%
+- gov-postmark-valid [ja/government] R=100.0% P=50.0% H=0.0% A=100.0%
+- gov-tax-postmark-en [en/government] R=100.0% P=33.3% H=0.0% A=100.0%
+- housing-contract-jp [ja/housing] R=100.0% P=50.0% H=0.0% A=100.0%
+- housing-inspection-en [en/housing] R=100.0% P=50.0% H=0.0% A=100.0%
+- insurance-claim-en [en/insurance] R=100.0% P=50.0% H=0.0% A=100.0%
+- insurance-review-jp [ja/insurance] R=100.0% P=50.0% H=0.0% A=100.0%
+- invoice-pay-jp [ja/invoice] R=100.0% P=100.0% H=0.0% A=100.0%
+- invoice-payment-en [en/invoice] R=100.0% P=50.0% H=0.0% A=100.0%
+- school-already-submitted [ja/school] R=100.0% P=50.0% H=50.0% A=100.0%
+- school-applicants-only [ja/school] R=100.0% P=50.0% H=0.0% A=100.0%
+- school-around-october [ja/school] R=100.0% P=100.0% H=0.0% A=100.0%
+- school-backup-date [ja/event] R=100.0% P=50.0% H=0.0% A=100.0%
+- school-bring-own [ja/school] R=100.0% P=100.0% H=0.0% A=100.0%
+- school-deadline-until [ja/school] R=100.0% P=100.0% H=0.0% A=100.0%
+- school-early-october [ja/school] R=100.0% P=50.0% H=0.0% A=100.0%
+- school-golden-excursion [ja/school] R=100.0% P=100.0% H=0.0% A=100.0% GOLDEN PASS
+- school-rain-postponement [ja/school] R=100.0% P=100.0% H=0.0% A=100.0%
+- school-reiwa-date [ja/school] R=100.0% P=100.0% H=0.0% A=100.0%
+- university-application-en [en/university] R=100.0% P=50.0% H=0.0% A=100.0%
+- university-deadline-jp [ja/university] R=100.0% P=100.0% H=0.0% A=100.0%
+- workplace-meeting-en [en/workplace] R=100.0% P=100.0% H=0.0% A=100.0%
+- workplace-submit-later [ja/workplace] R=100.0% P=50.0% H=0.0% A=100.0%

@@ -4,6 +4,7 @@ coverage/
 .turbo/
 .DS_Store
 *.log
+!evidence/**/*.log
 .env
 .env.local
 .env.*.local

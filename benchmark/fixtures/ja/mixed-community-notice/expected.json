@@ -1,0 +1,110 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "令和8年11月3日に地域清掃を実施します",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-11-03",
+        "year": 2026,
+        "month": 11,
+        "day": 3,
+        "precision": "day",
+        "certainty": "high",
+        "raw_text": "令和8年11月3日",
+        "alternatives": [
+          {
+            "type": "conditional",
+            "date": "2026-11-10",
+            "month": 11,
+            "day": 10,
+            "year": 2026,
+            "precision": "day",
+            "raw_text": "雨天の場合は11月10日に延期します",
+            "condition": "雨天",
+            "certainty": "high"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "source_id": "mixed-community-notice",
+          "page": 1,
+          "text": "令和8年11月3日に地域清掃を実施します。"
+        },
+        {
+          "source_id": "mixed-community-notice",
+          "text": "雨天の場合は11月10日に延期します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    },
+    {
+      "id": "act_002",
+      "kind": "submit",
+      "title": "10月28日までに申込書を提出する",
+      "object": "10月28日までに申込書",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-28",
+        "month": 10,
+        "day": 28,
+        "year": 2026,
+        "precision": "day",
+        "deadline_qualifier": "until",
+        "end": "2026-10-28",
+        "certainty": "high",
+        "raw_text": "10月28日までに"
+      },
+      "evidence": [
+        {
+          "source_id": "mixed-community-notice",
+          "page": 1,
+          "text": "参加を希望する方は、10月28日までに申込書を提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified",
+      "conditions": [
+        "参加を希望する",
+        "希望者のみ",
+        "参加希望者に限り必須"
+      ]
+    },
+    {
+      "id": "act_003",
+      "kind": "prepare",
+      "title": "当日は軍手とごみ袋を持参してください。",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "relative",
+        "precision": "day",
+        "deadline_qualifier": "on_day",
+        "certainty": "medium",
+        "raw_text": "当日"
+      },
+      "evidence": [
+        {
+          "source_id": "mixed-community-notice",
+          "page": 1,
+          "text": "当日は軍手とごみ袋を持参してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    }
+  ]
+}

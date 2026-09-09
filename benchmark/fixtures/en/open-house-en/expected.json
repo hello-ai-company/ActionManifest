@@ -1,0 +1,68 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "other",
+      "title": "The office will move on December 1, 2026",
+      "modality": "unknown",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-12-01",
+        "year": 2026,
+        "month": 12,
+        "day": 1,
+        "precision": "day",
+        "certainty": "high",
+        "raw_text": "December 1, 2026"
+      },
+      "evidence": [
+        {
+          "source_id": "open-house-en",
+          "page": 1,
+          "text": "The office will move on December 1, 2026."
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    },
+    {
+      "id": "act_002",
+      "kind": "event",
+      "title": "Employees who wish may attend the open h",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "open-house-en",
+          "page": 1,
+          "text": "Employees who wish may attend the open house."
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    },
+    {
+      "id": "act_003",
+      "kind": "review",
+      "title": "Please review the updated floor plan",
+      "modality": "unknown",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "open-house-en",
+          "page": 1,
+          "text": "Please review the updated floor plan."
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    }
+  ]
+}

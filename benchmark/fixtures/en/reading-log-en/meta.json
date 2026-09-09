@@ -1,0 +1,7 @@
+{
+  "id": "reading-log-en",
+  "language": "en",
+  "category": "approximate-vs-hallucinated",
+  "tags": ["approximate", "hallucination-guard", "deadline"],
+  "golden": false
+}

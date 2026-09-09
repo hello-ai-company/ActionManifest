@@ -1,0 +1,76 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "運動会は令和8年10月12日に開催します",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-12",
+        "year": 2026,
+        "month": 10,
+        "day": 12,
+        "precision": "day",
+        "certainty": "high",
+        "raw_text": "令和8年10月12日",
+        "alternatives": [
+          {
+            "type": "conditional",
+            "date": "2026-10-13",
+            "month": 10,
+            "day": 13,
+            "year": 2026,
+            "precision": "day",
+            "raw_text": "雨天の場合は10月13日に延期します",
+            "condition": "雨天",
+            "certainty": "high"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "source_id": "sports-day-exemption",
+          "page": 1,
+          "text": "運動会は令和8年10月12日に開催します。"
+        },
+        {
+          "source_id": "sports-day-exemption",
+          "text": "雨天の場合は10月13日に延期します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    },
+    {
+      "id": "act_002",
+      "kind": "submit",
+      "title": "提出する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "sports-day-exemption",
+          "page": 1,
+          "text": "未提出の方は健康カードを提出してください。"
+        },
+        {
+          "source_id": "sports-day-exemption",
+          "page": 1,
+          "text": "すでに提出済みの方は再提出不要です。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified",
+      "conditions": [
+        "前回すでに提出した方は再提出不要",
+        "すでに提出済みの方は再提出不要です"
+      ]
+    }
+  ]
+}

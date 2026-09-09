@@ -33,6 +33,9 @@ describe("public package entry points", () => {
     expect(typeof core.locateEvidence).toBe("function");
     expect(typeof core.ensureSourceHash).toBe("function");
     expect(typeof core.manifestFatalReasons).toBe("function");
+    expect(typeof core.evaluateActionTrust).toBe("function");
+    expect(typeof core.trustDispositionFor).toBe("function");
+    expect(core.VERIFIED_TIER_STATUSES).toContain("verified");
     expect(typeof core.DocumentAdapterError).toBe("function");
     expect(typeof core.ExportError).toBe("function");
 
@@ -52,7 +55,8 @@ describe("public package entry points", () => {
     // exporters / consumer policy
     expect(typeof exporters.exportJson).toBe("function");
     expect(typeof exporters.exportIcs).toBe("function");
-    expect(exporters.EXPORTABLE_STATUSES).toContain("verified");
+    expect(typeof exporters.actionUid).toBe("function");
+    expect(typeof exporters.evaluateExportTrust).toBe("function");
     expect(typeof consumer.classifyManifest).toBe("function");
     expect(typeof consumer.readyActions).toBe("function");
   });

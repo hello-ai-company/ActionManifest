@@ -1,8 +1,13 @@
-import type { Action, ActionManifest, Temporal } from "@actionmanifest/core";
+import {
+  sha256Hex,
+  trustDispositionFor,
+  type Action,
+  type ActionManifest,
+  type Temporal,
+} from "@actionmanifest/core";
 import {
   assertExportable,
-  isExportableStatus,
-  selectExportableActions,
+  evaluateExportTrust,
   type ExportPolicyOptions,
 } from "./policy.js";
 
@@ -24,15 +29,41 @@ function evidenceNote(action: Action): string {
   return escapeText(`${quotes}${conditions}`.slice(0, 500));
 }
 
-function datesOf(t?: Temporal): string[] {
-  if (!t) return [];
-  const out: string[] = [];
-  if (t.date && (t.type === "exact" || t.type === "conditional" || t.type === "range")) {
-    out.push(t.date);
-  }
-  if (t.end && /^\d{4}-\d{2}-\d{2}$/.test(t.end)) out.push(t.end);
-  for (const alt of t.alternatives ?? []) out.push(...datesOf(alt));
-  return out;
+/**
+ * Executable date policy (normative):
+ * - `exact` / `range` with a calendar `date` → executable (DTSTART / DUE).
+ *   An ISO `end` is accepted as the deadline day when `date` is absent.
+ * - `approximate`, `relative`, `unknown` → never executable (unknown stays
+ *   unknown).
+ * - `conditional` at the TOP level → never executable: the date holds only
+ *   when the condition holds, so no VEVENT/VTODO is produced at all.
+ * - `alternatives` never contribute the primary date; a dated conditional
+ *   alternative is preserved as a COMMENT on the primary artifact only.
+ */
+function primaryDate(t?: Temporal): string | undefined {
+  if (!t) return undefined;
+  if (t.type !== "exact" && t.type !== "range") return undefined;
+  if (t.date) return t.date;
+  if (t.end && /^\d{4}-\d{2}-\d{2}$/.test(t.end)) return t.end;
+  return undefined;
+}
+
+function conditionalAlternative(t?: Temporal): Temporal | undefined {
+  return t?.alternatives?.find((a) => a.date && a.type === "conditional") ??
+    t?.alternatives?.find((a) => a.date);
+}
+
+/**
+ * Globally stable, opaque UID. Action ids are manifest-local (`act_001`
+ * recurs across documents), so the UID is derived from the source identity +
+ * the action id, hashed: the raw source id (which may contain sensitive
+ * filenames) never appears in calendar output. Same document + same action
+ * → same UID; different document or different action → different UID.
+ * Deliberately keyed on source.id (logical identity), not source.hash
+ * (content revision) — see docs/adr/0004-integration-contract.md.
+ */
+export function actionUid(manifest: ActionManifest, action: Action): string {
+  return `${sha256Hex(`${manifest.source.id}:${action.id}`)}@actionmanifest`;
 }
 
 function fold(line: string): string {
@@ -53,14 +84,17 @@ export type IcsExportOptions = ExportPolicyOptions;
 /**
  * Export events as VEVENT and dated tasks as VTODO.
  *
- * Safety contract (Phase 2):
- * - Default policy is verified-only: proposed/rejected Actions are NOT
- *   exported. `include: "all"` is the explicit opt-in and marks unverified
- *   entries with `X-ACTIONMANIFEST-STATUS`.
+ * Safety contract (Phase 2, hardened):
+ * - Default policy exports only trust-qualified Actions (consumer disposition
+ *   "ready"): per-Action verification passed, verified-tier status, no
+ *   manifest-level fatal. `include: "all"` is the explicit audit opt-in and
+ *   marks every entry with `X-ACTIONMANIFEST-STATUS` and
+ *   `X-ACTIONMANIFEST-DISPOSITION`.
  * - A manifest-level fatal receipt (hash mismatch / empty source) throws
  *   ExportError instead of producing any executable output.
- * - Approximate temporals without a calendar day are omitted (unknown stays
- *   unknown); conditional alternatives never overwrite the primary date.
+ * - Conditional information is not an executable date: top-level conditional
+ *   temporals produce no DTSTART/DUE (and no VEVENT/VTODO); conditional
+ *   alternatives stay COMMENT annotations on the primary artifact.
  */
 export function exportIcs(manifest: ActionManifest, options: IcsExportOptions = {}): string {
   assertExportable(manifest);
@@ -73,9 +107,12 @@ export function exportIcs(manifest: ActionManifest, options: IcsExportOptions = 
     "CALSCALE:GREGORIAN",
   ];
 
-  for (const action of selectExportableActions(manifest, { include })) {
-    const dates = datesOf(action.temporal);
-    const primary = dates[0];
+  const trusted = evaluateExportTrust(manifest).filter((t) =>
+    include === "all" ? true : t.trust.ready,
+  );
+
+  for (const { action, trust } of trusted) {
+    const primary = primaryDate(action.temporal);
     const isEvent = action.kind === "event" || action.kind === "attend";
     const isTodo =
       action.kind === "submit" ||
@@ -85,30 +122,36 @@ export function exportIcs(manifest: ActionManifest, options: IcsExportOptions = 
       action.kind === "sign" ||
       action.kind === "reply";
 
+    // No unconditional primary date → no calendar artifact at all.
     if (!primary) continue;
-    const unverifiedMarker = isExportableStatus(action.status)
-      ? undefined
-      : `X-ACTIONMANIFEST-STATUS:${action.status}`;
+
+    const trustMarkers =
+      include === "all"
+        ? [
+            `X-ACTIONMANIFEST-STATUS:${action.status}`,
+            `X-ACTIONMANIFEST-DISPOSITION:${trustDispositionFor(trust.reason)}`,
+          ]
+        : [];
 
     if (isEvent) {
       lines.push("BEGIN:VEVENT");
-      lines.push(`UID:${action.id}@actionmanifest`);
+      lines.push(`UID:${actionUid(manifest, action)}`);
       lines.push(`DTSTAMP:${stamp}`);
       lines.push(`DTSTART;VALUE=DATE:${icsDate(primary)}`);
-      if (unverifiedMarker) lines.push(unverifiedMarker);
-      const rain = action.temporal?.alternatives?.find((a) => a.date);
-      if (rain?.date) {
-        lines.push(`COMMENT:${escapeText(`alternative ${rain.date} if ${rain.condition ?? "condition"}`)}`);
+      lines.push(...trustMarkers);
+      const alt = conditionalAlternative(action.temporal);
+      if (alt?.date) {
+        lines.push(`COMMENT:${escapeText(`alternative ${alt.date} if ${alt.condition ?? "condition"}`)}`);
       }
       lines.push(`SUMMARY:${escapeText(action.title)}`);
       lines.push(`DESCRIPTION:${evidenceNote(action)}`);
       lines.push("END:VEVENT");
     } else if (isTodo) {
       lines.push("BEGIN:VTODO");
-      lines.push(`UID:${action.id}@actionmanifest`);
+      lines.push(`UID:${actionUid(manifest, action)}`);
       lines.push(`DTSTAMP:${stamp}`);
       lines.push(`DUE;VALUE=DATE:${icsDate(primary)}`);
-      if (unverifiedMarker) lines.push(unverifiedMarker);
+      lines.push(...trustMarkers);
       lines.push(`SUMMARY:${escapeText(action.title)}`);
       lines.push(`DESCRIPTION:${evidenceNote(action)}`);
       lines.push("STATUS:NEEDS-ACTION");

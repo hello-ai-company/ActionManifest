@@ -1,22 +1,27 @@
 import {
   ExportError,
+  evaluateActionTrust,
   manifestFatalReasons,
   type Action,
   type ActionManifest,
+  type ActionTrustResult,
 } from "@actionmanifest/core";
 
 /**
- * Export safety policy (Phase 2).
+ * Export safety policy (Phase 2, hardened).
  *
- * Exporters emit executable artifacts (ICS calendar entries) and transfer
- * records (JSON). Unverified Actions MUST NOT leak into either without an
- * explicit opt-in:
+ * Export is consumption: exporters emit artifacts that downstream calendars
+ * and apps act on, so the default policy exports only **trust-qualified**
+ * Actions — exactly the Actions the reference consumer classifies as
+ * `ready`. Status alone is never sufficient:
  *
- * - Default `include: "verified-only"` exports only Actions in the verified
- *   lifecycle tier (`verified` / `accepted` / `exported`).
- * - `include: "all"` is the explicit opt-in. In ICS, unverified entries are
- *   marked with `X-ACTIONMANIFEST-STATUS` so downstream calendar tooling can
- *   still tell them apart.
+ * - Default `include: "verified-only"` evaluates the shared trust policy
+ *   (`evaluateActionTrust` from core): per-Action verification passed, no
+ *   manifest-level fatal, and a verified-tier lifecycle status.
+ * - `include: "all"` is the explicit audit opt-in. ICS entries always carry
+ *   `X-ACTIONMANIFEST-STATUS` and `X-ACTIONMANIFEST-DISPOSITION` so a
+ *   `status=verified` Action whose receipt failed can never be mistaken for
+ *   a trustworthy one.
  * - A manifest-level fatal receipt (source hash mismatch / empty source)
  *   blocks export entirely with {@link ExportError}: the document is
  *   untrustworthy, so no executable output may be produced from it.
@@ -28,11 +33,18 @@ export interface ExportPolicyOptions {
   include?: ExportInclude;
 }
 
-/** Lifecycle statuses treated as verified for export. */
-export const EXPORTABLE_STATUSES = ["verified", "accepted", "exported"] as const;
+export interface TrustedAction {
+  action: Action;
+  trust: ActionTrustResult;
+}
 
-export function isExportableStatus(status: string): boolean {
-  return (EXPORTABLE_STATUSES as readonly string[]).includes(status);
+/** Evaluate the shared trust policy for every Action in the manifest. */
+export function evaluateExportTrust(manifest: ActionManifest): TrustedAction[] {
+  const flags = manifest.receipt?.verification;
+  return manifest.actions.map((action) => ({
+    action,
+    trust: evaluateActionTrust(action, flags),
+  }));
 }
 
 /** Throw ExportError when the receipt proves a manifest-level fatal condition. */
@@ -48,12 +60,18 @@ export function assertExportable(manifest: ActionManifest): void {
   }
 }
 
-/** Filter the actions of a manifest according to the export policy. */
+/**
+ * Select the Actions to export. Default (`verified-only`) returns only
+ * trust-qualified Actions (consumer disposition `ready`); `include: "all"`
+ * returns everything for audit purposes.
+ */
 export function selectExportableActions(
   manifest: ActionManifest,
   options: ExportPolicyOptions = {},
 ): Action[] {
   const include = options.include ?? "verified-only";
   if (include === "all") return manifest.actions;
-  return manifest.actions.filter((a) => isExportableStatus(a.status));
+  return evaluateExportTrust(manifest)
+    .filter((t) => t.trust.ready)
+    .map((t) => t.action);
 }

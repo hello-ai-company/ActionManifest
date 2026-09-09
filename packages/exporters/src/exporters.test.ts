@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { ExportError, SCHEMA_VERSION, type Action, type ActionManifest } from "@actionmanifest/core";
+import {
+  ExportError,
+  SCHEMA_VERSION,
+  type Action,
+  type ActionManifest,
+  type ActionVerificationResult,
+} from "@actionmanifest/core";
 import { exportIcs, exportJson, formatSummary } from "./index.js";
 
 function makeAction(partial: Partial<Action> & Pick<Action, "id" | "kind" | "title">): Action {
@@ -13,9 +19,58 @@ function makeAction(partial: Partial<Action> & Pick<Action, "id" | "kind" | "tit
   };
 }
 
+function passedResult(id: string): ActionVerificationResult {
+  return {
+    action_id: id,
+    passed: true,
+    evidence_supported: true,
+    temporal_supported: true,
+    actor_supported: true,
+    modality_supported: true,
+    negation_conflict: false,
+    page_refs_valid: true,
+    issues: [],
+  };
+}
+
+/**
+ * Trust-qualified fixture: verified actions carry a passing per-Action
+ * receipt (status alone is not trust); the proposed action failed
+ * verification and stays unexported by default.
+ */
 const manifest: ActionManifest = {
   schema_version: SCHEMA_VERSION,
   source: { id: "s", hash: "abc" },
+  receipt: {
+    extraction: {
+      provider: "t",
+      model: "t",
+      extractor_version: "0",
+      schema_version: SCHEMA_VERSION,
+      created_at: "t",
+    },
+    verification: {
+      evidence_supported: true,
+      temporal_supported: false,
+      actor_supported: true,
+      modality_supported: true,
+      source_hash_matched: true,
+      negation_conflict: false,
+      page_refs_valid: true,
+      passed: false,
+      actions: [
+        passedResult("act_001"),
+        passedResult("act_002"),
+        passedResult("act_003"),
+        {
+          ...passedResult("act_004"),
+          passed: false,
+          temporal_supported: false,
+          issues: [{ code: "TEMPORAL_UNSUPPORTED", message: "not in evidence", action_id: "act_004" }],
+        },
+      ],
+    },
+  },
   actions: [
     makeAction({
       id: "act_001",
@@ -55,19 +110,7 @@ const manifest: ActionManifest = {
 
 describe("exportJson", () => {
   it("defaults to verified-only and keeps the receipt", () => {
-    const withReceipt: ActionManifest = {
-      ...manifest,
-      receipt: {
-        extraction: {
-          provider: "t",
-          model: "t",
-          extractor_version: "0",
-          schema_version: SCHEMA_VERSION,
-          created_at: "t",
-        },
-      },
-    };
-    const parsed = JSON.parse(exportJson(withReceipt)) as ActionManifest;
+    const parsed = JSON.parse(exportJson(manifest)) as ActionManifest;
     expect(parsed.actions.map((a) => a.id)).toEqual(["act_001", "act_002", "act_003"]);
     expect(parsed.receipt).toBeDefined();
   });
@@ -97,10 +140,13 @@ describe("exportIcs", () => {
     expect(ics).not.toContain("20261101");
   });
 
-  it("include: \"all\" emits unverified actions with an explicit marker", () => {
+  it("include: \"all\" emits unverified actions with explicit status and trust markers", () => {
     const ics = exportIcs(manifest, { include: "all" });
     expect(ics).toContain("検証に落ちた提出物");
     expect(ics).toContain("X-ACTIONMANIFEST-STATUS:proposed");
+    expect(ics).toContain("X-ACTIONMANIFEST-DISPOSITION:blocked");
+    // trusted entries are marked too — status=verified is never ambiguous
+    expect(ics).toContain("X-ACTIONMANIFEST-DISPOSITION:ready");
   });
 
   it("refuses to export when the receipt shows a manifest-level fatal", () => {
@@ -135,6 +181,15 @@ describe("exportIcs", () => {
   it("conditional rain alternative never overwrites the primary DTSTART", () => {
     const withRain: ActionManifest = {
       ...manifest,
+      receipt: {
+        ...manifest.receipt!,
+        verification: {
+          ...manifest.receipt!.verification!,
+          temporal_supported: true,
+          passed: true,
+          actions: [passedResult("act_010")],
+        },
+      },
       actions: [
         makeAction({
           id: "act_010",

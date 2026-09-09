@@ -74,6 +74,42 @@ function isExemption(text: string): boolean {
   );
 }
 
+/**
+ * Canonical subject/object for internal target resolution (benchmark-safe; not a
+ * schema field). Lowercases, strips punctuation, leading imperative verbs
+ * ("please submit", "bring", …) and determiners ("the"/"a"/"an"), and normalizes
+ * whitespace so "Please submit the permission form" / "The permission form" /
+ * "permission form" resolve to the same target. No stemming / NLP dependency.
+ */
+function canonicalTarget(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[.,!?;:「」『』“”"'()]/g, "")
+    .replace(/^\s*(?:please\s+)?(?:submit|send|bring|complete|return|file|pay|attend)\s+/i, "")
+    .replace(/^\s*(?:the|a|an)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Whether `obj` names `action` — by JP substring or canonical (EN-safe) identity. */
+function targetMatches(action: Action, obj: string): boolean {
+  if (!obj) return false;
+  if (
+    (action.object && (action.object.includes(obj) || obj.includes(action.object))) ||
+    action.title.includes(obj)
+  ) {
+    return true;
+  }
+  const co = canonicalTarget(obj);
+  if (co.length < 2) return false;
+  for (const raw of [action.object, action.title]) {
+    if (!raw) continue;
+    const c = canonicalTarget(raw);
+    if (c.length >= 2 && (c === co || c.includes(co) || co.includes(c))) return true;
+  }
+  return false;
+}
+
 /** Event/subject nouns used to match a cancellation sentence to a prior Action. */
 function cancellationSubjects(text: string): string[] {
   const subjects: string[] = [];
@@ -210,9 +246,7 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
       if (submits.length === 1) {
         submit = submits[0];
       } else if (obj) {
-        submit = [...submits]
-          .reverse()
-          .find((a) => a.object && (obj.includes(a.object) || a.object.includes(obj) || a.title.includes(obj)));
+        submit = [...submits].reverse().find((a) => targetMatches(a, obj));
       }
       if (submit) {
         submit.conditions = [
@@ -248,13 +282,7 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
     if (isNegation(sentence)) {
       const negObj = extractObject(sentence);
       const target = negObj
-        ? [...actions]
-            .reverse()
-            .find(
-              (a) =>
-                (a.object && (a.object.includes(negObj) || negObj.includes(a.object))) ||
-                a.title.includes(negObj),
-            )
+        ? [...actions].reverse().find((a) => targetMatches(a, negObj))
         : undefined;
       if (target) {
         target.conditions = [

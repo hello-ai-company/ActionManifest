@@ -18,8 +18,14 @@ Integration Contract & Reference Adapter. No production schema version change (m
 
 ### Changed
 
-- **Exporters default to verified-only** (`exportJson` / `exportIcs`): unverified Actions require explicit `include: "all"` (ICS marks them `X-ACTIONMANIFEST-STATUS`). A manifest-level fatal receipt throws `ExportError`. CLI `extract` gains `--include-unverified`.
+- **Exporters default to verified-only** (`exportJson` / `exportIcs`): unverified Actions require explicit `include: "all"`. A manifest-level fatal receipt throws `ExportError`. CLI `extract` gains `--include-unverified`.
 - **Extractor provenance**: evidence page/bbox/section are resolved from the CanonicalDocument via `locateEvidence()` instead of hardcoded page 1; sentences that are document headings are skipped as structure. Plain-text behavior and the 74-fixture benchmark are unchanged (critical false-verified = 0).
+
+### Hardened (PR #4 pre-merge review)
+
+- **Shared trust policy** (`@actionmanifest/core`): `evaluateActionTrust()` is the single source of truth for "safe to consume", used by both the reference consumer and the exporters. Default export now means trust-qualified `ready` — `status=verified` with a failed per-Action receipt, verified status with no receipt, and passed-but-`proposed` Actions are withheld by default. `include: "all"` ICS entries always carry `X-ACTIONMANIFEST-STATUS` + `X-ACTIONMANIFEST-DISPOSITION`. v0.1 aggregate-only receipt handling is identical between consumer and exporter. (`EXPORTABLE_STATUSES` / `isExportableStatus` removed in favor of core `VERIFIED_TIER_STATUSES`.)
+- **Conditional temporal safety**: top-level `conditional` temporals never become `DTSTART`/`DUE` — with no unconditional primary date, no VEVENT/VTODO is produced at all. Alternatives never promote to primary; dated conditional alternatives stay `COMMENT` annotations.
+- **ICS UID**: now `sha256hex(source.id + ":" + action.id)@actionmanifest` — globally stable across documents, deterministic on re-export, and opaque (raw source ids never leak into calendar output). Keyed on logical source identity, not content hash (ADR 0004 §4c).
 
 ## Phase 1.2 — 2026-09-09
 

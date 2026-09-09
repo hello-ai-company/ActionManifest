@@ -117,8 +117,15 @@ const doc = await new PlainTextAdapter().toCanonical({ kind: "text", id: "notice
 const candidate = await extractActions(doc);                    // deterministic by default
 const { manifest } = verifyManifest(candidate, doc);            // per-Action verification
 const report = classifyManifest(manifest);                      // ready / review_required / blocked
-const ics = exportIcs(manifest);                                // verified-only; throws on manifest-level fatal
+const ics = exportIcs(manifest);                                // trust-qualified only; throws on manifest-level fatal
 ```
+
+Export is consumption: `exportJson` / `exportIcs` share the consumer's trust
+predicate (`evaluateActionTrust` in core), so the default policy exports only
+Actions whose per-Action receipt passed — `status=verified` alone is never
+enough. Conditional temporals (rain dates) never become `DTSTART`/`DUE`, and
+ICS UIDs are opaque hashes derived from source + action identity, stable
+across documents.
 
 Docling (Python) runs **upstream**: pass `DoclingDocument.export_to_dict()`
 JSON to `DoclingAdapter`. The TypeScript core never embeds Python, never

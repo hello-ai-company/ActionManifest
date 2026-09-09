@@ -207,24 +207,70 @@ blocks **every** Action, including ones whose per-Action checks passed.
 
 ## 7. Export policy
 
+**Export is consumption.** Exporters and the reference consumer share ONE
+trust predicate — `evaluateActionTrust(action, flags)` in
+`@actionmanifest/core` — so they can never disagree. Status alone is not
+trust: an Action is exported by default only when the per-Action receipt
+passed, no manifest-level fatal exists, and the lifecycle status is in the
+verified tier (`verified` / `accepted` / `exported`). Trust order: receipt
+truth > lifecycle status > export convenience.
+
 ```ts
-exportIcs(manifest);                          // verified-only (default)
-exportIcs(manifest, { include: "all" });      // explicit opt-in
-exportJson(manifest);                         // verified-only actions + full receipt
+exportIcs(manifest);                          // trust-qualified only (default)
+exportIcs(manifest, { include: "all" });      // explicit audit opt-in
+exportJson(manifest);                         // trust-qualified actions + full receipt
 exportJson(manifest, { include: "all" });     // full audit record
 ```
 
-- Default is **verified-only** (`verified` / `accepted` / `exported`).
-  Unverified Actions never enter an export silently.
-- `include: "all"` is the explicit opt-in. ICS entries from unverified
-  Actions are marked `X-ACTIONMANIFEST-STATUS:<status>`. JSON always keeps
-  the verification receipt, so omitted Actions remain explainable.
+- Default `verified-only` means **trust-qualified ready Actions**, not merely
+  `status=verified`. Contradictions are excluded: `status=verified` with a
+  failed per-Action receipt, verified status with no receipt at all, and
+  passed-but-still-`proposed` Actions are all withheld by default.
+- `include: "all"` is the explicit audit opt-in. Every ICS entry carries
+  `X-ACTIONMANIFEST-STATUS:<status>` AND
+  `X-ACTIONMANIFEST-DISPOSITION:<ready|review_required|blocked>`, so a
+  `verified` label can never mask a failed receipt. JSON always keeps the
+  verification receipt, so omitted Actions remain explainable.
 - A manifest-level fatal receipt throws `ExportError` (`EXPORT_BLOCKED`) from
-  both exporters: no executable output from an untrustworthy document.
-- Temporal safety: `approximate` temporals never produce calendar dates;
-  `conditional` alternatives (e.g. rain dates) stay alternatives (ICS
-  `COMMENT`), never the primary `DTSTART`; undated relative temporals
-  (`当日`) produce no VTODO.
+  both exporters, under both policies: no executable output from an
+  untrustworthy document.
+- v0.1 receipts (no per-Action results) follow the same rule as the consumer:
+  clean aggregate + verified-tier status is exportable; any aggregate failure
+  is not attributable and therefore not exported by default.
+
+### Temporal export safety
+
+Conditional information is not an executable date.
+
+| Temporal | DTSTART/DUE |
+| --- | --- |
+| `exact` with `date` | allowed |
+| `range` with `date` (or ISO `end` as the deadline day) | allowed |
+| `approximate` (10月頃, around October) | never |
+| `relative` with no resolved calendar day (当日) | never |
+| `conditional` at the top level (雨天の場合は10月22日) | **never — no VEVENT/VTODO is produced at all** |
+| `conditional` in `alternatives[]` | never primary; preserved as `COMMENT: alternative <date> if <condition>` on the primary artifact |
+
+An undated top-level temporal with a dated conditional alternative does NOT
+promote the alternative to primary.
+
+### ICS UID contract
+
+Action ids are manifest-local (`act_001` recurs in every manifest), so UIDs
+are derived, opaque, and stable:
+
+```
+UID = sha256hex(`${manifest.source.id}:${action.id}`) + "@actionmanifest"
+```
+
+- Same document + same action → same UID (idempotent re-export).
+- Different document + same action id → different UID (no cross-document
+  collision in downstream calendars).
+- The raw source id (which may contain sensitive filenames) never appears —
+  only the hex digest.
+- Keyed on `source.id` (logical identity), deliberately NOT `source.hash`:
+  a content revision of the same logical document should update the existing
+  calendar entry, not orphan it. See ADR 0004.
 
 ## 8. Public packages
 

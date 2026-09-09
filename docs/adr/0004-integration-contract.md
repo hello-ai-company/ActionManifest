@@ -60,17 +60,50 @@ so parser code can never bypass Evidence.
 ### 4. Verified-only is the default consumer/export policy
 
 Extraction is not execution. The closest we get to execution is export, so
-exports default to `verified-only` (statuses `verified`/`accepted`/
-`exported`); `include: "all"` is an explicit opt-in, and ICS entries from
-unverified Actions carry `X-ACTIONMANIFEST-STATUS`. A manifest-level fatal
-receipt (source hash mismatch, empty source) makes both exporters throw
-`ExportError` — no executable output from an untrustworthy document.
+exports default to `verified-only`; `include: "all"` is an explicit opt-in. A
+manifest-level fatal receipt (source hash mismatch, empty source) makes both
+exporters throw `ExportError` — no executable output from an untrustworthy
+document.
 
 `@actionmanifest/consumer` is the reference consumer policy:
 `ready / review_required / blocked` derived from the per-Action receipt plus
 fatal detection — never from `status` alone, never from aggregate booleans
 alone. A fatal receipt blocks every Action; a per-Action failure blocks only
 that Action (Phase 1.1 trust semantics preserved).
+
+**Pre-merge hardening (PR #4 review):** the first cut of the export policy
+filtered on lifecycle status only, which diverged from the consumer whenever
+status and receipt contradicted each other (`status=verified` + failed
+per-Action receipt, verified status with no receipt, passed-but-`proposed`).
+Export is consumption, so the trust predicate is now shared:
+`evaluateActionTrust()` in core is the single source of truth used by both
+the consumer (classification) and the exporters (filtering). Under
+`include: "all"`, every ICS entry carries both `X-ACTIONMANIFEST-STATUS` and
+`X-ACTIONMANIFEST-DISPOSITION`, so a `verified` label can never mask a failed
+receipt. Trust order: receipt truth > lifecycle status > export convenience.
+
+### 4b. Conditional temporals are not executable dates
+
+A top-level `conditional` temporal (e.g. a rain date) holds only when its
+condition holds, so it must never become `DTSTART`/`DUE` — and when no
+unconditional primary date exists, no VEVENT/VTODO is produced at all.
+Conditional `alternatives[]` never become primary; they are preserved as
+`COMMENT` annotations on the primary artifact. `approximate`/undated
+`relative` temporals remain non-executable (unknown stays unknown).
+
+### 4c. ICS UID derivation: opaque, globally stable
+
+Action ids are manifest-local, so `UID:act_001@actionmanifest` collides
+across documents. UIDs are now
+`sha256hex(source.id + ":" + action.id)@actionmanifest`:
+
+- **source.id + action.id**, not source.hash + action.id: calendar update
+  semantics favor logical document identity. A content revision of the same
+  document should update the existing calendar entry in place; keying on the
+  content hash would orphan the old entry on every edit.
+- **Opaque by construction**: source ids can embed sensitive filenames
+  (`student-name-school-2026.pdf`), so the raw id never appears — only the
+  digest.
 
 ### 5. Packaging: prove third-party consumption
 

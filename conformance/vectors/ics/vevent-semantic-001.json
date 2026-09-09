@@ -1,7 +1,7 @@
 {
-  "id": "vtodo-exact-001",
+  "id": "vevent-semantic-001",
   "profile": "ics",
-  "description": "Verified exact-date submit → exactly one VTODO with DUE; byte-exact golden.",
+  "description": "Verified exact-date event → one VEVENT with UID/DTSTART/SUMMARY semantics. Property order, PRODID, and fold positions are implementation freedom.",
   "input": {
     "manifest": {
       "schema_version": "0.2.0",
@@ -12,22 +12,21 @@
       "actions": [
         {
           "id": "act_001",
-          "kind": "submit",
-          "title": "参加確認票を提出する",
+          "kind": "event",
+          "title": "秋の遠足",
           "modality": "required",
           "actor": {
             "certainty": "unknown"
           },
           "temporal": {
             "type": "exact",
-            "date": "2026-10-05",
-            "raw_text": "10月5日まで",
-            "deadline_qualifier": "until"
+            "date": "2026-10-15",
+            "raw_text": "令和8年10月15日"
           },
           "evidence": [
             {
               "source_id": "conf-doc",
-              "text": "10月5日までに参加確認票を提出してください。"
+              "text": "令和8年10月15日に秋の遠足を実施します。"
             }
           ],
           "inference": "explicit",
@@ -72,9 +71,28 @@
     }
   },
   "expected": {
-    "golden": "golden/vtodo-exact-001.ics",
+    "components": [
+      {
+        "type": "VEVENT",
+        "props": {
+          "UID": [
+            "3c96dd907b71266938b96e816a206229976a74c5233521b8ef05114254bb2700@actionmanifest"
+          ],
+          "DTSTART;VALUE=DATE": [
+            "20261015"
+          ],
+          "SUMMARY": [
+            "秋の遠足"
+          ],
+          "DESCRIPTION": [
+            "令和8年10月15日に秋の遠足を実施します。"
+          ]
+        }
+      }
+    ],
     "artifact_counts": {
-      "VTODO": 1
+      "VEVENT": 1,
+      "VTODO": 0
     },
     "max_octets_per_line": 75,
     "crlf_only": true

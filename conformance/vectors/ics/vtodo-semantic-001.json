@@ -1,7 +1,7 @@
 {
-  "id": "utf8-folding-001",
+  "id": "vtodo-semantic-001",
   "profile": "ics",
-  "description": "Long Japanese SUMMARY folds octet-aware: every physical line <= 75 UTF-8 octets, no split multi-byte sequences.",
+  "description": "Verified exact-date submit → one VTODO with DUE semantics.",
   "input": {
     "manifest": {
       "schema_version": "0.2.0",
@@ -12,21 +12,22 @@
       "actions": [
         {
           "id": "act_001",
-          "kind": "event",
-          "title": "秋の遠足の実施についてのお知らせ：参加確認票の提出と持ち物のお願い（保護者向け）",
+          "kind": "submit",
+          "title": "参加確認票を提出する",
           "modality": "required",
           "actor": {
             "certainty": "unknown"
           },
           "temporal": {
             "type": "exact",
-            "date": "2026-10-15",
-            "raw_text": "10月15日"
+            "date": "2026-10-05",
+            "raw_text": "10月5日まで",
+            "deadline_qualifier": "until"
           },
           "evidence": [
             {
               "source_id": "conf-doc",
-              "text": "令和8年10月15日に秋の遠足を実施します。"
+              "text": "10月5日までに参加確認票を提出してください。"
             }
           ],
           "inference": "explicit",
@@ -71,7 +72,29 @@
     }
   },
   "expected": {
-    "golden": "golden/utf8-folding-001.ics",
+    "components": [
+      {
+        "type": "VTODO",
+        "props": {
+          "UID": [
+            "3c96dd907b71266938b96e816a206229976a74c5233521b8ef05114254bb2700@actionmanifest"
+          ],
+          "DUE;VALUE=DATE": [
+            "20261005"
+          ],
+          "SUMMARY": [
+            "参加確認票を提出する"
+          ],
+          "STATUS": [
+            "NEEDS-ACTION"
+          ]
+        }
+      }
+    ],
+    "artifact_counts": {
+      "VEVENT": 0,
+      "VTODO": 1
+    },
     "max_octets_per_line": 75,
     "crlf_only": true
   }

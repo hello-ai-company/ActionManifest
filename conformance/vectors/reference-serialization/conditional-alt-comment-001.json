@@ -1,7 +1,7 @@
 {
   "id": "conditional-alt-comment-001",
-  "profile": "ics",
-  "description": "exact primary + conditional alternative → DTSTART is primary; alternative is COMMENT only.",
+  "profile": "reference-serialization",
+  "description": "exact primary + conditional alternative → DTSTART is primary; alternative is COMMENT only. [reference-serialization: byte-exact regression for the TypeScript implementation; NOT part of universal conformance]",
   "input": {
     "manifest": {
       "schema_version": "0.2.0",

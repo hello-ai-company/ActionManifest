@@ -143,21 +143,32 @@ program
 
 program
   .command("conformance")
-  .description("run the language-neutral ActionManifest conformance suite")
+  .description("run the language-neutral ActionManifest universal conformance suite")
   .option("--root <dir>", "conformance suite root")
-  .option("--smoke", "run only the safety-critical profiles (trust, ics)")
+  .option("--smoke", "run only the safety-critical universal profiles (trust, ics)")
+  .option(
+    "--reference",
+    "also run reference-serialization regression (TypeScript implementation only; never part of universal conformance)",
+  )
   .option("--json", "machine-readable report")
-  .action(async (opts: { root?: string; smoke?: boolean; json?: boolean }) => {
+  .action(async (opts: { root?: string; smoke?: boolean; reference?: boolean; json?: boolean }) => {
     try {
       const root = opts.root ?? (await defaultConformanceRoot());
-      const report = await runConformance(root, { smoke: Boolean(opts.smoke) });
+      const report = await runConformance(root, {
+        smoke: Boolean(opts.smoke),
+        reference: Boolean(opts.reference),
+      });
       if (opts.json) {
         process.stdout.write(JSON.stringify(report, null, 2) + "\n");
       } else {
         process.stdout.write(formatConformance(report) + "\n");
       }
-      // Exit codes: 0 = conformant, 1 = conformance failure, 2 = runner/config error.
-      if (report.result !== "conformant") process.exitCode = 1;
+      // Exit codes: 0 = conformant, 1 = conformance failure (with --reference,
+      // reference serialization regression also fails), 2 = runner/config error.
+      const refFailed =
+        report.reference_serialization &&
+        report.reference_serialization.passed !== report.reference_serialization.total;
+      if (report.result !== "conformant" || refFailed) process.exitCode = 1;
     } catch (e) {
       // Runner/config errors (missing suite, malformed vectors) are distinct
       // from conformance failures.

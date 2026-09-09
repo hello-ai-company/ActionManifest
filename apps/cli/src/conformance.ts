@@ -14,6 +14,16 @@ import {
 } from "@actionmanifest/core";
 import { verifyManifest } from "@actionmanifest/verifier";
 import { exportIcs, selectExportableActions } from "@actionmanifest/exporters";
+import {
+  matchComponents,
+  parseIcs,
+  type ExpectedComponent,
+} from "./ics-semantic.js";
+import {
+  ConformanceConfigError,
+  validateSuiteManifest,
+  validateVector,
+} from "./conformance-validate.js";
 
 /**
  * ActionManifest Conformance Runner (Phase 2.1).
@@ -31,6 +41,8 @@ export interface SuiteManifest {
   suite_version: string;
   schema_versions: string[];
   profiles: string[];
+  /** Reference-implementation-only regression profiles (NOT universal conformance). */
+  reference_profiles: string[];
   smoke_profiles: string[];
 }
 
@@ -53,11 +65,15 @@ export interface VectorResult {
 
 export interface ConformanceReport {
   suite_version: string;
+  /** "universal" = language-independent contract; reference serialization never affects it. */
+  scope: "universal" | "universal+reference";
   result: "conformant" | "non-conformant";
   profiles: Record<string, { passed: number; total: number }>;
   totals: { passed: number; total: number };
   critical_false_exported: number;
   failures: { id: string; profile: string; detail: string }[];
+  /** Reference-implementation regression (byte-exact goldens). Separate from universal conformance. */
+  reference_serialization?: { passed: number; total: number; failures: { id: string; detail: string }[] };
 }
 
 const FIXED_NOW = new Date("2026-01-01T00:00:00.000Z");
@@ -88,8 +104,22 @@ async function loadVectors(root: string): Promise<Vector[]> {
     const dir = join(vectorsDir, profile.name);
     for (const file of (await readdir(dir)).sort()) {
       if (!file.endsWith(".json")) continue;
-      const parsed = JSON.parse(await readFile(join(dir, file), "utf8")) as Vector;
-      vectors.push(parsed);
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(await readFile(join(dir, file), "utf8"));
+      } catch (e) {
+        throw new ConformanceConfigError(
+          `vector ${profile.name}/${file} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+      // Normative test data is code: validate before execution. A malformed
+      // vector is a runner/config error (exit 2), never a silent pass.
+      try {
+        validateVector(parsed, profile.name);
+      } catch (e) {
+        throw new ConformanceConfigError(`${profile.name}/${file}: ${(e as Error).message}`);
+      }
+      vectors.push(parsed as Vector);
     }
   }
   vectors.sort((a, b) => a.id.localeCompare(b.id));
@@ -281,7 +311,7 @@ function runTemporal(v: Vector): string | undefined {
   return undefined;
 }
 
-async function runIcs(v: Vector, root: string): Promise<string | undefined> {
+async function runIcs(v: Vector, goldenDir: string): Promise<string | undefined> {
   const input = v.input as {
     manifest: ActionManifest;
     options?: { now?: string; include?: "verified-only" | "all" };
@@ -289,6 +319,7 @@ async function runIcs(v: Vector, root: string): Promise<string | undefined> {
   const exp = v.expected as {
     export_error?: string;
     golden?: string;
+    components?: ExpectedComponent[];
     contains?: string[];
     not_contains?: string[];
     max_octets_per_line?: number;
@@ -314,9 +345,17 @@ async function runIcs(v: Vector, root: string): Promise<string | undefined> {
   }
   if (exp.export_error) return `expected export error ${exp.export_error}, but export succeeded`;
 
+  // Byte-exact goldens are reference-serialization regression only — never
+  // part of universal conformance.
   if (exp.golden) {
-    const golden = await readFile(join(root, "vectors", "ics", exp.golden), "utf8");
+    const golden = await readFile(join(goldenDir, exp.golden), "utf8");
     if (ics !== golden) return `golden mismatch (${exp.golden})`;
+  }
+  // Universal semantic comparison: property order, PRODID, fold positions,
+  // and DTSTAMP lexical details are NOT normative.
+  if (exp.components) {
+    const detail = matchComponents(parseIcs(ics), exp.components);
+    if (detail) return detail;
   }
   for (const s of exp.contains ?? []) {
     if (!ics.includes(s)) return `expected output to contain ${JSON.stringify(s)}`;
@@ -359,18 +398,31 @@ async function runIcs(v: Vector, root: string): Promise<string | undefined> {
 
 export async function runConformance(
   root: string,
-  options: { smoke?: boolean } = {},
+  options: { smoke?: boolean; reference?: boolean } = {},
 ): Promise<ConformanceReport> {
-  const suite = JSON.parse(await readFile(join(root, "manifest.json"), "utf8")) as SuiteManifest;
+  let suiteRaw: unknown;
+  try {
+    suiteRaw = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
+  } catch (e) {
+    throw new ConformanceConfigError(
+      `cannot read suite manifest: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+  const suite = validateSuiteManifest(suiteRaw);
+  const referenceProfiles = suite.reference_profiles ?? [];
   let vectors = await loadVectors(root);
+
+  // Reference serialization regression is a separate gate, never part of
+  // universal conformance.
+  const referenceVectors = options.reference
+    ? vectors.filter((v) => referenceProfiles.includes(v.profile))
+    : [];
+  vectors = vectors.filter((v) => !referenceProfiles.includes(v.profile));
   if (options.smoke) {
     vectors = vectors.filter((v) => suite.smoke_profiles.includes(v.profile));
   }
 
-  const results: VectorResult[] = [];
-  let criticalFalseExported = 0;
-
-  for (const v of vectors) {
+  const runOne = async (v: Vector): Promise<VectorResult> => {
     let detail: string | undefined;
     let critical = false;
     switch (v.profile) {
@@ -393,16 +445,21 @@ export async function runConformance(
         detail = runTemporal(v);
         break;
       case "ics":
-        detail = await runIcs(v, root);
-        critical = Boolean(
-          detail && /exportable|artifact|disposition/i.test(detail) && v.id.includes("trust"),
-        );
+      case "reference-serialization":
+        detail = await runIcs(v, join(root, "vectors", v.profile));
         break;
       default:
         detail = `unknown profile: ${v.profile}`;
     }
-    if (critical) criticalFalseExported += 1;
-    results.push({ id: v.id, profile: v.profile, passed: !detail, critical, ...(detail ? { detail } : {}) });
+    return { id: v.id, profile: v.profile, passed: !detail, critical, ...(detail ? { detail } : {}) };
+  };
+
+  const results: VectorResult[] = [];
+  let criticalFalseExported = 0;
+  for (const v of vectors) {
+    const r = await runOne(v);
+    if (r.critical) criticalFalseExported += 1;
+    results.push(r);
   }
 
   const profiles: ConformanceReport["profiles"] = {};
@@ -412,8 +469,11 @@ export async function runConformance(
     if (r.passed) p.passed += 1;
   }
   const passed = results.filter((r) => r.passed).length;
-  return {
+
+  const report: ConformanceReport = {
     suite_version: suite.suite_version,
+    scope: options.reference ? "universal+reference" : "universal",
+    // Universal conformance NEVER depends on reference serialization results.
     result: passed === results.length && criticalFalseExported === 0 ? "conformant" : "non-conformant",
     profiles,
     totals: { passed, total: results.length },
@@ -422,10 +482,23 @@ export async function runConformance(
       .filter((r) => !r.passed)
       .map((r) => ({ id: r.id, profile: r.profile, detail: r.detail ?? "" })),
   };
+
+  if (options.reference) {
+    const refResults: VectorResult[] = [];
+    for (const v of referenceVectors) refResults.push(await runOne(v));
+    report.reference_serialization = {
+      passed: refResults.filter((r) => r.passed).length,
+      total: refResults.length,
+      failures: refResults
+        .filter((r) => !r.passed)
+        .map((r) => ({ id: r.id, detail: r.detail ?? "" })),
+    };
+  }
+  return report;
 }
 
 export function formatConformance(report: ConformanceReport): string {
-  const lines = [`ActionManifest Conformance (suite ${report.suite_version})`];
+  const lines = [`ActionManifest Universal Conformance (suite ${report.suite_version})`];
   for (const [profile, p] of Object.entries(report.profiles)) {
     lines.push(
       `${profile.padEnd(20)} ${String(p.passed).padStart(3)}/${p.total} ${p.passed === p.total ? "PASS" : "FAIL"}`,
@@ -438,6 +511,14 @@ export function formatConformance(report: ConformanceReport): string {
   lines.push(report.result === "conformant" ? "CONFORMANT" : "NON-CONFORMANT");
   for (const f of report.failures) {
     lines.push(`  FAIL ${f.id}: ${f.detail}`);
+  }
+  if (report.reference_serialization) {
+    const r = report.reference_serialization;
+    lines.push("");
+    lines.push(
+      `Reference Serialization (TypeScript regression only — NOT universal conformance): ${r.passed}/${r.total} ${r.passed === r.total ? "PASS" : "FAIL"}`,
+    );
+    for (const f of r.failures) lines.push(`  FAIL ${f.id}: ${f.detail}`);
   }
   return lines.join("\n");
 }

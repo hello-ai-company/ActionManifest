@@ -1,7 +1,7 @@
 {
-  "id": "vevent-exact-001",
+  "id": "utf8-folding-semantic-001",
   "profile": "ics",
-  "description": "Verified exact-date event → exactly one VEVENT; byte-exact golden with fixed clock.",
+  "description": "Long Japanese SUMMARY: every physical line ≤ 75 UTF-8 octets and unfolds back to the exact logical value (fold boundary position itself is NOT normative).",
   "input": {
     "manifest": {
       "schema_version": "0.2.0",
@@ -13,7 +13,7 @@
         {
           "id": "act_001",
           "kind": "event",
-          "title": "秋の遠足",
+          "title": "秋の遠足の実施についてのお知らせ：参加確認票の提出と持ち物のお願い（保護者向け）",
           "modality": "required",
           "actor": {
             "certainty": "unknown"
@@ -21,7 +21,7 @@
           "temporal": {
             "type": "exact",
             "date": "2026-10-15",
-            "raw_text": "令和8年10月15日"
+            "raw_text": "10月15日"
           },
           "evidence": [
             {
@@ -71,12 +71,23 @@
     }
   },
   "expected": {
-    "golden": "golden/vevent-exact-001.ics",
-    "artifact_counts": {
-      "VEVENT": 1
-    },
+    "components": [
+      {
+        "type": "VEVENT",
+        "props": {
+          "UID": [
+            "3c96dd907b71266938b96e816a206229976a74c5233521b8ef05114254bb2700@actionmanifest"
+          ],
+          "DTSTART;VALUE=DATE": [
+            "20261015"
+          ],
+          "SUMMARY": [
+            "秋の遠足の実施についてのお知らせ：参加確認票の提出と持ち物のお願い（保護者向け）"
+          ]
+        }
+      }
+    ],
     "max_octets_per_line": 75,
-    "crlf_only": true,
-    "uid_pattern": "^[a-f0-9]{64}@actionmanifest$"
+    "crlf_only": true
   }
 }

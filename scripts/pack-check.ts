@@ -43,7 +43,11 @@ const PUBLIC_PACKAGES = [
   "verifier",
   "exporters",
   "consumer",
+  "adapter-xberg",
 ] as const;
+
+/** Packages that are allowed to depend on the native Xberg binding. */
+const XBERG_ALLOWED_PACKAGES = new Set(["adapter-xberg"]);
 
 const REQUIRED_ENTRIES: Record<(typeof PUBLIC_PACKAGES)[number], string[]> = {
   schema: [
@@ -60,6 +64,7 @@ const REQUIRED_ENTRIES: Record<(typeof PUBLIC_PACKAGES)[number], string[]> = {
   verifier: ["package/dist/index.js", "package/dist/index.d.ts"],
   exporters: ["package/dist/index.js", "package/dist/index.d.ts"],
   consumer: ["package/dist/index.js", "package/dist/index.d.ts"],
+  "adapter-xberg": ["package/dist/index.js", "package/dist/index.d.ts"],
 };
 
 const FORBIDDEN_PATTERNS = [/^package\/src\//, /\.test\.ts$/, /^package\/test\//];
@@ -125,6 +130,11 @@ try {
     }
     for (const [dep, range] of Object.entries(packedJson.dependencies ?? {})) {
       if (range.includes("workspace:")) fail(`${pkg}: dependency ${dep} still uses workspace: protocol`);
+      // Native dependency containment: only the Xberg adapter package may
+      // depend on @xberg-io/* — core and the other packages stay parser-free.
+      if (dep.startsWith("@xberg-io/") && !XBERG_ALLOWED_PACKAGES.has(pkg)) {
+        fail(`${pkg}: Xberg dependency leaked into a non-adapter package (${dep})`);
+      }
     }
     // exports targets must exist inside the tarball
     const dot = packedJson.exports["."] as { import?: string; types?: string };
@@ -160,8 +170,17 @@ import { extractActions } from "@actionmanifest/extractor";
 import { verifyManifest } from "@actionmanifest/verifier";
 import { classifyManifest } from "@actionmanifest/consumer";
 import { exportIcs, exportJson } from "@actionmanifest/exporters";
+import { mapXbergResultToCanonical, XbergAdapter } from "@actionmanifest/adapter-xberg";
 
 if (!actionManifestSchemasByVersion["0.2.0"]) throw new Error("schema assets missing");
+// Xberg adapter: pure mapping layer works from the packed artifact WITHOUT
+// loading the native binding (dynamic import in the runtime bridge).
+const xdoc = mapXbergResultToCanonical(
+  { results: [{ content: "pack smoke", mimeType: "text/plain" }], errors: [] },
+  { sourceId: "pack-smoke-xberg" },
+);
+if (xdoc.text !== "pack smoke") throw new Error("xberg mapper wrong");
+if (typeof XbergAdapter !== "function") throw new Error("xberg adapter missing");
 const doc = await new PlainTextAdapter().toCanonical({
   kind: "text",
   id: "pack-smoke",

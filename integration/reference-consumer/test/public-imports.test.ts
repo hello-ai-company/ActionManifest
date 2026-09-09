@@ -13,6 +13,7 @@ import * as extractor from "@actionmanifest/extractor";
 import * as verifier from "@actionmanifest/verifier";
 import * as exporters from "@actionmanifest/exporters";
 import * as consumer from "@actionmanifest/consumer";
+import * as xberg from "@actionmanifest/adapter-xberg";
 
 const require = createRequire(import.meta.url);
 
@@ -59,12 +60,18 @@ describe("public package entry points", () => {
     expect(typeof exporters.evaluateExportTrust).toBe("function");
     expect(typeof consumer.classifyManifest).toBe("function");
     expect(typeof consumer.readyActions).toBe("function");
+
+    // Xberg adapter: public entry point only (pure mapper + adapter class)
+    expect(typeof xberg.XbergAdapter).toBe("function");
+    expect(typeof xberg.mapXbergResultToCanonical).toBe("function");
+    expect(typeof xberg.XBERG_ADAPTER_VERSION).toBe("string");
   });
 
   it("blocks deep/internal imports via package exports maps", () => {
     expect(() => require.resolve("@actionmanifest/core/dist/hash.js")).toThrowError();
     expect(() => require.resolve("@actionmanifest/verifier/src/verify.js")).toThrowError();
     expect(() => require.resolve("@actionmanifest/adapters/dist/docling.js")).toThrowError();
+    expect(() => require.resolve("@actionmanifest/adapter-xberg/dist/mapper.js")).toThrowError();
   });
 
   it("allows the declared schema asset subpaths", () => {

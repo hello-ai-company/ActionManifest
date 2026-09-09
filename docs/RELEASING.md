@@ -129,8 +129,10 @@ main/tag/RC runs always complete so release evidence is never interrupted.
 **Evidence summary path:** the release evidence for a candidate is the
 `release-check-<sha>` CI artifact plus its run URL, referenced from the
 release PR. Repository-local evidence directories (`evidence/<ticket>/`)
-are filled by Eng ops after review per
-[PUBLIC-BOUNDARY.md](PUBLIC-BOUNDARY.md) — agents never write there.
+are completed by **Eng ops** per [PUBLIC-BOUNDARY.md](PUBLIC-BOUNDARY.md) —
+agents never write evidence content there. **Meeting Round-2 (locked): the
+evidence/completion gate ⑤ must be satisfied BEFORE any merge
+recommendation — not after; the PR stays DRAFT until all gates pass.**
 
 ## 4. Version selection & inventory
 

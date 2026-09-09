@@ -39,4 +39,10 @@ All files under `benchmark/fixtures/` and `examples/` are synthetic templates au
 
 ## Evidence path
 
-`evidence/ENG-20260909-001/` — Eng ops fills this **after** PA-03E review. Agents must not treat it as a place to dump internal memos.
+`evidence/ENG-20260909-001/` (and per-ticket siblings such as
+`evidence/ENG-20260910-001/`) — filled by **Eng ops**. Agents must not treat
+these directories as a place to dump internal memos.
+
+> **Meeting Round-2 (locked, 2026-09-10):** the evidence/completion gate ⑤
+> must be satisfied **BEFORE any merge recommendation** — not after. The PR
+> stays **DRAFT** until all gates, including evidence completion, are GREEN.

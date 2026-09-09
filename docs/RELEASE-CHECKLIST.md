@@ -98,3 +98,11 @@ Last verified: Phase 2.3 (against `main` tip
 | 44 | Live OIDC publish workflow (`.github/workflows/release.yml`) | NOT READY (intentionally not enabled) |
 | 45 | Tag `v0.9.0-rc.1` + GitHub Release | NOT READY (post-publish step) |
 | 46 | Post-publish registry verification | NOT READY (after first publish) |
+
+## Merge-recommendation preconditions (Meeting Round-2, locked)
+
+| # | Item | Status |
+| --- | --- | --- |
+| ⑤ | Evidence/completion gate satisfied — `evidence/<ticket>/` completed by Eng ops | NOT READY — **must be GREEN BEFORE any merge recommendation** (not after); PR stays DRAFT until then. Agents never write evidence content |
+| ⑤a | All other gates (①–④ boundary gates + this scorecard's PASS rows) green | PASS for Phase 2.3 scope |
+| ⑤b | PA-03E review of the open DRAFT PR | OPEN (PR [#7](https://github.com/hello-ai-company/ActionManifest/pull/7) stays DRAFT) |

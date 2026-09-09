@@ -1,0 +1,11 @@
+{
+  "actions": [],
+  "must_not_extract": [
+    {
+      "date": "2026-10-05",
+      "failure": "REFERENCE_MISREAD_AS_ACTION",
+      "severity": "critical",
+      "reason": "a previously-stated, retracted deadline must not be verified"
+    }
+  ]
+}

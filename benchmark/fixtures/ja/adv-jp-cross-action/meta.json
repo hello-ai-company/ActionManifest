@@ -1,0 +1,10 @@
+{
+  "id": "adv-jp-cross-action",
+  "language": "ja",
+  "category": "cross-action",
+  "tags": [
+    "adversarial",
+    "cross-action-contamination"
+  ],
+  "golden": false
+}

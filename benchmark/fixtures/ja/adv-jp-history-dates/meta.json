@@ -1,0 +1,12 @@
+{
+  "id": "adv-jp-history-dates",
+  "language": "ja",
+  "category": "multiple-dates",
+  "tags": [
+    "adversarial",
+    "stale-action",
+    "multiple-dates"
+  ],
+  "golden": false,
+  "adversarialGolden": true
+}

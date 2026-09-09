@@ -1,0 +1,29 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "遠足を実施する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-ocr-noise",
+          "text": "令和8年1O月15日に遠足を実施します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "date": "2026-10-15",
+      "failure": "WRONG_TEMPORAL",
+      "severity": "high",
+      "reason": "OCR-noised month (letter O) must not be silently normalized to a date"
+    }
+  ]
+}

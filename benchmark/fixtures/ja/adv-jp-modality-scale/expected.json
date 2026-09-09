@@ -1,0 +1,47 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "other",
+      "title": "健康診断は必ず受診してください",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-modality-scale",
+          "text": "健康診断は必ず受診してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    },
+    {
+      "id": "act_002",
+      "kind": "other",
+      "title": "追加検査は任意です",
+      "modality": "optional",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-modality-scale",
+          "text": "追加検査は任意です。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "titleIncludes": "追加検査",
+      "modality": "required",
+      "failure": "WRONG_MODALITY",
+      "severity": "high",
+      "reason": "任意 (optional) must not be verified as required"
+    }
+  ]
+}

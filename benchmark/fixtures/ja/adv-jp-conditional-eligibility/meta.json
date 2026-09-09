@@ -1,0 +1,10 @@
+{
+  "id": "adv-jp-conditional-eligibility",
+  "language": "ja",
+  "category": "conditional-eligibility",
+  "tags": [
+    "adversarial",
+    "conditional"
+  ],
+  "golden": false
+}

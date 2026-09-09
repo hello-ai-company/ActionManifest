@@ -1,0 +1,12 @@
+{
+  "actions": [],
+  "must_not_extract": [
+    {
+      "kind": "submit",
+      "modality": "required",
+      "failure": "REFERENCE_MISREAD_AS_ACTION",
+      "severity": "critical",
+      "reason": "a quoted old instruction that was retracted must not be a required submit"
+    }
+  ]
+}

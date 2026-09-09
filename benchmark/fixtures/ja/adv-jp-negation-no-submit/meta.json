@@ -1,0 +1,11 @@
+{
+  "id": "adv-jp-negation-no-submit",
+  "language": "ja",
+  "category": "negation",
+  "tags": [
+    "adversarial",
+    "negation"
+  ],
+  "golden": false,
+  "adversarialGolden": true
+}

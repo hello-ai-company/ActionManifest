@@ -1,0 +1,12 @@
+{
+  "actions": [],
+  "must_not_extract": [
+    {
+      "kind": "submit",
+      "modality": "required",
+      "failure": "NEGATION_LOST",
+      "severity": "critical",
+      "reason": "no-longer-required must not become a required submit"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "申込書を提出する",
+      "object": "申込書",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-05",
+        "raw_text": "10月5日まで",
+        "deadline_qualifier": "until"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-conditional-eligibility",
+          "text": "参加を希望する方のみ、令和8年10月5日までに申込書を提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "conditions": [
+        "希望者のみ"
+      ]
+    }
+  ],
+  "must_not_extract": [
+    {
+      "kind": "submit",
+      "modality": "required",
+      "unconditionalRequired": true,
+      "failure": "CONDITION_LOST",
+      "severity": "high",
+      "reason": "eligibility condition must be preserved, not a blanket required submit"
+    }
+  ]
+}

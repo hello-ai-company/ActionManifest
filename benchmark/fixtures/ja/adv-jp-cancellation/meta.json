@@ -1,0 +1,12 @@
+{
+  "id": "adv-jp-cancellation",
+  "language": "ja",
+  "category": "cancellation",
+  "tags": [
+    "adversarial",
+    "cancellation",
+    "stale-action"
+  ],
+  "golden": false,
+  "adversarialGolden": true
+}

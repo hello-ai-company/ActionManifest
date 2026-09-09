@@ -1,0 +1,13 @@
+{
+  "id": "adv-jp-exemption-health",
+  "language": "ja",
+  "category": "exemption",
+  "tags": [
+    "adversarial",
+    "exemption",
+    "negation",
+    "conditional"
+  ],
+  "golden": false,
+  "adversarialGolden": true
+}

@@ -1,0 +1,11 @@
+{
+  "actions": [],
+  "must_not_extract": [
+    {
+      "date": "2026-10-15",
+      "failure": "STALE_ACTION",
+      "severity": "critical",
+      "reason": "cancelled meeting must not be a verified action"
+    }
+  ]
+}

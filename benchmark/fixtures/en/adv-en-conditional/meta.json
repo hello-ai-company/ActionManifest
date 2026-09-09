@@ -1,0 +1,10 @@
+{
+  "id": "adv-en-conditional",
+  "language": "en",
+  "category": "conditional-eligibility",
+  "tags": [
+    "adversarial",
+    "conditional"
+  ],
+  "golden": false
+}

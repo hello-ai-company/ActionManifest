@@ -1,0 +1,12 @@
+{
+  "id": "adv-jp-quoted-old",
+  "language": "ja",
+  "category": "quoted-old-instruction",
+  "tags": [
+    "adversarial",
+    "reference",
+    "negation"
+  ],
+  "golden": false,
+  "adversarialGolden": true
+}

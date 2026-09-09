@@ -1,7 +1,7 @@
 # Action Manifest Specification v0.2
 
 Schema version: `0.2.0` (readers also accept `0.1.0`)
-JSON Schema: `packages/schema/src/action-manifest.schema.json`
+JSON Schemas (immutable, versioned): `packages/schema/schemas/v0.1/action-manifest.schema.json`, `packages/schema/schemas/v0.2/action-manifest.schema.json`
 
 ## Compatibility policy
 
@@ -9,15 +9,29 @@ JSON Schema: `packages/schema/src/action-manifest.schema.json`
 - **Minor** (`0.x`): additive optional fields, new `x-*` enum values, new action kinds via `x-*`. Old manifests remain valid.
 - **Major** (`1.0.0+`): breaking field renames or required-field changes. A migrator MUST be documented.
 
+### Versioned schemas are immutable
+
+**Each `schema_version` maps to its own frozen JSON Schema.** `schema_version`
+selects its exact schema; a reader identifies the version first and dispatches to
+that schema. There is **no** single schema that accepts multiple versions.
+
+- `0.1.0` → `schemas/v0.1/action-manifest.schema.json` (`$id …/v0.1/…`, `const 0.1.0`). Frozen Phase 1 contract; it does **not** contain the per-action verification fields.
+- `0.2.0` → `schemas/v0.2/action-manifest.schema.json` (`$id …/v0.2/…`, `const 0.2.0`). Adds the optional per-action fields.
+
+Consequences:
+
+- **A 0.1.0 manifest cannot contain 0.2-only fields.** `{ "schema_version": "0.1.0", … "verification": { "actions": [...] } }` is **invalid** — it is validated against the frozen v0.1 schema.
+- Missing / non-string `schema_version`, a non-object payload, or an unknown version (e.g. `0.3.0`) **fails closed**; the reader never casts on `schema_version` before dispatching.
+- Existing 0.1.0 manifests still validate (against v0.1); writers emit `0.2.0`.
+
 ### 0.1.0 → 0.2.0 (Phase 1.1, additive minor)
 
 `0.2.0` adds only **optional** fields to `receipt.verification` (`passed`,
 `total_actions`, `verified_actions`, `failed_actions`, `warning_actions`,
 `actions[]`) plus the `ActionVerificationResult` def. Because these are optional
-under `additionalProperties: false`, adding them is a **minor** bump (not patch).
-Readers accept both `0.1.0` and `0.2.0`, so existing 0.1.0 manifests validate
-unchanged; writers emit `0.2.0`. Rationale in
-[adr/0002-per-action-verification.md](adr/0002-per-action-verification.md).
+under `additionalProperties: false`, adding them is a **minor** bump (not patch),
+shipped as a **new immutable schema** (v0.2) rather than mutating v0.1. Rationale
+in [adr/0002-per-action-verification.md](adr/0002-per-action-verification.md).
 
 Readers SHOULD ignore unknown `x-*` kinds/modalities. Writers SHOULD NOT emit unknown kinds except `x-*` extensions.
 
@@ -64,6 +78,8 @@ Japanese era: 令和1=2019, 令和8=2026 (`year = 2018 + n`).
 ### evidence
 
 `source_id`, `text` (short quote, max 2000 chars), optional `page`, `bbox`, `section`, `source_reference`. Do not copy the full document into evidence.
+
+**Evidence source identity is a per-Action trust condition.** An Evidence object supports its Action only when the quote appears in the canonical text **and** its `source_id` belongs to the current canonical source (equals the manifest `source.id` or the document id). A mismatched `source_id` is a **per-Action verification failure** (`EVIDENCE_SOURCE_ID`, severity `error`) that sets `evidence_supported=false` and keeps the Action `proposed` — even if the quote happens to appear in the text. It is per-Action (not manifest-level fatal) and does not affect other Actions. This enforces *source before inference*.
 
 ### confidence (optional, light)
 

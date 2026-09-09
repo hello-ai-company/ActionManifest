@@ -25,6 +25,11 @@ Per-Action Verification Semantics Hardening. Schema `0.2.0` (additive; `0.1.0` s
 - `actor.certainty=explicit` now requires `actor.text` present **and** found in the Action's evidence (was silently accepted when missing). `implicit` text stays optional; `unknown` never invents an actor.
 - Source hash mismatch / empty document are treated as manifest-level fatal: no Action is promoted, and the cause is reported without falsely blaming per-Action checks.
 
+### Fixed (PR #2 pre-merge hardening)
+
+- **Evidence source identity.** A mismatched Evidence `source_id` is now a **per-Action** verification failure (`EVIDENCE_SOURCE_ID`, severity `error`) that sets `evidence_supported=false`, even when the quote appears in the text (was a warning only). Stays per-Action; not manifest-level fatal.
+- **Immutable versioned schemas.** Each `schema_version` maps to its own frozen schema (`schemas/v0.1/`, `schemas/v0.2/`); `validateActionManifest()` dispatches by version and fails closed on non-object / missing / unknown versions. A `0.1.0` manifest can no longer carry v0.2-only fields (the previous single-schema `enum` allowed it).
+
 ## 0.1.1 — 2026-09-09
 
 ### Added

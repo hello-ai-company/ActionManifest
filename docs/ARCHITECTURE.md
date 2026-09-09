@@ -58,6 +58,12 @@ PROV-O mapping sketch: extraction activity used a software agent (provider/model
 
 `source_hash_matched` is a summary/fatal signal; a per-Action result never folds it in, so `actions[].passed` always reflects that Action's intrinsic verdict.
 
+**Evidence source identity.** Beyond "the quote appears in the source", each Evidence's `source_id` MUST belong to the current canonical source (manifest `source.id` or document id). A mismatch is a **per-Action** verification failure (`EVIDENCE_SOURCE_ID`, error) — not a warning and not manifest-level fatal — enforcing *source before inference*.
+
+### Immutable versioned schemas
+
+Schemas are **versioned and immutable**: each `schema_version` has its own frozen JSON Schema under `packages/schema/schemas/<version>/`. `validateActionManifest()` identifies `schema_version` first and dispatches to the exact schema (`0.1.0` → v0.1, `0.2.0` → v0.2, otherwise Unsupported), failing closed on a non-object payload or missing/non-string version. Therefore a `0.1.0` manifest **cannot** carry v0.2-only fields; the frozen v0.1 schema has none. See [adr/0002-per-action-verification.md](adr/0002-per-action-verification.md).
+
 ## Verifier (Phase 1)
 
 Deterministic only. An LLM-as-judge is a **future extension point**, not used here.

@@ -109,16 +109,38 @@ The change adds **only optional** fields to `receipt.verification` and a new
 adding fields while `additionalProperties: false` is a **minor** bump, so the
 schema moves to **`0.2.0`**.
 
-To keep "existing manifests validate with a new reader", the reader accepts
-`SUPPORTED_SCHEMA_VERSIONS = ["0.1.0", "0.2.0"]` and `schema_version` is an
-`enum` of both. A legacy 0.1.0 manifest (which lacks the new fields) still
-validates unchanged; new manifests are emitted as 0.2.0. We deliberately did
-**not** keep 0.1.0 while silently adding fields, because that would make a
-0.1.0-declared manifest violate the published 0.1.0 schema for external readers.
+**Versioned schemas are immutable.** Each `schema_version` maps to its own frozen
+JSON Schema under `packages/schema/schemas/<version>/`:
+
+- `schemas/v0.1/action-manifest.schema.json` — `$id …/v0.1/…`, `const 0.1.0`,
+  the Phase 1 contract with **no** per-action fields.
+- `schemas/v0.2/action-manifest.schema.json` — `$id …/v0.2/…`, `const 0.2.0`,
+  with the per-action verification fields.
+
+**`schema_version` selects its exact schema.** `validateActionManifest()`
+identifies the version first and dispatches to that schema
+(`0.1.0` → v0.1, `0.2.0` → v0.2, else Unsupported), failing closed on a
+non-object payload or a missing/non-string version and never casting before
+dispatch. There is **no** single schema that accepts multiple versions (the
+earlier `enum: ["0.1.0","0.2.0"]` approach is rejected because it let a
+`0.1.0`-declared manifest carry v0.2-only fields — a contract violation).
+
+**A 0.1 manifest cannot contain 0.2-only fields.** A legacy 0.1.0 manifest still
+validates (against the frozen v0.1 schema); new manifests are emitted as 0.2.0.
 
 Backward compatibility contract: old and new booleans never contradict — the new
 per-Action `actions[]` is strictly more information, and the old aggregate
 booleans retain their v0.1 meaning as an AND/OR summary of the per-Action set.
+
+## Evidence source identity (pre-merge hardening)
+
+`EVIDENCE_SOURCE_ID` is a **per-Action verification failure** (severity `error`),
+not a warning. Evidence supports its Action only when the quote appears in the
+canonical text **and** the `source_id` belongs to the current canonical source
+(manifest `source.id` or document id). A mismatch sets `evidence_supported=false`
+and keeps that Action `proposed`, even if the quote happens to appear in the
+text. It stays per-Action (never manifest-level fatal) and does not affect other
+Actions — enforcing *source before inference*.
 
 ## Consequences
 

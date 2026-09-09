@@ -1,0 +1,18 @@
+{
+  "id": "conditional-only-001",
+  "profile": "temporal",
+  "description": "top-level conditional is information, not an executable date → no VEVENT.",
+  "input": {
+    "kind": "event",
+    "temporal": {
+      "type": "conditional",
+      "date": "2026-10-22",
+      "raw_text": "雨天の場合は10月22日",
+      "condition": "雨天"
+    }
+  },
+  "expected": {
+    "artifact": null,
+    "executable_date": null
+  }
+}

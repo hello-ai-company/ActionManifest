@@ -1,0 +1,24 @@
+{
+  "id": "undated-with-conditional-alt-001",
+  "profile": "temporal",
+  "description": "undated top-level + dated conditional alternative → alternative MUST NOT promote to primary.",
+  "input": {
+    "kind": "event",
+    "temporal": {
+      "type": "unknown",
+      "raw_text": "日時未定",
+      "alternatives": [
+        {
+          "type": "conditional",
+          "date": "2026-10-22",
+          "raw_text": "雨天の場合は10月22日",
+          "condition": "雨天"
+        }
+      ]
+    }
+  },
+  "expected": {
+    "artifact": null,
+    "executable_date": null
+  }
+}

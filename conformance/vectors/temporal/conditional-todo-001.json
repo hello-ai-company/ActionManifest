@@ -1,0 +1,18 @@
+{
+  "id": "conditional-todo-001",
+  "profile": "temporal",
+  "description": "top-level conditional on a submit → no VTODO DUE.",
+  "input": {
+    "kind": "submit",
+    "temporal": {
+      "type": "conditional",
+      "date": "2026-10-22",
+      "raw_text": "雨天なら10月22日まで",
+      "condition": "雨天"
+    }
+  },
+  "expected": {
+    "artifact": null,
+    "executable_date": null
+  }
+}

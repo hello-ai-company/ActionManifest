@@ -1,0 +1,13 @@
+{
+  "id": "missing-id-001",
+  "profile": "canonical-document",
+  "description": "id is required by the JSON Schema (schema-level invalid).",
+  "input": {
+    "text": "idなし"
+  },
+  "expected": {
+    "valid": false,
+    "errors": [],
+    "warnings": []
+  }
+}

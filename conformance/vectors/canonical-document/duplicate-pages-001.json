@@ -1,0 +1,25 @@
+{
+  "id": "duplicate-pages-001",
+  "profile": "canonical-document",
+  "description": "Duplicate pageNumber is invalid.",
+  "input": {
+    "id": "d7",
+    "pages": [
+      {
+        "pageNumber": 1,
+        "text": "a"
+      },
+      {
+        "pageNumber": 1,
+        "text": "b"
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "errors": [
+      "DUPLICATE_PAGE_NUMBER"
+    ],
+    "warnings": []
+  }
+}

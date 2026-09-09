@@ -1,0 +1,17 @@
+{
+  "id": "approximate-001",
+  "profile": "temporal",
+  "description": "approximate (10月頃) never becomes a calendar date (unknown stays unknown).",
+  "input": {
+    "kind": "event",
+    "temporal": {
+      "type": "approximate",
+      "month": 10,
+      "raw_text": "10月頃"
+    }
+  },
+  "expected": {
+    "artifact": null,
+    "executable_date": null
+  }
+}

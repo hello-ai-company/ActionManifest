@@ -1,0 +1,15 @@
+{
+  "id": "plain-text-only-001",
+  "profile": "canonical-document",
+  "description": "Minimal plain-text document: id + text only is valid (no pages/chunks/bbox required).",
+  "input": {
+    "id": "d1",
+    "text": "10月15日に遠足。",
+    "mediaType": "text/plain"
+  },
+  "expected": {
+    "valid": true,
+    "errors": [],
+    "warnings": []
+  }
+}

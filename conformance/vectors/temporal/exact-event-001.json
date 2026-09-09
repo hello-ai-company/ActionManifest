@@ -1,0 +1,17 @@
+{
+  "id": "exact-event-001",
+  "profile": "temporal",
+  "description": "exact date on an event → VEVENT DTSTART.",
+  "input": {
+    "kind": "event",
+    "temporal": {
+      "type": "exact",
+      "date": "2026-10-15",
+      "raw_text": "10月15日"
+    }
+  },
+  "expected": {
+    "artifact": "VEVENT",
+    "executable_date": "20261015"
+  }
+}

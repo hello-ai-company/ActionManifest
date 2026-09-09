@@ -1,0 +1,84 @@
+{
+  "id": "conditional-only-no-artifact-001",
+  "profile": "ics",
+  "description": "top-level conditional event → no VEVENT, and the conditional date never appears as DTSTART.",
+  "input": {
+    "manifest": {
+      "schema_version": "0.2.0",
+      "source": {
+        "id": "conf-doc",
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "actions": [
+        {
+          "id": "act_001",
+          "kind": "event",
+          "title": "雨天時の代替日",
+          "modality": "required",
+          "actor": {
+            "certainty": "unknown"
+          },
+          "temporal": {
+            "type": "conditional",
+            "date": "2026-10-22",
+            "raw_text": "雨天の場合は10月22日",
+            "condition": "雨天"
+          },
+          "evidence": [
+            {
+              "source_id": "conf-doc",
+              "text": "令和8年10月15日に秋の遠足を実施します。"
+            }
+          ],
+          "inference": "explicit",
+          "status": "verified"
+        }
+      ],
+      "receipt": {
+        "extraction": {
+          "provider": "conformance",
+          "model": "none",
+          "extractor_version": "0",
+          "schema_version": "0.2.0",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        "verification": {
+          "evidence_supported": true,
+          "temporal_supported": true,
+          "actor_supported": true,
+          "modality_supported": true,
+          "source_hash_matched": true,
+          "negation_conflict": false,
+          "page_refs_valid": true,
+          "passed": true,
+          "actions": [
+            {
+              "action_id": "act_001",
+              "passed": true,
+              "evidence_supported": true,
+              "temporal_supported": true,
+              "actor_supported": true,
+              "modality_supported": true,
+              "negation_conflict": false,
+              "page_refs_valid": true,
+              "issues": []
+            }
+          ]
+        }
+      }
+    },
+    "options": {
+      "now": "2026-01-01T00:00:00.000Z"
+    }
+  },
+  "expected": {
+    "artifact_counts": {
+      "VEVENT": 0,
+      "VTODO": 0
+    },
+    "not_contains": [
+      "DTSTART",
+      "20261022"
+    ]
+  }
+}

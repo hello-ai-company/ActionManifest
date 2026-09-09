@@ -1,0 +1,17 @@
+{
+  "id": "relative-001",
+  "profile": "temporal",
+  "description": "relative 当日 with no resolved calendar day → no artifact.",
+  "input": {
+    "kind": "prepare",
+    "temporal": {
+      "type": "relative",
+      "raw_text": "当日",
+      "deadline_qualifier": "on_day"
+    }
+  },
+  "expected": {
+    "artifact": null,
+    "executable_date": null
+  }
+}

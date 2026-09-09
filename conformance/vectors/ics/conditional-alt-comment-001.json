@@ -1,0 +1,94 @@
+{
+  "id": "conditional-alt-comment-001",
+  "profile": "ics",
+  "description": "exact primary + conditional alternative → DTSTART is primary; alternative is COMMENT only.",
+  "input": {
+    "manifest": {
+      "schema_version": "0.2.0",
+      "source": {
+        "id": "conf-doc",
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "actions": [
+        {
+          "id": "act_001",
+          "kind": "event",
+          "title": "秋の遠足",
+          "modality": "required",
+          "actor": {
+            "certainty": "unknown"
+          },
+          "temporal": {
+            "type": "exact",
+            "date": "2026-10-15",
+            "raw_text": "令和8年10月15日",
+            "alternatives": [
+              {
+                "type": "conditional",
+                "date": "2026-10-22",
+                "raw_text": "雨天の場合は10月22日に延期します",
+                "condition": "雨天"
+              }
+            ]
+          },
+          "evidence": [
+            {
+              "source_id": "conf-doc",
+              "text": "令和8年10月15日に秋の遠足を実施します。 | 雨天の場合は10月22日に延期します。"
+            }
+          ],
+          "inference": "explicit",
+          "status": "verified"
+        }
+      ],
+      "receipt": {
+        "extraction": {
+          "provider": "conformance",
+          "model": "none",
+          "extractor_version": "0",
+          "schema_version": "0.2.0",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        "verification": {
+          "evidence_supported": true,
+          "temporal_supported": true,
+          "actor_supported": true,
+          "modality_supported": true,
+          "source_hash_matched": true,
+          "negation_conflict": false,
+          "page_refs_valid": true,
+          "passed": true,
+          "actions": [
+            {
+              "action_id": "act_001",
+              "passed": true,
+              "evidence_supported": true,
+              "temporal_supported": true,
+              "actor_supported": true,
+              "modality_supported": true,
+              "negation_conflict": false,
+              "page_refs_valid": true,
+              "issues": []
+            }
+          ]
+        }
+      }
+    },
+    "options": {
+      "now": "2026-01-01T00:00:00.000Z"
+    }
+  },
+  "expected": {
+    "golden": "golden/conditional-alt-comment-001.ics",
+    "artifact_counts": {
+      "VEVENT": 1
+    },
+    "contains": [
+      "DTSTART;VALUE=DATE:20261015",
+      "COMMENT:alternative 2026-10-22"
+    ],
+    "not_contains": [
+      "DTSTART;VALUE=DATE:20261022"
+    ]
+  }
+}

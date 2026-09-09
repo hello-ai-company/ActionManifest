@@ -1,0 +1,31 @@
+{
+  "id": "valid-bbox-001",
+  "profile": "canonical-document",
+  "description": "Normalized 0..1 bbox (top-left origin) is valid.",
+  "input": {
+    "id": "d4",
+    "pages": [
+      {
+        "pageNumber": 1,
+        "text": "x"
+      }
+    ],
+    "chunks": [
+      {
+        "text": "x",
+        "pageNumber": 1,
+        "bbox": {
+          "x": 0.1,
+          "y": 0.2,
+          "width": 0.3,
+          "height": 0.1
+        }
+      }
+    ]
+  },
+  "expected": {
+    "valid": true,
+    "errors": [],
+    "warnings": []
+  }
+}

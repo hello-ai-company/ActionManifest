@@ -1,0 +1,16 @@
+{
+  "id": "unknown-001",
+  "profile": "temporal",
+  "description": "unknown temporal → no artifact.",
+  "input": {
+    "kind": "event",
+    "temporal": {
+      "type": "unknown",
+      "raw_text": "後日"
+    }
+  },
+  "expected": {
+    "artifact": null,
+    "executable_date": null
+  }
+}

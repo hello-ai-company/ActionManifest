@@ -1,0 +1,34 @@
+{
+  "id": "unknown-version-001",
+  "profile": "schema",
+  "description": "Unknown schema_version MUST be rejected (fail closed).",
+  "input": {
+    "schema_version": "9.9.9",
+    "source": {
+      "id": "conf"
+    },
+    "actions": [
+      {
+        "id": "act_001",
+        "kind": "event",
+        "title": "秋の遠足",
+        "modality": "required",
+        "actor": {
+          "certainty": "unknown"
+        },
+        "evidence": [
+          {
+            "source_id": "conf",
+            "text": "令和8年10月15日に秋の遠足を実施します。"
+          }
+        ],
+        "inference": "explicit",
+        "status": "proposed"
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "error_code": "SCHEMA_VALIDATION"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "id": "valid-hash-001",
+  "profile": "canonical-document",
+  "description": "64-char lowercase hex sourceHash is valid.",
+  "input": {
+    "id": "d10",
+    "text": "x",
+    "sourceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "expected": {
+    "valid": true,
+    "errors": [],
+    "warnings": []
+  }
+}

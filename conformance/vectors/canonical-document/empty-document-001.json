@@ -1,0 +1,15 @@
+{
+  "id": "empty-document-001",
+  "profile": "canonical-document",
+  "description": "No text/pages/chunks content is invalid.",
+  "input": {
+    "id": "d9"
+  },
+  "expected": {
+    "valid": false,
+    "errors": [
+      "EMPTY_DOCUMENT"
+    ],
+    "warnings": []
+  }
+}

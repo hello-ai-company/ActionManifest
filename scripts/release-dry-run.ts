@@ -38,6 +38,7 @@ import {
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cliInstallSmoke } from "./cli-install-smoke.js";
+import { validateSbom } from "./sbom-validate.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "release-artifacts");
@@ -336,6 +337,15 @@ const sbom = {
   ],
 };
 writeFileSync(join(outDir, "sbom.cdx.json"), JSON.stringify(sbom, null, 2) + "\n", "utf8");
+
+// Validate the generated SBOM against the OFFICIAL CycloneDX 1.5 JSON Schema
+// (vendored, offline, strict). An invalid SBOM fails the dry-run — we never
+// claim CycloneDX conformance without schema validation green.
+const sbomValidation = validateSbom(sbom);
+if (!sbomValidation.valid) {
+  fail(`sbom.cdx.json failed official CycloneDX 1.5 schema validation:\n  ${sbomValidation.errors.slice(0, 10).join("\n  ")}`);
+}
+console.log("  ✓ sbom.cdx.json validates against the official CycloneDX 1.5 JSON Schema (offline)");
 
 // ---------- install smoke on the produced artifacts ----------
 const cliEntry = entries.find((e) => e.pkg.name === "@actionmanifest/cli");

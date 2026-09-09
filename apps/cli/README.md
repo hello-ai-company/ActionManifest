@@ -11,8 +11,19 @@ official conformance suite.
 ```bash
 npm install -g @actionmanifest/cli     # once published
 actionman --help
-npx actionman conformance              # without global install
+actionman conformance                  # run the official conformance suite
+
+# One-shot without global install — ALWAYS name the package explicitly:
+npx --package=@actionmanifest/cli -- actionman conformance
 ```
+
+> **Package identity:** the unscoped npm name `actionman` belongs to an
+> unrelated project. Never let `npx` take a bare `actionman` positional —
+> without `--package`, npx treats the first positional as the package
+> specifier and could fetch the wrong package. Use the global bin
+> (`actionman …`) or the explicit
+> `npx --package=@actionmanifest/cli -- actionman …` form. (Enforced by
+> `pnpm docs:check`.)
 
 Requires Node.js >= 20. No native dependencies: the Xberg adapter is a
 separate, optional package and is never installed by this CLI.

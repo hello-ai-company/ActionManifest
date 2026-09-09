@@ -91,7 +91,7 @@ not duplicate the whole chain on every PR:
 | Path | Trigger | Runs |
 | --- | --- | --- |
 | Quick | `pull_request` | `pnpm release:check:quick` = `pack:check` + `docs:examples` + `release:dry-run`. All other gates already run in the CI workflow on the same ref. |
-| Full | `push` to `main`, tag `v*` (pre-tag/RC verification), `workflow_dispatch` | `pnpm release:check` (the complete chain above) |
+| Full | `push` to `main`, tag `v*` (tag / pre-publish verification — runs after the tag push, before publish), `workflow_dispatch` | `pnpm release:check` (the complete chain above) |
 
 ### Verification can never publish (ops constraints ①④)
 
@@ -192,22 +192,41 @@ Before the first publish, the design calls for:
 4. `.npmrc` in the repo must never contain tokens (the dry-run fails if it
    does).
 
-## 7. Tag & GitHub Release strategy
+## 7. Tag & publish ordering (unified, tag-triggered)
 
-- One tag per release: `v0.9.0-rc.1` on the exact release commit (after the
-  version-bump PR merges). Lockstep versions mean one tag covers all
-  packages.
-- GitHub Release from that tag: copy the CHANGELOG section, attach
-  `SHA256SUMS` and `sbom.cdx.json` from the dry-run artifacts.
-- Tags are immutable: never move or delete a published tag.
+The release is **tag-triggered**. The ordering is fixed — no variant that
+creates the tag "after publish" exists, because the tag is what triggers the
+publish workflow:
+
+1. **Version PR merge** — the lockstep version bump lands on `main`.
+2. **Exact-commit CI GREEN** — CI and Release Check must both be green on
+   the exact `main` commit to be released (ungated CI aborts).
+3. **Create + push the version tag** — `v0.9.0-rc.1` on that exact commit.
+   Lockstep versions mean one tag covers all packages.
+4. **Tag-triggered release workflow starts** (design-only, §6) — the
+   Release Check workflow also runs on the tag push
+   (`tags: ["v*"]` = tag / pre-publish verification).
+5. **Full validation** — the release workflow runs `pnpm release:check`
+   (the single entry) on the tagged commit, plus the §8 guards.
+6. **npm publish** — only after validation passes (§8).
+
+**Tag immutability and failure policy:** once pushed, a tag is never moved
+or deleted. If validation or publish fails, **the tag remains** — retry the
+workflow on the same tag after fixing the cause, or cut the next RC
+(`v0.9.0-rc.2`). A failed publish therefore leaves exactly one git side
+effect by design: the immutable tag.
+
+- GitHub Release from the tag (after publish verification, §9): copy the
+  CHANGELOG section, attach `SHA256SUMS` and `sbom.cdx.json` from the
+  release artifacts.
 
 ## 8. Publish (the actual release — separate phase)
 
-Only after §1–§7 are satisfied and the release PR is merged. The publish
-workflow is **separate** from Release Check and hard-fails on any of these
-guards (ops constraint ④):
+Reached only via the §7 ordering (tag-triggered). The publish workflow is
+**separate** from Release Check and hard-fails on any of these guards (ops
+constraint ④):
 
-- **Dirty tree** — `git status --porcelain` must be empty on the release
+- **Dirty tree** — `git status --porcelain` must be empty on the tagged
   commit.
 - **Tag mismatch** — the triggering tag `vX.Y.Z` must equal the `version` in
   every public package.json (lockstep); any mismatch aborts before the first
@@ -233,11 +252,13 @@ Within minutes of publish:
 ```bash
 npm view @actionmanifest/cli version        # the new version
 npm view @actionmanifest/core dist.tarball  # resolves
-# Fresh project, real registry:
+# Fresh project, real registry — ALWAYS name the package explicitly with npx
+# (the unscoped npm name "actionman" is an unrelated package):
 mkdir /tmp/verify && cd /tmp/verify && npm init -y
 npm install @actionmanifest/cli
-npx actionman --version                     # new version
-npx actionman conformance                   # CONFORMANT 65/65
+actionman --version                         # new version (bin from the local install)
+./node_modules/.bin/actionman conformance   # CONFORMANT 65/65
+# One-shot form (no install): npx --package=@actionmanifest/cli -- actionman conformance
 npm install @actionmanifest/core @actionmanifest/adapters @actionmanifest/extractor \
   @actionmanifest/verifier @actionmanifest/exporters @actionmanifest/consumer
 node -e "import('@actionmanifest/core').then(m => console.log('core OK', m.SCHEMA_VERSION))"
@@ -258,8 +279,9 @@ Also verify provenance attestations are visible on npmjs.com
   siblings are a broken line. Either (a) fix the cause and publish the
   remaining packages of the SAME version immediately, or (b) deprecate the
   partial set and cut the next RC. Record the decision in the release issue.
-- A failed publish leaves no git side effects: the tag is created only after
-  a fully verified publish.
+- **Failed publish and git state:** the version tag was pushed before the
+  publish ran (tag-triggered, §7) and is never moved or deleted. Retry the
+  workflow on the same tag, or cut the next RC tag.
 
 ## 11. What this phase deliberately does NOT do
 

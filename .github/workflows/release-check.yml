@@ -10,7 +10,9 @@ name: Release Check
 #   - pull_request: quick path — `pnpm release:check:quick` (pack:check +
 #     docs examples + dry-run artifacts). The full gate chain already runs in
 #     the CI workflow on the same ref; we do not duplicate it per PR.
-#   - push to main, tags (v* = pre-tag/RC verification), workflow_dispatch:
+#   - push to main, tags (v* = tag / pre-publish verification: the release is
+#     tag-triggered, so this run happens after the tag push and before the
+#     publish workflow), workflow_dispatch:
 #     the full single entry `pnpm release:check`.
 
 on:
@@ -65,8 +67,9 @@ jobs:
         run: pnpm release:check:quick
         env:
           GOVERNANCE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-      # Full path (single entry): main pushes, pre-tag/RC verification, and
-      # manual dispatch run the complete gate chain.
+      # Full path (single entry): main pushes, tag / pre-publish verification
+      # (tag-triggered releases run this after the tag push), and manual
+      # dispatch run the complete gate chain.
       - name: Release full check (main / tag / dispatch path)
         if: github.event_name != 'pull_request'
         run: pnpm release:check

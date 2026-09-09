@@ -34,6 +34,8 @@ jobs:
         env:
           GOVERNANCE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
       - run: pnpm lint
+      # Docs gate: forbidden CLI invocation patterns (bare npx + actionman).
+      - run: pnpm docs:check
       # Typechecks packages AND the external reference consumer against built d.ts.
       - run: pnpm typecheck
       - run: pnpm schema:validate

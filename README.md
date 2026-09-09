@@ -46,7 +46,10 @@ npm install @actionmanifest/core @actionmanifest/adapters @actionmanifest/extrac
 # CLI (ships the conformance suite + benchmark corpus; works from any directory)
 npm install -g @actionmanifest/cli
 actionman --help
-npx actionman conformance        # run the official conformance suite
+actionman conformance            # run the official conformance suite
+
+# One-shot without global install — ALWAYS name the package explicitly:
+npx --package=@actionmanifest/cli -- actionman conformance
 ```
 
 `@actionmanifest/adapter-xberg` (Node >= 22) is an **optional** package — the

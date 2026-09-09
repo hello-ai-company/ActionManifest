@@ -15,6 +15,7 @@ export default defineConfig({
       "@actionmanifest/verifier": join(root, "packages/verifier/src/index.ts"),
       "@actionmanifest/exporters": join(root, "packages/exporters/src/index.ts"),
       "@actionmanifest/consumer": join(root, "packages/consumer/src/index.ts"),
+      "@actionmanifest/adapter-xberg": join(root, "packages/adapter-xberg/src/index.ts"),
     },
   },
   test: {
@@ -24,6 +25,9 @@ export default defineConfig({
       "benchmark/**/*.test.ts",
       "scripts/**/*.test.ts",
     ],
+    // Live native-runtime tests (e.g. real Xberg extraction) are opt-in via
+    // their own config — the default suite stays portable and deterministic.
+    exclude: ["**/*.integration.test.ts", "**/node_modules/**"],
     environment: "node",
     reporters: ["default"],
   },

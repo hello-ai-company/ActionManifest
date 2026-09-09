@@ -1,0 +1,25 @@
+{
+  "name": "@actionmanifest/adapter-xberg",
+  "version": "0.1.0",
+  "description": "Xberg reference adapter: Xberg ExtractionResult → CanonicalDocument. The native Xberg dependency is isolated in this package; ActionManifest Core stays parser-free.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@actionmanifest/core": "workspace:*",
+    "@xberg-io/xberg": "^1.1.3"
+  }
+}

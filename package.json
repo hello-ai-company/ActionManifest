@@ -22,6 +22,7 @@
     "conformance": "tsx apps/cli/src/index.ts conformance",
     "conformance:smoke": "tsx apps/cli/src/index.ts conformance --smoke",
     "conformance:reference": "tsx apps/cli/src/index.ts conformance --reference",
+    "xberg:integration": "vitest run --config packages/adapter-xberg/vitest.integration.config.ts",
     "actionman": "tsx apps/cli/src/index.ts",
     "governance:validate": "tsx scripts/governance.ts"
   },

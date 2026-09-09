@@ -25,6 +25,40 @@ export type AdapterInput =
       title?: string;
       /** Parsed Docling document JSON (`DoclingDocument.export_to_dict()` shape). */
       payload: unknown;
+    }
+  | {
+      /**
+       * Xberg runtime input: a local path / file:// URI / bytes extracted via
+       * `@xberg-io/xberg`. Handled by `@actionmanifest/adapter-xberg` — the
+       * core adapters package only declares the contract shape and carries no
+       * Xberg dependency.
+       */
+      kind: "xberg-uri";
+      /** Stable source identity supplied by the caller (never Xberg-internal ids). */
+      sourceId: string;
+      uri: string;
+      title?: string;
+      mimeType?: string;
+      /**
+       * Remote http(s) extraction requires explicit opt-in — the adapter never
+       * fetches the network unless the caller set this flag.
+       */
+      allowRemote?: boolean;
+    }
+  | {
+      kind: "xberg-bytes";
+      sourceId: string;
+      bytes: Uint8Array;
+      filename?: string;
+      mimeType?: string;
+      title?: string;
+    }
+  | {
+      /** Xberg already ran upstream: map a serialized ExtractionResult. */
+      kind: "xberg-result";
+      sourceId: string;
+      title?: string;
+      payload: unknown;
     };
 
 export interface DocumentAdapter {

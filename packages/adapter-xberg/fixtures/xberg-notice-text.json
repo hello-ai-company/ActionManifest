@@ -1,0 +1,33 @@
+{
+  "results": [
+    {
+      "content": "保護者向け行事案内\n\n令和8年10月15日に秋の遠足を実施します。\n参加を希望する方は、10月5日までに参加確認票を提出してください。\n当日は弁当、水筒、タオルを持参してください。\n雨天の場合は10月22日に延期します。",
+      "mimeType": "text/plain",
+      "metadata": {
+        "format": {
+          "format_type": "text",
+          "text": {
+            "lineCount": 6,
+            "wordCount": 5,
+            "characterCount": 110
+          }
+        },
+        "outputFormat": "plain",
+        "ocrUsed": false
+      },
+      "extractionMethod": "native",
+      "tables": [],
+      "counts": {
+        "pages": 0,
+        "tables": 0,
+        "images": 0
+      }
+    }
+  ],
+  "errors": [],
+  "summary": {
+    "inputs": 1,
+    "results": 1,
+    "errors": 0
+  }
+}

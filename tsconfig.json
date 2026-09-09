@@ -9,6 +9,7 @@
     { "path": "./packages/verifier" },
     { "path": "./packages/exporters" },
     { "path": "./packages/consumer" },
+    { "path": "./packages/adapter-xberg" },
     { "path": "./apps/cli" }
   ]
 }

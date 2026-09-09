@@ -101,6 +101,17 @@ export class MissingSourceIdError extends DocumentAdapterError {
   }
 }
 
+/**
+ * The parser returned multiple documents (e.g. an archive) where the caller
+ * asked for one canonical document. Never silently concatenated.
+ */
+export class MultipleDocumentsError extends DocumentAdapterError {
+  constructor(message: string, details?: unknown) {
+    super(message, details, "MULTIPLE_DOCUMENTS");
+    this.name = "MultipleDocumentsError";
+  }
+}
+
 /** Export refused: the manifest is not consumable under the requested policy. */
 export class ExportError extends ActionManifestError {
   constructor(message: string, details?: unknown) {

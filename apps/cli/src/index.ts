@@ -17,6 +17,11 @@ import {
 import { exportIcs, exportJson, formatSummary, formatVerification } from "@actionmanifest/exporters";
 import { verificationPassed, verifyManifest } from "@actionmanifest/verifier";
 import { defaultFixtureRoot, formatBenchmark, runBenchmark } from "./benchmark.js";
+import {
+  defaultConformanceRoot,
+  formatConformance,
+  runConformance,
+} from "./conformance.js";
 
 function providerFromFlags(name: string | undefined, doc: CanonicalDocument): LlmProvider {
   const id = (name ?? process.env.ACTIONMAN_PROVIDER ?? "deterministic").toLowerCase();
@@ -133,6 +138,37 @@ program
       }
     } catch (e) {
       fail(e);
+    }
+  });
+
+program
+  .command("conformance")
+  .description("run the language-neutral ActionManifest conformance suite")
+  .option("--root <dir>", "conformance suite root")
+  .option("--smoke", "run only the safety-critical profiles (trust, ics)")
+  .option("--json", "machine-readable report")
+  .action(async (opts: { root?: string; smoke?: boolean; json?: boolean }) => {
+    try {
+      const root = opts.root ?? (await defaultConformanceRoot());
+      const report = await runConformance(root, { smoke: Boolean(opts.smoke) });
+      if (opts.json) {
+        process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+      } else {
+        process.stdout.write(formatConformance(report) + "\n");
+      }
+      // Exit codes: 0 = conformant, 1 = conformance failure, 2 = runner/config error.
+      if (report.result !== "conformant") process.exitCode = 1;
+    } catch (e) {
+      // Runner/config errors (missing suite, malformed vectors) are distinct
+      // from conformance failures.
+      if (e instanceof ActionManifestError) {
+        console.error(`${e.code}: ${e.message}`);
+      } else if (e instanceof Error) {
+        console.error(e.message);
+      } else {
+        console.error(String(e));
+      }
+      process.exit(2);
     }
   });
 

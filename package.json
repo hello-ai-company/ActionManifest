@@ -19,6 +19,8 @@
     "benchmark:smoke": "tsx apps/cli/src/index.ts benchmark --smoke",
     "integration:test": "pnpm build && vitest run --config integration/vitest.config.ts",
     "pack:check": "pnpm build && tsx scripts/pack-check.ts",
+    "conformance": "tsx apps/cli/src/index.ts conformance",
+    "conformance:smoke": "tsx apps/cli/src/index.ts conformance --smoke",
     "actionman": "tsx apps/cli/src/index.ts"
   },
   "pnpm": {

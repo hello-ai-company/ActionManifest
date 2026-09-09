@@ -385,6 +385,14 @@ export function parseTemporals(text: string, ctx: YearContext = {}): Temporal[] 
 
 export function primaryTemporal(text: string, ctx: YearContext = {}): Temporal | undefined {
   const all = parseTemporals(text, ctx);
+  // Correction / extension: the active date is the corrected (later) target date,
+  // never the superseded one it replaces.
+  if (isCorrectionContext(text)) {
+    const dated = all.filter((t) => t.date && (t.type === "exact" || t.type === "conditional"));
+    if (dated.length > 0) {
+      return dated.reduce((a, b) => ((a.date ?? "") >= (b.date ?? "") ? a : b));
+    }
+  }
   const scored = all.map((t) => {
     let score = 0;
     if (t.type === "exact" && t.date) score += 5;
@@ -403,7 +411,47 @@ export function isApproximateCue(text: string): boolean {
 }
 
 export function isNegation(text: string): boolean {
-  return /必要はありません|する必要はありません|提出不要|再提出不要|しなくて(?:も)?よい|不要です|禁止|\bno need\b|\bnot required\b|\bdo not\b|\bunnecessary\b/i.test(
+  return /必要はありません|する必要はありません|提出不要|再提出不要|しなくて(?:も)?よい|不要です|禁止|\bno need\b|\bnot required\b|\bno longer required\b|\bdo not\b|\bunnecessary\b/i.test(
     text,
+  );
+}
+
+/**
+ * Adversarial context detectors (Phase 1.2). Deterministic string signals used
+ * to keep the extractor conservative: it should NOT emit an active Action for a
+ * cancelled event, a reference/quoted old instruction, or a completed past event.
+ */
+export function isCancellationContext(text: string): boolean {
+  return (
+    /中止|取り止め|取りやめ|見送り|キャンセル/.test(text) ||
+    /\bcancell?ed\b|\bcalled off\b/i.test(text)
+  );
+}
+
+export function isReferenceContext(text: string): boolean {
+  return (
+    /前回のお知らせ|前回の案内|前回配布|付(?:けの)?通知|を参照|参照してください|参考にしてください/.test(text) ||
+    /「[^」]*」[^。]*(?:記載|案内|通知)して/.test(text) ||
+    /\brefer to\b|\bsee the\b[^.]*\b(?:notice|circular|letter|memo)\b|\bpreviously (?:stated|announced|said)\b|\bformerly\b/i.test(
+      text,
+    )
+  );
+}
+
+export function isPastCompletedContext(text: string): boolean {
+  return (
+    (/昨年度|前年度|昨年|一昨年/.test(text) &&
+      /(?:しました|実施しました|開催しました|行いました|でした)/.test(text)) ||
+    /\blast year\b|\bpreviously held\b|\btook place last\b/i.test(text)
+  );
+}
+
+/** Correction / extension cue: a stated date/plan is being replaced by a new one. */
+export function isCorrectionContext(text: string): boolean {
+  return (
+    /変更します|変更しました|変更になりました|に変更|へ変更|訂正|延長します|延長しました|改定/.test(text) ||
+    /\brescheduled\b|\bextended to\b|\bchanged to\b|\brevised to\b|\bupdated to\b|\bnow (?:on|due)\b/i.test(
+      text,
+    )
   );
 }

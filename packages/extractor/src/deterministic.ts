@@ -9,7 +9,10 @@ import {
   detectKind,
   detectModality,
   extractYearContext,
+  isCancellationContext,
   isNegation,
+  isPastCompletedContext,
+  isReferenceContext,
   parseTemporals,
   primaryTemporal,
 } from "@actionmanifest/temporal";
@@ -113,6 +116,13 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
 
   for (const sentence of sentences) {
     if (isInstitutionalFiller(sentence)) continue;
+
+    // Conservative guards (Phase 1.2): never assert an active Action for a
+    // cancelled event, a reference/quoted old instruction, or a completed past
+    // event. Preferring omission over a confident-wrong Action is the trust order.
+    if (isCancellationContext(sentence)) continue;
+    if (isReferenceContext(sentence)) continue;
+    if (isPastCompletedContext(sentence)) continue;
 
     if (isRainAlternative(sentence)) {
       const event = [...actions].reverse().find((a) => a.kind === "event");

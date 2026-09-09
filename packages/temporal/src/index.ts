@@ -11,6 +11,7 @@ export {
   isReferenceContext,
   isPastCompletedContext,
   isCorrectionContext,
+  correctionCueIndex,
 } from "./parse.js";
 export type { YearContext } from "./parse.js";
 export { detectModality, detectKind } from "./modality.js";

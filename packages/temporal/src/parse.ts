@@ -385,12 +385,32 @@ export function parseTemporals(text: string, ctx: YearContext = {}): Temporal[] 
 
 export function primaryTemporal(text: string, ctx: YearContext = {}): Temporal | undefined {
   const all = parseTemporals(text, ctx);
-  // Correction / extension: the active date is the corrected (later) target date,
-  // never the superseded one it replaces.
+  // Correction / extension: the active date is the REPLACEMENT TARGET, not the
+  // chronological maximum. The target is the dated temporal nearest the correction
+  // cue ("…を10月22日に変更します" / "…changed to October 22"). This handles both
+  // forward (10/15→10/22) and reverse (10/22→10/15) corrections. If the target
+  // cannot be resolved safely, omit it (Unknown stays unknown) rather than verify
+  // a possibly-superseded date.
   if (isCorrectionContext(text)) {
     const dated = all.filter((t) => t.date && (t.type === "exact" || t.type === "conditional"));
-    if (dated.length > 0) {
-      return dated.reduce((a, b) => ((a.date ?? "") >= (b.date ?? "") ? a : b));
+    if (dated.length === 1) return dated[0];
+    if (dated.length > 1) {
+      const cueIdx = correctionCueIndex(text);
+      if (cueIdx >= 0) {
+        let best: Temporal | undefined;
+        let bestDist = Infinity;
+        for (const t of dated) {
+          const idx = text.indexOf(t.raw_text);
+          if (idx < 0) continue;
+          const dist = Math.abs(idx - cueIdx);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = t;
+          }
+        }
+        if (best) return best;
+      }
+      return undefined;
     }
   }
   const scored = all.map((t) => {
@@ -447,11 +467,15 @@ export function isPastCompletedContext(text: string): boolean {
 }
 
 /** Correction / extension cue: a stated date/plan is being replaced by a new one. */
+const CORRECTION_CUE =
+  /変更します|変更しました|変更になりました|に変更|へ変更|訂正|延長します|延長しました|改定|rescheduled|extended to|changed to|revised to|updated to|now (?:on|due)/i;
+
 export function isCorrectionContext(text: string): boolean {
-  return (
-    /変更します|変更しました|変更になりました|に変更|へ変更|訂正|延長します|延長しました|改定/.test(text) ||
-    /\brescheduled\b|\bextended to\b|\bchanged to\b|\brevised to\b|\bupdated to\b|\bnow (?:on|due)\b/i.test(
-      text,
-    )
-  );
+  return CORRECTION_CUE.test(text);
+}
+
+/** Index of the correction cue in the text, or -1. Non-global regex, no state. */
+export function correctionCueIndex(text: string): number {
+  const m = CORRECTION_CUE.exec(text);
+  return m ? m.index : -1;
 }

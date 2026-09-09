@@ -9,6 +9,7 @@
     "id": { "type": "string", "minLength": 1 },
     "sourceHash": { "type": "string" },
     "title": { "type": "string" },
+    "mediaType": { "type": "string" },
     "language": { "type": "string" },
     "text": { "type": "string" },
     "pages": {
@@ -27,6 +28,7 @@
   "$defs": {
     "BoundingBox": {
       "type": "object",
+      "description": "Canonical bbox convention: normalized 0..1 relative to the page; origin top-left; x right, y down. Adapters must not guess normalization when the input coordinate system is unknown.",
       "additionalProperties": false,
       "required": ["x", "y", "width", "height"],
       "properties": {

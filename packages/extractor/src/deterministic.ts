@@ -59,10 +59,48 @@ function isInstitutionalFiller(text: string): boolean {
   return /お知らせします|ご連絡します|会場は|継続します|announced later/i.test(text);
 }
 
+/**
+ * A genuine eligibility / prior-submission EXEMPTION ("再提出不要", "提出した方は不要",
+ * "already submitted … not required"). A blanket negation like "(X の)提出は不要"
+ * / "提出する必要はありません" is NOT an exemption — it retracts the requirement for
+ * everyone and is handled by the negation branch (which fails verification).
+ */
 function isExemption(text: string): boolean {
   return (
-    /再提出する必要はありません|前回(?:すでに|既に)?.{0,16}提出した方は不要|提出不要/.test(text) ||
+    /再提出(?:する必要はありません|不要)/.test(text) ||
+    /前回(?:すでに|既に)?.{0,16}提出した方は(?:不要|再提出)/.test(text) ||
+    /(?:すでに|既に)?提出済みの方は(?:再提出)?不要/.test(text) ||
     /already submitted.{0,40}not (?:need|required)/i.test(text)
+  );
+}
+
+/** Event/subject nouns used to match a cancellation sentence to a prior Action. */
+function cancellationSubjects(text: string): string[] {
+  const subjects: string[] = [];
+  const jp = text.match(
+    /([一-龥ぁ-んァ-ンー]{1,14}(?:説明会|保護者会|懇談会|面談|遠足|行事|運動会|健康診断|発表会|校外学習|総会|集会|検診|集金|式典))/g,
+  );
+  if (jp) subjects.push(...jp);
+  const jpGeneric = text.match(/([一-龥ァ-ンー]{2,10}会)(?=は|が|を|に|の|、|。|$)/g);
+  if (jpGeneric) subjects.push(...jpGeneric);
+  const obj = extractObject(text);
+  if (obj) subjects.push(obj);
+  const en = text.match(/\b(meeting|event|trip|fair|session|ceremony|briefing|assembly|reception|open house|checkup|inspection)\b/gi);
+  if (en) subjects.push(...en.map((s) => s.toLowerCase()));
+  // Dedupe, keep tokens of length >= 2.
+  return [...new Set(subjects)].filter((s) => s.replace(/\s/g, "").length >= 2);
+}
+
+function actionMatchesSubject(action: Action, subject: string): boolean {
+  const s = subject.trim();
+  if (s.length < 2) return false;
+  const title = action.title.toLowerCase();
+  const obj = (action.object ?? "").toLowerCase();
+  const ls = s.toLowerCase();
+  return (
+    action.title.includes(s) ||
+    title.includes(ls) ||
+    (obj.length > 0 && (obj.includes(ls) || ls.includes(obj)))
   );
 }
 
@@ -80,6 +118,7 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
   const ctx = extractYearContext(source);
   const sentences = splitSentences(source);
   const actions: Action[] = [];
+  const cancellationSentences: string[] = [];
 
   const make = (
     partial: Omit<Action, "id" | "status" | "inference" | "evidence"> & {
@@ -120,7 +159,12 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
     // Conservative guards (Phase 1.2): never assert an active Action for a
     // cancelled event, a reference/quoted old instruction, or a completed past
     // event. Preferring omission over a confident-wrong Action is the trust order.
-    if (isCancellationContext(sentence)) continue;
+    // Cancellations are also recorded so a cancellation in a LATER sentence can
+    // deactivate a matching Action created by an EARLIER sentence.
+    if (isCancellationContext(sentence)) {
+      cancellationSentences.push(sentence);
+      continue;
+    }
     if (isReferenceContext(sentence)) continue;
     if (isPastCompletedContext(sentence)) continue;
 
@@ -157,28 +201,34 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
     }
 
     if (isExemption(sentence)) {
-      const obj = extractObject(sentence) ?? "提出物";
-      const submit = [...actions]
-        .reverse()
-        .find((a) => a.kind === "submit" && (!a.object || obj.includes(a.object) || a.object.includes(obj.replace(/再/, "")) || a.title.includes("提出")));
-      const condition =
-        sentence.match(/前回すでに参加確認票を提出した方は、再提出する必要はありません。?/)?.[0] ??
-        sentence;
+      const obj = extractObject(sentence);
+      const submits = actions.filter((a) => a.kind === "submit");
+      // Attach the exemption to its OWN target. With a single submit there is no
+      // ambiguity. With multiple submits, require an object match — never attach to
+      // an arbitrary submit just because its title contains 提出.
+      let submit: Action | undefined;
+      if (submits.length === 1) {
+        submit = submits[0];
+      } else if (obj) {
+        submit = [...submits]
+          .reverse()
+          .find((a) => a.object && (obj.includes(a.object) || a.object.includes(obj) || a.title.includes(obj)));
+      }
       if (submit) {
         submit.conditions = [
-          ...new Set([...(submit.conditions ?? []), "前回すでに提出した方は再提出不要", condition.replace(/[。．.]$/, "")]),
+          ...new Set([...(submit.conditions ?? []), "前回すでに提出した方は再提出不要", sentence.replace(/[。．.]$/, "")]),
         ];
         if (!submit.evidence.some((e) => e.text === sentence)) {
           submit.evidence.push({ source_id: doc.id, page: 1, text: sentence });
         }
         continue;
       }
-      // Standalone "提出不要" — emit prohibited submit, not a required task.
+      // Standalone exemption with no resolvable target — emit prohibited, not required.
       const mod = detectModality(sentence);
       actions.push(
         make({
           kind: "submit",
-          title: `${obj}は提出不要`,
+          title: `${obj ?? "提出物"}は提出不要`,
           object: obj,
           modality: "prohibited",
           actor: mod.actor,
@@ -190,16 +240,47 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
       continue;
     }
 
-    if (isNegation(sentence) && actions.length > 0) {
-      const last = actions[actions.length - 1]!;
-      last.conditions = [...new Set([...(last.conditions ?? []), sentence.replace(/[。．.]$/, "")])];
-      if (!last.evidence.some((e) => e.text === sentence)) {
-        last.evidence.push({ source_id: doc.id, page: 1, text: sentence });
+    // Blanket negation ("(X の)提出は不要" / "no longer required"). Resolve the
+    // target by object identity and attach the negation to THAT Action so the
+    // verifier fails it. NEVER attach to the last Action by position. If no target
+    // can be identified, emit a prohibited submit (do not resurrect a requirement)
+    // or omit — but never contaminate an unrelated Action.
+    if (isNegation(sentence)) {
+      const negObj = extractObject(sentence);
+      const target = negObj
+        ? [...actions]
+            .reverse()
+            .find(
+              (a) =>
+                (a.object && (a.object.includes(negObj) || negObj.includes(a.object))) ||
+                a.title.includes(negObj),
+            )
+        : undefined;
+      if (target) {
+        target.conditions = [
+          ...new Set([...(target.conditions ?? []), sentence.replace(/[。．.]$/, "")]),
+        ];
+        if (!target.evidence.some((e) => e.text === sentence)) {
+          target.evidence.push({ source_id: doc.id, page: 1, text: sentence });
+        }
+        continue;
       }
-      continue;
-    }
-
-    if (isNegation(sentence) && /提出/.test(sentence)) {
+      if (/提出|submit/i.test(sentence)) {
+        const mod = detectModality(sentence);
+        actions.push(
+          make({
+            kind: "submit",
+            title: `${negObj ?? "提出物"}は提出不要`,
+            object: negObj,
+            modality: "prohibited",
+            actor: mod.actor,
+            temporal: primaryTemporal(sentence, ctx),
+            evidenceText: sentence,
+            conditions: mod.conditions,
+          }),
+        );
+      }
+      // Non-submit negation with no identifiable target → omit (do not mis-attach).
       continue;
     }
 
@@ -237,5 +318,15 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
     );
   }
 
-  return actions.map((a, i) => ({ ...a, id: newActionId(i) }));
+  // Cross-sentence cancellation: a cancellation sentence deactivates a matching
+  // Action created by an earlier sentence, without touching unrelated Actions.
+  let result = actions;
+  if (cancellationSentences.length > 0) {
+    const subjects = [...new Set(cancellationSentences.flatMap(cancellationSubjects))];
+    if (subjects.length > 0) {
+      result = result.filter((a) => !subjects.some((s) => actionMatchesSubject(a, s)));
+    }
+  }
+
+  return result.map((a, i) => ({ ...a, id: newActionId(i) }));
 }

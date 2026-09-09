@@ -1,0 +1,10 @@
+{
+  "id": "adv-en-negation",
+  "language": "en",
+  "category": "negation",
+  "tags": [
+    "adversarial",
+    "negation"
+  ],
+  "golden": false
+}

@@ -1,0 +1,32 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "submit the health form",
+      "object": "health form",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-en-multi-submit-negation",
+          "text": "Please submit the health form."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "kind": "submit",
+      "modality": "required",
+      "titleIncludes": "permission",
+      "failure": "NEGATION_LOST",
+      "severity": "critical",
+      "reason": "only the permission form is negated; the health form must remain required"
+    }
+  ]
+}

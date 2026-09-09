@@ -39,6 +39,27 @@ The reader (`validateActionManifest`) dispatches by `schema_version`, so a manif
 
 Synthetic text only (ENG-20260909-001 gate ①). No real names, schools, invoices, user mail, or copyrighted notices. Keep evidence quotes short. `pnpm test` includes `benchmark/synthetic-guard.test.ts`.
 
+### Adversarial benchmark integrity (normative)
+
+> **Expected truth is normative. Extractor output is not the oracle.**
+
+For adversarial fixtures (`benchmark/fixtures/**` tagged `adversarial`), author
+`expected.json` as human semantic truth **before** comparing to the extractor,
+and add benchmark-only `must_not_extract` negative expectations. See
+[docs/ADVERSARIAL-BENCHMARK.md](docs/ADVERSARIAL-BENCHMARK.md).
+
+Reviewer guidance when a fixture or `expected.json` changes:
+
+- **Reject** any change that edits `expected.json` to match current extractor
+  output in order to make a failing test pass. Fix the extractor/verifier
+  (minimally) instead, or record a tracked gap.
+- A dropped `must_not_extract` entry, a severity downgraded from `critical`, or a
+  new fixture with no negative expectation for an adversarial case needs an
+  explicit rationale.
+- CI must show **critical false-verified = 0**; never relax that gate to land a change.
+- `must_not_extract` and the failure taxonomy are **benchmark-only** — they must
+  never be added to the production Action Manifest schema.
+
 ## Merge policy (ENG-20260909-001)
 
 Do **not** merge until the President / CTO confirms. Do not file additional ENG tickets for this work. Do not commit API keys.

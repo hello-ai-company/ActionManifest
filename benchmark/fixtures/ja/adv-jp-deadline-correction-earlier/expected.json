@@ -1,0 +1,35 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "参加確認票を提出する",
+      "object": "参加確認票",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-05",
+        "raw_text": "10月5日"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-deadline-correction-earlier",
+          "text": "参加確認票の提出期限は令和8年10月12日としていましたが、10月5日に変更します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "date": "2026-10-12",
+      "failure": "SUPERSEDED_DATE",
+      "severity": "critical",
+      "reason": "corrected earlier: the old (later) deadline must not be active"
+    }
+  ]
+}

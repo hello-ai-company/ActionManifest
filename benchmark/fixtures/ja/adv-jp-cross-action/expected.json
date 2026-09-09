@@ -1,0 +1,60 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "参加確認票を提出する",
+      "object": "参加確認票",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-05",
+        "raw_text": "10月5日まで",
+        "deadline_qualifier": "until"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-cross-action",
+          "text": "令和8年10月5日までに参加確認票を提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    },
+    {
+      "id": "act_002",
+      "kind": "prepare",
+      "title": "体操服を持参する",
+      "object": "体操服",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "relative",
+        "raw_text": "当日",
+        "deadline_qualifier": "on_day"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-cross-action",
+          "text": "当日は体操服を持参してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "kind": "prepare",
+      "date": "2026-10-05",
+      "failure": "CROSS_ACTION_CONTAMINATION",
+      "severity": "high",
+      "reason": "the submit deadline must not leak onto the prepare action"
+    }
+  ]
+}

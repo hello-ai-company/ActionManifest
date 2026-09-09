@@ -1,0 +1,35 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "遠足を実施する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-15",
+        "raw_text": "令和8年10月15日"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-multi-event-cancellation",
+          "text": "遠足は令和8年10月15日に実施します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "kind": "event",
+      "date": "2026-10-20",
+      "failure": "WRONG_CANCELLATION_TARGET",
+      "severity": "critical",
+      "reason": "the cancelled meeting must not stay verified; the unrelated 遠足 must remain"
+    }
+  ]
+}

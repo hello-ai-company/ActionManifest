@@ -1,0 +1,12 @@
+{
+  "id": "adv-jp-deadline-correction-earlier",
+  "language": "ja",
+  "category": "deadline-extension",
+  "tags": [
+    "adversarial",
+    "superseded-date",
+    "correction",
+    "reverse-correction"
+  ],
+  "golden": false
+}

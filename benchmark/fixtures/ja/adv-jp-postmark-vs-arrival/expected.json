@@ -1,0 +1,53 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "申込書を提出する",
+      "object": "申込書",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-05",
+        "raw_text": "消印有効",
+        "deadline_qualifier": "postmark_valid"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-postmark-vs-arrival",
+          "text": "申込書は令和8年10月5日消印有効です。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    },
+    {
+      "id": "act_002",
+      "kind": "submit",
+      "title": "報告書を提出する",
+      "object": "報告書",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-10",
+        "raw_text": "必着",
+        "deadline_qualifier": "must_arrive"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-postmark-vs-arrival",
+          "text": "報告書は令和8年10月10日必着です。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": []
+}

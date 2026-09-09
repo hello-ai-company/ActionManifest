@@ -123,16 +123,21 @@ function modalitySupported(action: Action): boolean {
 }
 
 function negationConflict(action: Action): boolean {
-  const corpus = evidenceCorpus(action);
-  const hasNeg = isNegation(corpus) || /提出不要/.test(corpus);
-  if (!hasNeg) return false;
   if (action.modality === "prohibited") return false;
+  if (action.kind !== "submit" || action.modality !== "required") return false;
+
+  const corpus = evidenceCorpus(action);
   const conditions = (action.conditions ?? []).join(" ");
-  if (/不要|再提出|already submitted|exemption|希望者/i.test(conditions)) return false;
-  if (action.kind === "submit" && action.modality === "required" && conditions.length === 0) {
-    return true;
-  }
-  return false;
+  const hasNeg =
+    isNegation(corpus) || /提出不要|提出は不要/.test(corpus) || isNegation(conditions) || /提出不要|提出は不要/.test(conditions);
+  if (!hasNeg) return false;
+
+  // An eligibility / prior-submission exemption ("希望者のみ", "再提出不要",
+  // "already submitted", "前回提出した方") legitimately narrows a required submit.
+  // A blanket negation ("提出は不要", "提出する必要はありません") that applies to
+  // everyone contradicts a required submit and must NOT be verified.
+  const isExemption = /再提出|already submitted|希望者|参加者|提出した方|前回|exemption/i.test(conditions);
+  return !isExemption;
 }
 
 function pageValid(action: Action, doc: CanonicalDocument): boolean {

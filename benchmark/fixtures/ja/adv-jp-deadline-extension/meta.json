@@ -1,0 +1,12 @@
+{
+  "id": "adv-jp-deadline-extension",
+  "language": "ja",
+  "category": "deadline-extension",
+  "tags": [
+    "adversarial",
+    "superseded-date",
+    "correction"
+  ],
+  "golden": false,
+  "adversarialGolden": true
+}

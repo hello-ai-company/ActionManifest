@@ -1,0 +1,34 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "revised schedule",
+      "modality": "unknown",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-15",
+        "raw_text": "October 15, 2026"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-en-correction-revised",
+          "text": "We revised the schedule from October 22, 2026 to October 15, 2026."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "date": "2026-10-22",
+      "failure": "SUPERSEDED_DATE",
+      "severity": "critical",
+      "reason": "revised from X to Y: X must not be active"
+    }
+  ]
+}

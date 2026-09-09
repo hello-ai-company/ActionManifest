@@ -1,0 +1,11 @@
+{
+  "id": "adv-en-extension",
+  "language": "en",
+  "category": "deadline-extension",
+  "tags": [
+    "adversarial",
+    "superseded-date",
+    "correction"
+  ],
+  "golden": false
+}

@@ -1,0 +1,12 @@
+{
+  "id": "adv-jp-reference-only",
+  "language": "ja",
+  "category": "reference-only",
+  "tags": [
+    "adversarial",
+    "reference",
+    "hallucination-risk"
+  ],
+  "golden": false,
+  "adversarialGolden": true
+}

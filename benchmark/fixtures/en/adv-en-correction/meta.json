@@ -1,0 +1,11 @@
+{
+  "id": "adv-en-correction",
+  "language": "en",
+  "category": "correction-notice",
+  "tags": [
+    "adversarial",
+    "superseded-date",
+    "correction"
+  ],
+  "golden": false
+}

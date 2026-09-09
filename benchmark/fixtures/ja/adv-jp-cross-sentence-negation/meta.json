@@ -1,0 +1,12 @@
+{
+  "id": "adv-jp-cross-sentence-negation",
+  "language": "ja",
+  "category": "negation",
+  "tags": [
+    "adversarial",
+    "negation",
+    "cross-sentence-negation"
+  ],
+  "golden": false,
+  "adversarialGolden": true
+}

@@ -40,6 +40,16 @@ Verification: PARTIAL
 
 `actionman validate --doc <doc> --json` exposes machine-readable per-Action results in `flags.actions[]`. A manifest-level fatal (source hash mismatch, empty document) is cross-cutting and blocks all promotion; per-Action failures only stop the offending Action. See [docs/adr/0002-per-action-verification.md](docs/adr/0002-per-action-verification.md).
 
+### Adversarial reliability
+
+The benchmark includes an **adversarial corpus** (corrections, cancellations,
+negations, quoted/superseded dates, OCR noise, conditional eligibility, …) whose
+`expected.json` is human-authored truth — never a copy of extractor output. The
+primary safety metric is the **False Verified Action Rate**, and CI fails on any
+**critical false-verified** Action. See
+[docs/ADVERSARIAL-BENCHMARK.md](docs/ADVERSARIAL-BENCHMARK.md). Integrity rule:
+*Expected truth is normative; extractor output is not the oracle.*
+
 CI uses a deterministic extractor. An OpenAI-compatible LLM is optional:
 
 ```bash
@@ -86,7 +96,7 @@ Full list: [docs/PUBLIC-BOUNDARY.md](docs/PUBLIC-BOUNDARY.md).
 | `packages/verifier` | Deterministic evidence checks (no LLM) |
 | `packages/exporters` | JSON + ICS (VEVENT / VTODO) |
 | `apps/cli` | `actionman` CLI (name is provisional) |
-| `benchmark/fixtures` | Synthetic JP+EN fixtures (no real PII) |
+| `benchmark/fixtures` | Synthetic JP+EN fixtures incl. adversarial corpus (no real PII) |
 
 ## Otayori vs this OSS
 

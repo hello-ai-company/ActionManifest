@@ -1,0 +1,42 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "健康カードを提出する",
+      "object": "健康カード",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-10",
+        "raw_text": "10月10日まで",
+        "deadline_qualifier": "until"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-exemption-health",
+          "text": "未提出の方は令和8年10月10日までに健康カードを提出してください。すでに提出済みの方は再提出不要です。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "conditions": [
+        "未提出の方",
+        "再提出不要"
+      ]
+    }
+  ],
+  "must_not_extract": [
+    {
+      "kind": "submit",
+      "modality": "required",
+      "unconditionalRequired": true,
+      "failure": "CONDITION_LOST",
+      "severity": "high",
+      "reason": "already-submitted exemption must be preserved"
+    }
+  ]
+}

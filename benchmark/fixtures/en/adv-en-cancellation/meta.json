@@ -1,0 +1,11 @@
+{
+  "id": "adv-en-cancellation",
+  "language": "en",
+  "category": "cancellation",
+  "tags": [
+    "adversarial",
+    "cancellation"
+  ],
+  "golden": false,
+  "adversarialGolden": true
+}

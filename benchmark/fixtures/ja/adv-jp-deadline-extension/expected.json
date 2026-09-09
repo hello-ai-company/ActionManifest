@@ -1,0 +1,36 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "参加確認票を提出する",
+      "object": "参加確認票",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-12",
+        "raw_text": "10月12日まで",
+        "deadline_qualifier": "until"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-deadline-extension",
+          "text": "参加確認票の提出期限は令和8年10月5日としていましたが、10月12日まで延長します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "date": "2026-10-05",
+      "failure": "SUPERSEDED_DATE",
+      "severity": "critical",
+      "reason": "extended: the old deadline must not be verified as active"
+    }
+  ]
+}

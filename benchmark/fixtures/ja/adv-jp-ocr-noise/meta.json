@@ -1,0 +1,11 @@
+{
+  "id": "adv-jp-ocr-noise",
+  "language": "ja",
+  "category": "ocr-noise",
+  "tags": [
+    "adversarial",
+    "ocr-noise",
+    "hallucination-risk"
+  ],
+  "golden": false
+}

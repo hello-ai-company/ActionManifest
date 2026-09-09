@@ -1,0 +1,11 @@
+{
+  "id": "adv-jp-multi-event-cancellation",
+  "language": "ja",
+  "category": "cancellation",
+  "tags": [
+    "adversarial",
+    "cancellation",
+    "multi-event-cancellation-target"
+  ],
+  "golden": false
+}

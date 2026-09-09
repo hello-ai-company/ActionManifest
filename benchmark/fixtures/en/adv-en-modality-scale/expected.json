@@ -1,0 +1,48 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "submit the form",
+      "object": "form",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-en-modality-scale",
+          "text": "You must submit the form."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    },
+    {
+      "id": "act_002",
+      "kind": "review",
+      "title": "review the handbook",
+      "modality": "recommended",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-en-modality-scale",
+          "text": "You should review the handbook."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "kind": "review",
+      "modality": "required",
+      "failure": "WRONG_MODALITY",
+      "severity": "high",
+      "reason": "should (recommended) must not be verified as required"
+    }
+  ]
+}

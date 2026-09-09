@@ -1,0 +1,40 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "submit the RSVP form",
+      "object": "RSVP form",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-05",
+        "raw_text": "October 5, 2026"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-en-conditional",
+          "text": "Applicants only must submit the RSVP form by October 5, 2026."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "conditions": [
+        "applicants only"
+      ]
+    }
+  ],
+  "must_not_extract": [
+    {
+      "kind": "submit",
+      "modality": "required",
+      "unconditionalRequired": true,
+      "failure": "CONDITION_LOST",
+      "severity": "high",
+      "reason": "applicants-only eligibility must be preserved"
+    }
+  ]
+}

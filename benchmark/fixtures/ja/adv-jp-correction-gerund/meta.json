@@ -1,0 +1,11 @@
+{
+  "id": "adv-jp-correction-gerund",
+  "language": "ja",
+  "category": "correction-notice",
+  "tags": [
+    "adversarial",
+    "superseded-date",
+    "correction"
+  ],
+  "golden": false
+}

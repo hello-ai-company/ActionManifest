@@ -1,0 +1,11 @@
+{
+  "id": "adv-en-approximate",
+  "language": "en",
+  "category": "approximate-date",
+  "tags": [
+    "adversarial",
+    "approximate",
+    "hallucination-risk"
+  ],
+  "golden": false
+}

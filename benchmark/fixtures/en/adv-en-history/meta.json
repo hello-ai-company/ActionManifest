@@ -1,0 +1,11 @@
+{
+  "id": "adv-en-history",
+  "language": "en",
+  "category": "multiple-dates",
+  "tags": [
+    "adversarial",
+    "stale-action",
+    "multiple-dates"
+  ],
+  "golden": false
+}

@@ -1,0 +1,10 @@
+{
+  "id": "adv-jp-postmark-vs-arrival",
+  "language": "ja",
+  "category": "postmark-vs-arrival",
+  "tags": [
+    "adversarial",
+    "deadline-qualifier"
+  ],
+  "golden": false
+}

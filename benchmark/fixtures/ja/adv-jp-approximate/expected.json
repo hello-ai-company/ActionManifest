@@ -1,0 +1,34 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "健康診断",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "approximate",
+        "month": 10,
+        "raw_text": "10月頃"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-approximate",
+          "text": "健康診断は令和8年10月頃に実施予定です。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "date": "2026-10-01",
+      "failure": "HALLUCINATED_ACTION",
+      "severity": "critical",
+      "reason": "approximate 頃/上旬 must never become a calendar day"
+    }
+  ]
+}

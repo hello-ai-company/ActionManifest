@@ -1,0 +1,29 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "submit application",
+      "object": "application",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-05",
+        "raw_text": "postmarked by October 5, 2026",
+        "deadline_qualifier": "postmark_valid"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-en-postmark",
+          "text": "Applications postmarked by October 5, 2026 are accepted."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": []
+}

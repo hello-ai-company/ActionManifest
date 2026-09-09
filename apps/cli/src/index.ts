@@ -117,7 +117,15 @@ program
       const result = await runBenchmark(root, Boolean(opts.smoke));
       if (opts.json) process.stdout.write(JSON.stringify(result, null, 2) + "\n");
       else process.stdout.write(formatBenchmark(result) + "\n");
-      if (result.summary.goldenPass !== 1) process.exitCode = 2;
+      // Fail on Golden regression, adversarial Golden regression, or ANY
+      // critical false-verified action (a semantically wrong Action marked verified).
+      if (
+        result.summary.goldenPass !== 1 ||
+        result.summary.adversarialGoldenPass !== 1 ||
+        Number(result.summary.criticalFalseVerified) > 0
+      ) {
+        process.exitCode = 2;
+      }
     } catch (e) {
       fail(e);
     }

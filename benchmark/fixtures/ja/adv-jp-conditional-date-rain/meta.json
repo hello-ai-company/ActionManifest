@@ -1,0 +1,11 @@
+{
+  "id": "adv-jp-conditional-date-rain",
+  "language": "ja",
+  "category": "conditional-date",
+  "tags": [
+    "adversarial",
+    "conditional",
+    "rain"
+  ],
+  "golden": false
+}

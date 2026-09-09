@@ -1,0 +1,10 @@
+{
+  "id": "adv-en-previously",
+  "language": "en",
+  "category": "reference-only",
+  "tags": [
+    "adversarial",
+    "reference"
+  ],
+  "golden": false
+}

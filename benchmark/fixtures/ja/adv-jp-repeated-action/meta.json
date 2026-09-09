@@ -1,0 +1,10 @@
+{
+  "id": "adv-jp-repeated-action",
+  "language": "ja",
+  "category": "repeated-action",
+  "tags": [
+    "adversarial",
+    "duplicate"
+  ],
+  "golden": false
+}

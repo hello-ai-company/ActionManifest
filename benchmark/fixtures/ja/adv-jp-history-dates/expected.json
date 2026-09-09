@@ -1,0 +1,34 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "今年度の行事を実施する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-17",
+        "raw_text": "10月17日"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-history-dates",
+          "text": "今年度は10月17日に実施します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "date": "2026-10-03",
+      "failure": "STALE_ACTION",
+      "severity": "high",
+      "reason": "last year's completed event must not be an active action"
+    }
+  ]
+}

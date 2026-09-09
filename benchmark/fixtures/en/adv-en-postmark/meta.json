@@ -1,0 +1,10 @@
+{
+  "id": "adv-en-postmark",
+  "language": "en",
+  "category": "postmark-vs-arrival",
+  "tags": [
+    "adversarial",
+    "deadline-qualifier"
+  ],
+  "golden": false
+}

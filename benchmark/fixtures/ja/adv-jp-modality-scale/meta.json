@@ -1,0 +1,10 @@
+{
+  "id": "adv-jp-modality-scale",
+  "language": "ja",
+  "category": "modality-scale",
+  "tags": [
+    "adversarial",
+    "modality"
+  ],
+  "golden": false
+}

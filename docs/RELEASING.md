@@ -159,16 +159,26 @@ If the graph ever gains a cycle, the dry-run **stops** — do not publish
 until the cycle is removed. Publish strictly in order so that every
 package's dependencies are already on the registry when it is published.
 
-## 6. Trusted Publishing (OIDC) — the only supported path
+## 6. Trusted Publishing (OIDC) — design-only, the only intended path
 
-Long-lived npm tokens are **not used**. Before the first publish:
+> **Status: intended design, currently unimplemented and unverified.**
+> GitHub Actions OIDC + npm Trusted Publishing are the *intended* mechanism.
+> As of 2026-09-10 nothing is configured or enabled: no npm org Trusted
+> Publisher exists, no `release.yml` workflow exists, and no CI job holds
+> `id-token: write`. No long-lived npm tokens or PATs exist in CI — and none
+> may be introduced (the Release Check workflow pins `NPM_TOKEN` /
+> `NODE_AUTH_TOKEN` empty and the dry-run fails closed if they carry a
+> value). Never paste tokens into issues, docs, or workflows.
+
+Before the first publish, the design calls for:
 
 1. npm: create the `actionmanifest` org (or confirm access) with 2FA
    enforced.
 2. Configure **Trusted Publishing** for each package on npmjs.com:
    repository `hello-ai-company/ActionManifest`, workflow
    `release.yml`, environment `release`.
-3. The future `.github/workflows/release.yml` (NOT yet enabled) will:
+3. The future `.github/workflows/release.yml` (design-only, NOT enabled)
+   will:
    - trigger on the version tag only,
    - hold `permissions: { id-token: write, contents: read }` — OIDC, no
      `NODE_AUTH_TOKEN`,

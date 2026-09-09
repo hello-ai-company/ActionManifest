@@ -2,17 +2,22 @@
 
 ## Supported versions
 
-No `@actionmanifest/*` package is published to npm yet. The repository is in
-release-candidate preparation (targeting `0.9.0-rc.1`; see
-[docs/RELEASING.md](docs/RELEASING.md)). Until the first published line
-exists, security fixes land on `main` and are announced in the release notes
-of the next RC. After publication, only the latest `0.x` line will receive
-fixes before 1.0.
+Supported source line on `main`: **Phase 1 `0.1.x`** (release-candidate
+preparation for `0.9.0-rc.1`; see [docs/RELEASING.md](docs/RELEASING.md)).
+
+**As of 2026-09-10: no npm publish, no git tag, no GitHub Release.** The
+`@actionmanifest/*` scope does not exist on the public npm registry
+(verified read-only on 2026-09-09: all names return 404), the repository
+root package is `private: true`, and no publish workflow exists. Security
+fixes land on `main` and are announced in the release notes of the next RC.
+After a first publish, only the latest `0.x` line will receive fixes before
+1.0.
 
 | Line | Status |
 | --- | --- |
-| `0.x` (unpublished RC prep) | Supported on `main` |
-| Published packages | None yet |
+| `0.x` source on `main` (RC prep) | Supported |
+| npm packages | None exist (never published) |
+| Git tags / GitHub Releases | None exist |
 
 ## Reporting a vulnerability
 
@@ -29,10 +34,9 @@ data-leak bugs. We aim to acknowledge reports within 3 business days.
 - **Source leakage**: prompt / extractor paths that exfiltrate source
   documents beyond the configured provider, or logging of full documents or
   API keys.
-- **CLI file handling**: path traversal or unexpected file writes/reads by
-  the CLI adapters. The CLI reads only the paths passed as arguments (and the
-  bundled suite/corpus inside its own package); it is **not** a sandbox —
-  do not run it as a privileged user on untrusted input.
+- **CLI path safety**: *unexpected* resolution outside the intended
+  fixture/conformance roots — e.g. a suite or fixture path that escapes its
+  root, or the CLI reading/writing files the caller did not intend.
 - **Schema validation bypass**: inputs that validate against the wrong schema
   version or smuggle fields across versions.
 - **Supply chain**: tampered tarballs, unexpected dependencies (e.g. the
@@ -43,6 +47,10 @@ data-leak bugs. We aim to acknowledge reports within 3 business days.
 
 ## Out of scope
 
+- **Intentional local reads**: the caller explicitly passing a filesystem
+  path to `actionman extract <file>` / `validate <manifest>` (or `--doc`,
+  `--root`, `--fixtures`) is the CLI working as designed — it is a local
+  tool reading local files the user named.
 - Hallucinated Actions that the deterministic verifier already rejects (that
   is the verifier working as designed).
 - Live LLM quality when `--provider openai` is used as designed — with that
@@ -51,7 +59,11 @@ data-leak bugs. We aim to acknowledge reports within 3 business days.
 - Vulnerabilities in upstream parsers (Docling, Xberg) themselves — report
   those upstream; we track their advisories for the adapter packages.
 
-## Hardening properties you can rely on
+**No sandbox claims:** the CLI is not a sandbox, and we do not claim
+unverified isolation guarantees. Do not run it as a privileged user on
+untrusted input.
+
+## Hardening properties (verified by CI gates)
 
 - The default pipeline is fully offline and deterministic; no network calls
   are made without an explicit opt-in (`--provider openai`, or

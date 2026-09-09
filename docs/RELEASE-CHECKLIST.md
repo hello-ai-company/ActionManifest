@@ -59,8 +59,8 @@ Last verified: Phase 2.3 (against `main` tip
 | 28 | CycloneDX SBOM (first-party + full external production closure) | PASS (24 components) |
 | 29 | No registry credentials in repo `.npmrc` | PASS (dry-run guard) |
 | 30 | Release Check workflow: `contents: read` only, SHA-pinned actions | PASS |
-| 31 | No long-lived npm tokens; OIDC Trusted Publishing specified for the future publish workflow | READY (documented in RELEASING.md §6; not yet enabled) |
-| 32 | Provenance attestations (`--provenance`) | READY (part of the future publish command) |
+| 31 | No long-lived npm tokens/PATs in CI; OIDC Trusted Publishing is design-only — intended, currently unimplemented and unverified | READY (design documented in RELEASING.md §6; never claimed as enabled) |
+| 32 | Provenance attestations (`--provenance`) | READY (part of the future publish command; unverified until first publish) |
 
 ## Ops constraints (Round-1, PA-20260910-001)
 

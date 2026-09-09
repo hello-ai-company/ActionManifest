@@ -37,10 +37,11 @@ Default CI runs on **Node 20** (all packages except the Xberg bridge paths);
 
 ## Schema compatibility
 
-- **Published schema versions are immutable.** `0.1.0` and `0.2.0` are frozen
-  contracts, pinned by sha256 (`packages/schema/schemas/checksums.json`) and
-  enforced in CI. A frozen schema MUST NOT change — not even for
-  clarifications.
+- **Shipped (frozen) schema versions are immutable.** `0.1.0` and `0.2.0` are
+  frozen contracts, pinned by sha256 (`packages/schema/schemas/checksums.json`)
+  and enforced in CI. A frozen schema MUST NOT change — not even for
+  clarifications. ("Shipped" here means shipped in this repository — as of
+  2026-09-10 nothing has been published to npm.)
 - **Breaking schema change → new `schema_version`.** Removing/renaming a
   field, tightening a type, or changing field semantics requires a new
   version directory (`schemas/v0.3/…`) and dispatch entry.

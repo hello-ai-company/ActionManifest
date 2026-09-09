@@ -27,15 +27,16 @@ This is **not** a PDF summarizer, OCR engine, RAG stack, or task manager. It is 
 
 ## Install
 
-> **Release status: release-candidate preparation.** The `@actionmanifest/*`
-> packages are **not yet published to npm**. The first public release will be
-> `0.9.0-rc.1` (see [docs/RELEASING.md](docs/RELEASING.md)). Until then, use
-> the repository directly (below). The commands in this section are exactly
-> what will work once published — they are verified on every PR by packing
-> the tarballs and installing them into a fresh project
-> (`pnpm release:dry-run`).
+> **Release status: release-candidate preparation.** As of 2026-09-10 there
+> is **no npm publish, no git tag, and no GitHub Release** — the
+> `@actionmanifest/*` scope does not exist on the registry. The first public
+> release is planned as `0.9.0-rc.1` (see
+> [docs/RELEASING.md](docs/RELEASING.md)). Until then, use the repository
+> directly (below). The commands in this section are exactly what will work
+> once published — they are verified on every PR by packing the tarballs and
+> installing them into a fresh project (`pnpm release:dry-run`).
 
-Once published:
+Once published (planned, not yet available):
 
 ```bash
 # Library (pick what you need — all packages are Apache-2.0, Node >= 20)

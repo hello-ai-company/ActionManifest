@@ -153,7 +153,7 @@ describe("reference consumer policy", () => {
     );
     const report = classifyManifest(m);
     expect(report.actions[0]?.disposition).toBe("review_required");
-    expect(report.actions[0]?.reasons.map((r) => r.code)).toContain("PASSED_NOT_PROMOTED");
+    expect(report.actions[0]?.reasons.map((r) => r.code)).toContain("STATUS_NOT_VERIFIED_TIER");
   });
 
   it("v0.1 aggregate receipt: clean aggregate + verified status → ready", () => {

@@ -1,0 +1,8 @@
+{
+  "$comment": "Frozen schema integrity pins (Phase 2.1). The versioned Action Manifest schemas are immutable contracts: any content change must ship as a NEW schema_version, never an edit in place. CI (pnpm schema:validate) fails if a frozen file's sha256 differs from the pin below. canonical-document.schema.json is intentionally NOT pinned here — it is the unversioned integration-boundary schema that evolves additively (see docs/COMPATIBILITY.md).",
+  "algorithm": "sha256",
+  "frozen": {
+    "v0.1/action-manifest.schema.json": "fc654f58e2a84900104aaadb328aa81f84a0c6daf8ef2666604afd501445c346",
+    "v0.2/action-manifest.schema.json": "2aaf277e9b6ba4332bb53c72d755c651ec6620b739f381c044a3c061a5b13557"
+  }
+}

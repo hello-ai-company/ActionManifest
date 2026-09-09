@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -123,4 +124,33 @@ assert(String(manifestSchemaV02.$id).includes("/v0.2/"), "v0.2 $id contains /v0.
 assert(manifestSchemaV01.properties.schema_version.const === "0.1.0", "v0.1 const 0.1.0");
 assert(manifestSchemaV02.properties.schema_version.const === "0.2.0", "v0.2 const 0.2.0");
 
-console.log("schema: PASS (v0.1 + v0.2 action-manifest + canonical-document, immutability + identity checks)");
+// Dialect guard: every published schema declares JSON Schema Draft 2020-12.
+for (const [label, schema] of [
+  ["v0.1", manifestSchemaV01],
+  ["v0.2", manifestSchemaV02],
+  ["canonical-document", documentSchema],
+] as const) {
+  assert(
+    schema.$schema === "https://json-schema.org/draft/2020-12/schema",
+    `${label} declares Draft 2020-12 $schema`,
+  );
+}
+
+// Frozen integrity guard (Phase 2.1): versioned manifest schemas are immutable
+// contracts. A content change must ship as a NEW schema_version — editing a
+// frozen file in place fails CI here.
+const checksums = JSON.parse(
+  readFileSync(join(schemasDir, "checksums.json"), "utf8"),
+) as { algorithm: string; frozen: Record<string, string> };
+assert(checksums.algorithm === "sha256", "checksums.json uses sha256");
+for (const [rel, expected] of Object.entries(checksums.frozen)) {
+  const actual = createHash("sha256").update(readFileSync(join(schemasDir, rel))).digest("hex");
+  assert(
+    actual === expected,
+    `frozen schema ${rel} unchanged (expected ${expected.slice(0, 12)}…, got ${actual.slice(0, 12)}…)`,
+  );
+}
+
+console.log(
+  `schema: PASS (v0.1 + v0.2 action-manifest + canonical-document, immutability + identity + dialect + ${Object.keys(checksums.frozen).length} frozen checksums)`,
+);

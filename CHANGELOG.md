@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## Phase 2.1 — 2026-09-09
+
+Standards & Conformance Hardening. No schema version change (v0.1/v0.2 frozen, now checksum-pinned); no package release.
+
+### Added
+
+- **Conformance suite** (`conformance/`, suite version 0.1.0): 65 language-neutral, spec-derived vectors across six profiles — schema (11), canonical-document (13), evidence (6), trust (11), temporal (12), ics (12) — including byte-exact ICS goldens under an injected clock. Implementations MAY run their own runner; conformance is defined by vectors + normative docs, not TypeScript internals.
+- **Conformance runner & CLI**: `actionman conformance [--smoke] [--json]`, `pnpm conformance` / `pnpm conformance:smoke`. Exit codes: 0 conformant / 1 conformance failure / 2 runner error. New safety invariant: **critical false exported = 0** (no blocked/review_required Action may reach the default executable export).
+- **Frozen schema integrity**: `packages/schema/schemas/checksums.json` pins sha256 of the v0.1/v0.2 manifest schemas; `pnpm schema:validate` fails on drift. Draft 2020-12 `$schema` declaration asserted for all published schemas.
+- **Docs**: `docs/STANDARDS.md` (RFC 5545 mapping + known deviations, JSON Schema dialect), `docs/CONFORMANCE.md`, `docs/COMPATIBILITY.md` (schema ≠ package ≠ suite versioning, deprecation/extension policy), ADR 0005.
+
+### Fixed
+
+- **ICS folding is now RFC 5545 §3.1 octet-aware**: physical lines ≤ 75 UTF-8 octets (previously counted JS characters — a 74-char Japanese line was 222 octets), continuation lines SPACE-prefixed, multi-byte sequences never split, `unfold(fold(x)) === x`. Property-tested over 500 deterministic pseudo-random Unicode strings.
+- **TEXT escaping hardened**: CR/LF/CRLF all become escaped `\n` (property injection impossible — hostile `BEGIN:VEVENT` title tested); C0/C1 control characters stripped except TAB.
+- **Strict calendar-date gate**: only real `YYYY-MM-DD` dates (leap-day aware) become DTSTART/DUE; `2026-13-40`, `2026/10/15`, `2026-02-31` produce no artifact.
+- **Deterministic DTSTAMP**: `exportIcs` accepts `options.now` (injectable clock); same manifest + same clock = byte-identical ICS.
+
 ## Phase 2 — 2026-09-09
 
 Integration Contract & Reference Adapter. No production schema version change (manifest schemas v0.1/v0.2 untouched; CanonicalDocument schema gains an optional `mediaType` and a bbox convention annotation — additive only).

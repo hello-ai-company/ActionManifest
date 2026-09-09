@@ -31,6 +31,9 @@ jobs:
       - run: pnpm integration:test
       # Phase 2: pack every public package and runtime-smoke the tarballs.
       - run: pnpm pack:check
+      # Phase 2.1: official conformance suite (offline, deterministic) —
+      # fails on any vector failure or any critical false export.
+      - run: pnpm conformance
       # Golden + Adversarial Golden, gated on critical false-verified = 0.
       - run: pnpm benchmark:smoke
       # Full adversarial suite: fails on ANY critical false-verified action.

@@ -139,6 +139,26 @@ convention, adapter error model, consumer policy, export policy — is
 [docs/INTEGRATION-CONTRACT.md](docs/INTEGRATION-CONTRACT.md). Design
 rationale: [docs/adr/0004-integration-contract.md](docs/adr/0004-integration-contract.md).
 
+## Standards & conformance
+
+ActionManifest is an implementation-independent contract. The
+**conformance suite** (`conformance/vectors/`) holds language-neutral JSON
+vectors — hand-written from the spec, never from implementation output — so a
+Python/Rust/Go implementation passing them is *ActionManifest conformant*:
+
+```bash
+pnpm conformance              # 65 vectors, 6 profiles
+pnpm actionman conformance --json
+```
+
+ICS export is RFC 5545-conformant at the byte level (UTF-8 octet-aware
+folding, CRLF-only, injection-safe TEXT escaping, strict calendar dates,
+deterministic DTSTAMP via an injectable clock). See
+[docs/STANDARDS.md](docs/STANDARDS.md) (incl. known deviations),
+[docs/CONFORMANCE.md](docs/CONFORMANCE.md), and
+[docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) for the versioning policy
+(schema version ≠ package version ≠ suite version).
+
 ## Otayori vs this OSS
 
 This repository owns Manifest, Extractor, Verifier, Evidence, Temporal, Benchmark, CLI, Exporter, Document adapters. Product UX, family inbox, child profiles, notifications, and billing belong in Otayori — see [docs/OTAYORI-BOUNDARY.md](docs/OTAYORI-BOUNDARY.md).

@@ -43,7 +43,10 @@ const STALE_FAILURES = new Set<FailureCode>([
  */
 export interface ForbiddenPattern {
   kind?: string;
+  /** Matches when this date is the primary temporal date OR any alternative. */
   date?: string;
+  /** Matches ONLY the primary temporal date (ignores conditional alternatives). */
+  primaryDate?: string;
   modality?: string;
   object?: string;
   titleIncludes?: string;
@@ -90,6 +93,7 @@ export function matchesForbidden(a: Action, p: ForbiddenPattern): boolean {
   if (p.kind && a.kind !== p.kind) return false;
   if (p.modality && a.modality !== p.modality) return false;
   if (p.date && !actionDates(a).includes(p.date)) return false;
+  if (p.primaryDate && a.temporal?.date !== p.primaryDate) return false;
   if (p.object && !(a.object?.includes(p.object) || a.title.includes(p.object))) return false;
   if (p.titleIncludes && !a.title.includes(p.titleIncludes)) return false;
   if (p.unconditionalRequired && !(a.modality === "required" && (a.conditions?.length ?? 0) === 0)) {

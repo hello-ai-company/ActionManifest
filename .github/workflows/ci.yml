@@ -24,4 +24,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm schema:validate
       - run: pnpm test
+      # Golden + Adversarial Golden, gated on critical false-verified = 0.
       - run: pnpm benchmark:smoke
+      # Full adversarial suite: fails on ANY critical false-verified action.
+      - run: pnpm benchmark

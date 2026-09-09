@@ -14,6 +14,13 @@ import * as verifier from "@actionmanifest/verifier";
 import * as exporters from "@actionmanifest/exporters";
 import * as consumer from "@actionmanifest/consumer";
 import * as xberg from "@actionmanifest/adapter-xberg";
+import type { AdapterInput, DocumentAdapter } from "@actionmanifest/adapters";
+import type {
+  XbergAdapterInput,
+  XbergBytesInput,
+  XbergResultInput,
+  XbergUriInput,
+} from "@actionmanifest/adapter-xberg";
 
 const require = createRequire(import.meta.url);
 
@@ -65,6 +72,38 @@ describe("public package entry points", () => {
     expect(typeof xberg.XbergAdapter).toBe("function");
     expect(typeof xberg.mapXbergResultToCanonical).toBe("function");
     expect(typeof xberg.XBERG_ADAPTER_VERSION).toBe("string");
+  });
+
+  it("exposes the generic DocumentAdapter contract and Xberg-owned input types", () => {
+    // Compile-time contract assertions (runtime no-ops):
+    // - DocumentAdapter is generic over the adapter's own input type.
+    // - Xberg-specific input kinds live in @actionmanifest/adapter-xberg.
+    // - The central AdapterInput union does NOT contain xberg kinds.
+    const xbergInput: XbergAdapterInput = {
+      kind: "xberg-result",
+      sourceId: "s",
+      payload: {},
+    };
+    const uri: XbergUriInput = { kind: "xberg-uri", sourceId: "s", uri: "f.pdf" };
+    const bytes: XbergBytesInput = {
+      kind: "xberg-bytes",
+      sourceId: "s",
+      bytes: new Uint8Array(),
+    };
+    const result: XbergResultInput = xbergInput;
+    expect(xbergInput.kind).toBe("xberg-result");
+    expect(uri.kind).toBe("xberg-uri");
+    expect(bytes.kind).toBe("xberg-bytes");
+    expect(result.kind).toBe("xberg-result");
+
+    // @ts-expect-error — xberg kinds are NOT part of the central built-in union
+    const notCentral: AdapterInput = { kind: "xberg-result", sourceId: "s", payload: {} };
+    void notCentral;
+
+    // The generic contract accepts a third-party input type unchanged.
+    type ThirdParty = DocumentAdapter<{ kind: "marker-json"; sourceId: string }>;
+    const proof: ThirdParty | null = null;
+    void proof;
   });
 
   it("blocks deep/internal imports via package exports maps", () => {

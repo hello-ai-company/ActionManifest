@@ -1,4 +1,10 @@
 import type { Action, ActionManifest, Temporal } from "@actionmanifest/core";
+import {
+  assertExportable,
+  isExportableStatus,
+  selectExportableActions,
+  type ExportPolicyOptions,
+} from "./policy.js";
 
 function icsDate(iso: string): string {
   return iso.replace(/-/g, "");
@@ -42,20 +48,32 @@ function fold(line: string): string {
   return chunks.join("\r\n");
 }
 
+export type IcsExportOptions = ExportPolicyOptions;
+
 /**
  * Export events as VEVENT and dated tasks as VTODO.
- * Approximate temporals without a calendar day are omitted (unknown stays unknown).
+ *
+ * Safety contract (Phase 2):
+ * - Default policy is verified-only: proposed/rejected Actions are NOT
+ *   exported. `include: "all"` is the explicit opt-in and marks unverified
+ *   entries with `X-ACTIONMANIFEST-STATUS`.
+ * - A manifest-level fatal receipt (hash mismatch / empty source) throws
+ *   ExportError instead of producing any executable output.
+ * - Approximate temporals without a calendar day are omitted (unknown stays
+ *   unknown); conditional alternatives never overwrite the primary date.
  */
-export function exportIcs(manifest: ActionManifest): string {
+export function exportIcs(manifest: ActionManifest, options: IcsExportOptions = {}): string {
+  assertExportable(manifest);
+  const include = options.include ?? "verified-only";
   const stamp = icsStamp();
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Action Manifest//Phase 1//EN",
+    "PRODID:-//Action Manifest//Phase 2//EN",
     "CALSCALE:GREGORIAN",
   ];
 
-  for (const action of manifest.actions) {
+  for (const action of selectExportableActions(manifest, { include })) {
     const dates = datesOf(action.temporal);
     const primary = dates[0];
     const isEvent = action.kind === "event" || action.kind === "attend";
@@ -68,12 +86,16 @@ export function exportIcs(manifest: ActionManifest): string {
       action.kind === "reply";
 
     if (!primary) continue;
+    const unverifiedMarker = isExportableStatus(action.status)
+      ? undefined
+      : `X-ACTIONMANIFEST-STATUS:${action.status}`;
 
     if (isEvent) {
       lines.push("BEGIN:VEVENT");
       lines.push(`UID:${action.id}@actionmanifest`);
       lines.push(`DTSTAMP:${stamp}`);
       lines.push(`DTSTART;VALUE=DATE:${icsDate(primary)}`);
+      if (unverifiedMarker) lines.push(unverifiedMarker);
       const rain = action.temporal?.alternatives?.find((a) => a.date);
       if (rain?.date) {
         lines.push(`COMMENT:${escapeText(`alternative ${rain.date} if ${rain.condition ?? "condition"}`)}`);
@@ -86,6 +108,7 @@ export function exportIcs(manifest: ActionManifest): string {
       lines.push(`UID:${action.id}@actionmanifest`);
       lines.push(`DTSTAMP:${stamp}`);
       lines.push(`DUE;VALUE=DATE:${icsDate(primary)}`);
+      if (unverifiedMarker) lines.push(unverifiedMarker);
       lines.push(`SUMMARY:${escapeText(action.title)}`);
       lines.push(`DESCRIPTION:${evidenceNote(action)}`);
       lines.push("STATUS:NEEDS-ACTION");

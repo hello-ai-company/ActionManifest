@@ -1,0 +1,11 @@
+{
+  "id": "adv-jp-correction-from-to",
+  "language": "ja",
+  "category": "correction-notice",
+  "tags": [
+    "adversarial",
+    "superseded-date",
+    "correction"
+  ],
+  "golden": false
+}

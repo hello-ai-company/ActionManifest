@@ -1,0 +1,40 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "prepare",
+      "title": "bring gym clothes",
+      "object": "gym clothes",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-en-cross-sentence-negation",
+          "text": "Bring your gym clothes."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "kind": "submit",
+      "modality": "required",
+      "titleIncludes": "permission",
+      "failure": "NEGATION_LOST",
+      "severity": "critical",
+      "reason": "the negated permission-form submit must not stay verified"
+    },
+    {
+      "kind": "prepare",
+      "modality": "prohibited",
+      "titleIncludes": "gym",
+      "failure": "WRONG_NEGATION_TARGET",
+      "severity": "high",
+      "reason": "the negation must not attach to the unrelated prepare action"
+    }
+  ]
+}

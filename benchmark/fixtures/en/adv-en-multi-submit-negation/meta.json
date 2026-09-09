@@ -1,0 +1,11 @@
+{
+  "id": "adv-en-multi-submit-negation",
+  "language": "en",
+  "category": "negation",
+  "tags": [
+    "adversarial",
+    "negation",
+    "multi-submit-negation-target"
+  ],
+  "golden": false
+}

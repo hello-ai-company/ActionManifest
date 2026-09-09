@@ -5,6 +5,12 @@ import { PlainTextAdapter } from "@actionmanifest/adapters";
 import { SCHEMA_VERSION, type Action, type ActionManifest, type CanonicalDocument } from "@actionmanifest/core";
 import { extractDeterministically } from "@actionmanifest/extractor";
 import { verifyManifest, verificationPassed } from "@actionmanifest/verifier";
+import {
+  countDuplicateActions,
+  evaluateForbidden,
+  expectedActiveDates,
+  type FixtureExpectation,
+} from "./adversarial.js";
 
 export interface FixtureMeta {
   id: string;
@@ -12,13 +18,15 @@ export interface FixtureMeta {
   category: string;
   tags?: string[];
   golden?: boolean;
+  /** Adversarial golden set: run in CI smoke and gated on critical false-verified. */
+  adversarialGolden?: boolean;
 }
 
 export interface Fixture {
   dir: string;
   meta: FixtureMeta;
   input: string;
-  expected: { actions: Action[] };
+  expected: FixtureExpectation;
 }
 
 export interface ActionMatch {
@@ -31,6 +39,8 @@ export interface FixtureScore {
   language: string;
   category: string;
   golden: boolean;
+  adversarial: boolean;
+  adversarialGolden: boolean;
   expectedCount: number;
   extractedCount: number;
   matched: number;
@@ -45,6 +55,18 @@ export interface FixtureScore {
   verificationPass: boolean;
   actionsTotal: number;
   actionsVerified: number;
+  // Adversarial reliability signals
+  forbiddenExtracted: number;
+  forbiddenVerified: number;
+  criticalFalseVerified: number;
+  staleExtracted: number;
+  duplicateActions: number;
+  correction: boolean;
+  correctionResolved: boolean;
+  negation: boolean;
+  negationPreserved: boolean;
+  conditional: boolean;
+  conditionalPreserved: boolean;
   goldenPass?: boolean;
   notes: string[];
 }
@@ -106,9 +128,7 @@ export async function loadFixtures(root: string): Promise<Fixture[]> {
     const hasInput = entries.some((e) => e.isFile() && e.name === "input.txt");
     if (hasInput) {
       const input = await readFile(join(dir, "input.txt"), "utf8");
-      const expected = JSON.parse(await readFile(join(dir, "expected.json"), "utf8")) as {
-        actions: Action[];
-      };
+      const expected = JSON.parse(await readFile(join(dir, "expected.json"), "utf8")) as FixtureExpectation;
       const meta = JSON.parse(await readFile(join(dir, "meta.json"), "utf8")) as FixtureMeta;
       fixtures.push({ dir, meta, input, expected });
       return;
@@ -123,14 +143,29 @@ export async function loadFixtures(root: string): Promise<Fixture[]> {
   return fixtures;
 }
 
-function scoreFixture(
-  fix: Fixture,
-  extracted: Action[],
-  doc: CanonicalDocument,
-  verified: boolean,
-  actionsVerified: number,
-  actionsTotal: number,
-): FixtureScore {
+function datesOf(a: Action): string[] {
+  const out: string[] = [];
+  if (a.temporal?.date) out.push(a.temporal.date);
+  for (const alt of a.temporal?.alternatives ?? []) if (alt.date) out.push(alt.date);
+  return out;
+}
+
+function hasTag(meta: FixtureMeta, tag: string): boolean {
+  return (meta.tags ?? []).includes(tag);
+}
+
+interface ScoreInput {
+  fix: Fixture;
+  extracted: Action[];
+  doc: CanonicalDocument;
+  verified: boolean;
+  actionsVerified: number;
+  actionsTotal: number;
+  verifiedById: Map<string, boolean>;
+}
+
+function scoreFixture(input: ScoreInput): FixtureScore {
+  const { fix, extracted, doc, verified, actionsVerified, actionsTotal, verifiedById } = input;
   const matches = matchActions(fix.expected.actions, extracted);
   const matched = matches.filter((m) => m.extracted).length;
   const recall = fix.expected.actions.length ? matched / fix.expected.actions.length : 1;
@@ -203,11 +238,53 @@ function scoreFixture(
 
   const goldenPass = fix.meta.golden ? notes.filter((n) => n.startsWith("GOLDEN")).length === 0 : undefined;
 
+  // --- Adversarial reliability evaluation (expected truth is the oracle) ---
+  const patterns = fix.expected.must_not_extract ?? [];
+  const findings = evaluateForbidden(patterns, extracted, verifiedById);
+  const duplicateActions = countDuplicateActions(extracted);
+
+  const adversarial = hasTag(fix.meta, "adversarial");
+  const correction =
+    ["correction-notice", "deadline-extension"].includes(fix.meta.category) ||
+    hasTag(fix.meta, "correction") ||
+    hasTag(fix.meta, "superseded-date");
+  const negation = fix.meta.category === "negation" || hasTag(fix.meta, "negation");
+  const conditional =
+    ["conditional-eligibility", "exemption", "conditional-negation-exemption"].includes(fix.meta.category) ||
+    hasTag(fix.meta, "conditional") ||
+    hasTag(fix.meta, "exemption");
+
+  const activeDates = expectedActiveDates(fix.expected);
+  const activePresent =
+    activeDates.length === 0 ||
+    activeDates.every((d) =>
+      extracted.some((a) => datesOf(a).includes(d) && (verifiedById.get(a.id) ?? false)),
+    );
+  const supersededVerified = findings.hits.some((h) => h.verified && h.failure === "SUPERSEDED_DATE");
+  const correctionResolved = correction ? activePresent && !supersededVerified : true;
+
+  const negationPreserved = negation
+    ? !findings.hits.some((h) => h.verified && h.failure === "NEGATION_LOST")
+    : true;
+
+  const expectedHasConditions = fix.expected.actions.some((a) => (a.conditions?.length ?? 0) > 0);
+  const conditionalPreserved = conditional
+    ? !expectedHasConditions || extracted.some((a) => (a.conditions?.length ?? 0) > 0)
+    : true;
+
+  if (findings.criticalFalseVerified > 0) {
+    notes.push(`CRITICAL: ${findings.criticalFalseVerified} forbidden action(s) were verified`);
+  } else if (findings.forbiddenVerified > 0) {
+    notes.push(`FORBIDDEN-VERIFIED: ${findings.forbiddenVerified} action(s)`);
+  }
+
   return {
     id: fix.meta.id,
     language: fix.meta.language,
     category: fix.meta.category,
     golden: Boolean(fix.meta.golden),
+    adversarial,
+    adversarialGolden: Boolean(fix.meta.adversarialGolden),
     expectedCount: fix.expected.actions.length,
     extractedCount: extracted.length,
     matched,
@@ -222,6 +299,17 @@ function scoreFixture(
     verificationPass: verified,
     actionsTotal,
     actionsVerified,
+    forbiddenExtracted: findings.forbiddenExtracted,
+    forbiddenVerified: findings.forbiddenVerified,
+    criticalFalseVerified: findings.criticalFalseVerified,
+    staleExtracted: findings.staleExtracted,
+    duplicateActions,
+    correction,
+    correctionResolved,
+    negation,
+    negationPreserved,
+    conditional,
+    conditionalPreserved,
     goldenPass,
     notes,
   };
@@ -230,6 +318,10 @@ function scoreFixture(
 export function mean(xs: number[]): number {
   if (!xs.length) return 0;
   return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+
+function rate(numerator: number, denominator: number): number {
+  return denominator === 0 ? 0 : numerator / denominator;
 }
 
 export async function defaultFixtureRoot(): Promise<string> {
@@ -256,7 +348,8 @@ export async function runBenchmark(root: string, smoke = false): Promise<{
 }> {
   let fixtures = await loadFixtures(root);
   if (smoke) {
-    fixtures = fixtures.filter((f) => f.meta.golden).concat(fixtures.filter((f) => !f.meta.golden)).slice(0, 5);
+    // Smoke = the Golden Fixture + the Adversarial Golden Set (safety-critical).
+    fixtures = fixtures.filter((f) => f.meta.golden || f.meta.adversarialGolden);
   }
   const adapter = new PlainTextAdapter();
   const scores: FixtureScore[] = [];
@@ -269,25 +362,40 @@ export async function runBenchmark(root: string, smoke = false): Promise<{
       source: { id: doc.id, hash: doc.sourceHash },
       actions: extracted,
     };
-    const { flags } = verifyManifest(candidate, doc);
+    const { manifest: verifiedManifest, flags } = verifyManifest(candidate, doc);
+    const verifiedById = new Map<string, boolean>(
+      verifiedManifest.actions.map((a) => [a.id, a.status === "verified"]),
+    );
     scores.push(
-      scoreFixture(
+      scoreFixture({
         fix,
         extracted,
         doc,
-        verificationPassed(flags),
-        flags.verified_actions ?? 0,
-        flags.total_actions ?? extracted.length,
-      ),
+        verified: verificationPassed(flags),
+        actionsVerified: flags.verified_actions ?? 0,
+        actionsTotal: flags.total_actions ?? extracted.length,
+        verifiedById,
+      }),
     );
   }
 
   const jp = scores.filter((s) => s.language === "ja");
   const en = scores.filter((s) => s.language === "en");
+  const totalExtracted = scores.reduce((a, s) => a + s.extractedCount, 0);
+  const forbiddenExtracted = scores.reduce((a, s) => a + s.forbiddenExtracted, 0);
+  const forbiddenVerified = scores.reduce((a, s) => a + s.forbiddenVerified, 0);
+  const criticalFalseVerified = scores.reduce((a, s) => a + s.criticalFalseVerified, 0);
+  const staleExtracted = scores.reduce((a, s) => a + s.staleExtracted, 0);
+  const duplicateActions = scores.reduce((a, s) => a + s.duplicateActions, 0);
+  const correctionScores = scores.filter((s) => s.correction);
+  const negationScores = scores.filter((s) => s.negation);
+  const conditionalScores = scores.filter((s) => s.conditional);
+
   const summary = {
     fixtures: scores.length,
     jp: jp.length,
     en: en.length,
+    adversarial: scores.filter((s) => s.adversarial).length,
     actionRecall: mean(scores.map((s) => s.recall)),
     actionPrecision: mean(scores.map((s) => s.precision)),
     deadlineAccuracy: mean(scores.map((s) => s.deadlineAccuracy)),
@@ -297,12 +405,31 @@ export async function runBenchmark(root: string, smoke = false): Promise<{
     hallucinationRate: mean(scores.map((s) => s.hallucinationRate)),
     ambiguityPreservation: mean(scores.map((s) => s.ambiguityPreservation)),
     verificationPassRate: mean(scores.map((s) => (s.verificationPass ? 1 : 0))),
-    actionVerificationRate:
-      scores.reduce((a, s) => a + s.actionsTotal, 0) === 0
-        ? 1
-        : scores.reduce((a, s) => a + s.actionsVerified, 0) /
-          scores.reduce((a, s) => a + s.actionsTotal, 0),
+    actionVerificationRate: rate(
+      scores.reduce((a, s) => a + s.actionsVerified, 0),
+      scores.reduce((a, s) => a + s.actionsTotal, 0),
+    ),
+    // Phase 1.2 adversarial reliability metrics
+    falseVerifiedActionRate: rate(forbiddenVerified, forbiddenExtracted),
+    forbiddenActionRate: rate(forbiddenExtracted, totalExtracted),
+    staleActionRate: rate(staleExtracted, totalExtracted),
+    duplicateActionRate: rate(duplicateActions, totalExtracted),
+    correctionResolution: correctionScores.length
+      ? mean(correctionScores.map((s) => (s.correctionResolved ? 1 : 0)))
+      : 1,
+    negationPreservation: negationScores.length
+      ? mean(negationScores.map((s) => (s.negationPreserved ? 1 : 0)))
+      : 1,
+    conditionalPreservation: conditionalScores.length
+      ? mean(conditionalScores.map((s) => (s.conditionalPreserved ? 1 : 0)))
+      : 1,
+    criticalFalseVerified,
     goldenPass: scores.filter((s) => s.golden).every((s) => s.goldenPass) ? 1 : 0,
+    adversarialGoldenPass: scores
+      .filter((s) => s.adversarialGolden)
+      .every((s) => s.criticalFalseVerified === 0)
+      ? 1
+      : 0,
   };
 
   return { scores, summary };
@@ -313,7 +440,7 @@ export function formatBenchmark(result: Awaited<ReturnType<typeof runBenchmark>>
   const pct = (n: number) => `${(Number(n) * 100).toFixed(1)}%`;
   const lines = [
     "Action Manifest benchmark",
-    `fixtures: ${summary.fixtures} (JP ${summary.jp} / EN ${summary.en})`,
+    `fixtures: ${summary.fixtures} (JP ${summary.jp} / EN ${summary.en}, adversarial ${summary.adversarial})`,
     `Action Recall:      ${pct(Number(summary.actionRecall))}`,
     `Action Precision:   ${pct(Number(summary.actionPrecision))}`,
     `Deadline Accuracy:  ${pct(Number(summary.deadlineAccuracy))}`,
@@ -324,13 +451,34 @@ export function formatBenchmark(result: Awaited<ReturnType<typeof runBenchmark>>
     `Ambiguity Preserve: ${pct(Number(summary.ambiguityPreservation))}  ← higher is better`,
     `Verifier pass rate: ${pct(Number(summary.verificationPassRate))}`,
     `Action verify rate: ${pct(Number(summary.actionVerificationRate))}  ← verified actions / total actions`,
+    "-- adversarial reliability --",
+    `False Verified Rate: ${pct(Number(summary.falseVerifiedActionRate))}  ← forbidden actions that got verified / forbidden extracted (lower is better)`,
+    `Forbidden Action:    ${pct(Number(summary.forbiddenActionRate))}  ← lower is better`,
+    `Stale Action Rate:   ${pct(Number(summary.staleActionRate))}  ← lower is better`,
+    `Duplicate Action:    ${pct(Number(summary.duplicateActionRate))}  ← lower is better`,
+    `Correction Resolve:  ${pct(Number(summary.correctionResolution))}  ← higher is better`,
+    `Negation Preserve:   ${pct(Number(summary.negationPreservation))}  ← higher is better`,
+    `Conditional Preserve:${pct(Number(summary.conditionalPreservation))}  ← higher is better`,
+    `Critical false-verified: ${summary.criticalFalseVerified}  ← MUST be 0`,
     `Golden fixture:     ${summary.goldenPass === 1 ? "PASS" : "FAIL"}`,
+    `Adversarial golden: ${summary.adversarialGoldenPass === 1 ? "PASS" : "FAIL"}`,
     "",
   ];
   for (const s of scores) {
-    const mark = s.golden ? (s.goldenPass ? "GOLDEN PASS" : "GOLDEN FAIL") : "";
+    const badge = s.golden
+      ? s.goldenPass
+        ? "GOLDEN PASS"
+        : "GOLDEN FAIL"
+      : s.adversarialGolden
+        ? s.criticalFalseVerified === 0
+          ? "ADV-GOLDEN PASS"
+          : "ADV-GOLDEN FAIL"
+        : "";
+    const advTag = s.adversarial
+      ? ` fbid=${s.forbiddenExtracted} fbverified=${s.forbiddenVerified} crit=${s.criticalFalseVerified}`
+      : "";
     lines.push(
-      `- ${s.id} [${s.language}/${s.category}] R=${pct(s.recall)} P=${pct(s.precision)} H=${pct(s.hallucinationRate)} A=${pct(s.ambiguityPreservation)} ${mark}`.trim(),
+      `- ${s.id} [${s.language}/${s.category}] R=${pct(s.recall)} P=${pct(s.precision)} H=${pct(s.hallucinationRate)} A=${pct(s.ambiguityPreservation)}${advTag} ${badge}`.trim(),
     );
     for (const n of s.notes) lines.push(`    ${n}`);
   }

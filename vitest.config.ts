@@ -22,6 +22,7 @@ export default defineConfig({
       "packages/**/*.test.ts",
       "apps/**/*.test.ts",
       "benchmark/**/*.test.ts",
+      "scripts/**/*.test.ts",
     ],
     environment: "node",
     reporters: ["default"],

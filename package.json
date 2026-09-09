@@ -22,7 +22,8 @@
     "conformance": "tsx apps/cli/src/index.ts conformance",
     "conformance:smoke": "tsx apps/cli/src/index.ts conformance --smoke",
     "conformance:reference": "tsx apps/cli/src/index.ts conformance --reference",
-    "actionman": "tsx apps/cli/src/index.ts"
+    "actionman": "tsx apps/cli/src/index.ts",
+    "governance:validate": "tsx scripts/governance.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

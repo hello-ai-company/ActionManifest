@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": true
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../packages/adapters" },
+    { "path": "../../packages/core" },
+    { "path": "../../packages/extractor" },
+    { "path": "../../packages/exporters" },
+    { "path": "../../packages/verifier" }
+  ]
+}

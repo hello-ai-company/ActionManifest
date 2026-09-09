@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://actionmanifest.dev/schemas/v0.1/action-manifest.json",
-  "$comment": "Action Manifest v0.1 — language-neutral contract. Enums accept x-* extensions for forward compatibility.",
-  "title": "Action Manifest",
+  "$comment": "Action Manifest v0.1 — language-neutral contract (Phase 1, frozen/immutable). Enums accept x-* extensions for forward compatibility. Does NOT contain per-action verification fields; those live in v0.2.",
+  "title": "Action Manifest v0.1",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "source", "actions"],

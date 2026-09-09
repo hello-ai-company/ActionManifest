@@ -26,6 +26,20 @@ pnpm actionman validate manifest.json --doc ./examples/golden-excursion.txt
 pnpm actionman benchmark
 ```
 
+Verification is **per Action** (schema 0.2.0). Each Action is verified independently, so a document with one bad Action still yields trustworthy verified Actions for the rest:
+
+```text
+Verification: PARTIAL
+3 actions · ✓ 2 verified · ✗ 1 failed
+
+[VERIFIED] act_001  秋の遠足を実施する
+[FAILED]   act_002  存在しない締切を提出する
+   Reason: TEMPORAL_UNSUPPORTED: …
+[VERIFIED] act_003  弁当を持参する
+```
+
+`actionman validate --doc <doc> --json` exposes machine-readable per-Action results in `flags.actions[]`. A manifest-level fatal (source hash mismatch, empty document) is cross-cutting and blocks all promotion; per-Action failures only stop the offending Action. See [docs/adr/0002-per-action-verification.md](docs/adr/0002-per-action-verification.md).
+
 CI uses a deterministic extractor. An OpenAI-compatible LLM is optional:
 
 ```bash
@@ -42,6 +56,7 @@ When you use `--provider openai`, source text **leaves the machine** toward `OPE
 3. **Extraction is not execution** — Core never writes to Google Calendar, email, Todoist, etc. Lifecycle: `proposed → verified → accepted → rejected → exported`.
 4. **Models are replaceable** — provider interface; Phase 1 ships OpenAI-compatible + a deterministic notice extractor.
 5. **Documents are replaceable** — Canonical Document + adapters. [Docling](https://github.com/docling-project/docling) is upstream; we adapt it, we do not replace it.
+6. **Verification is per Action** — each Action is verified independently; one bad Action never invalidates a valid one. The manifest verdict is a summary, not a gate (Phase 1.1).
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/SPECIFICATION.md](docs/SPECIFICATION.md).
 
@@ -63,7 +78,7 @@ Full list: [docs/PUBLIC-BOUNDARY.md](docs/PUBLIC-BOUNDARY.md).
 
 | Path | Role |
 | --- | --- |
-| `packages/schema` | JSON Schema v0.1 (language-neutral contract) |
+| `packages/schema` | JSON Schema v0.2 (language-neutral contract; 0.1.0 still accepted) |
 | `packages/core` | Canonical Document, hashing, validation, errors |
 | `packages/adapters` | Plain Text (working), Docling (interface + fixtures) |
 | `packages/temporal` | Japanese/English temporal + modality |

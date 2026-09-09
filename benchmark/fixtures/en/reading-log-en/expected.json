@@ -1,0 +1,57 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "other",
+      "title": "The reading challenge results will be announced ",
+      "modality": "unknown",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "approximate",
+        "month": 11,
+        "precision": "month",
+        "certainty": "low",
+        "raw_text": "around November"
+      },
+      "evidence": [
+        {
+          "source_id": "reading-log-en",
+          "page": 1,
+          "text": "The reading challenge results will be announced around November."
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    },
+    {
+      "id": "act_002",
+      "kind": "submit",
+      "title": "提出する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-11-12",
+        "year": 2026,
+        "month": 11,
+        "day": 12,
+        "precision": "day",
+        "certainty": "high",
+        "raw_text": "November 12, 2026"
+      },
+      "evidence": [
+        {
+          "source_id": "reading-log-en",
+          "page": 1,
+          "text": "Please submit your reading log by November 12, 2026."
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    }
+  ]
+}

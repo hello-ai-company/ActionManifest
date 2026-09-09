@@ -14,7 +14,7 @@ import {
   OpenAICompatibleProvider,
   type LlmProvider,
 } from "@actionmanifest/extractor";
-import { exportIcs, exportJson, formatSummary } from "@actionmanifest/exporters";
+import { exportIcs, exportJson, formatSummary, formatVerification } from "@actionmanifest/exporters";
 import { verificationPassed, verifyManifest } from "@actionmanifest/verifier";
 import { defaultFixtureRoot, formatBenchmark, runBenchmark } from "./benchmark.js";
 
@@ -80,16 +80,23 @@ program
   .command("validate")
   .argument("<manifest>", "manifest JSON path")
   .option("--doc <file>", "source document for evidence checks")
-  .action(async (manifestPath: string, opts: { doc?: string }) => {
+  .option("--json", "machine-readable output (per-action results in flags.actions)")
+  .action(async (manifestPath: string, opts: { doc?: string; json?: boolean }) => {
     try {
       const raw = JSON.parse(await readFile(resolve(manifestPath), "utf8"));
       const manifest = validateActionManifest(raw);
       if (opts.doc) {
         const adapter = resolveAdapter({ kind: "path", path: resolve(opts.doc) });
         const doc = await adapter.toCanonical({ kind: "path", path: resolve(opts.doc) });
-        const { flags } = verifyManifest(manifest, doc);
+        const { manifest: verified, flags } = verifyManifest(manifest, doc);
         const ok = verificationPassed(flags);
-        process.stdout.write(JSON.stringify({ ok, flags }, null, 2) + "\n");
+        if (opts.json) {
+          process.stdout.write(JSON.stringify({ ok, flags }, null, 2) + "\n");
+        } else {
+          process.stdout.write(formatVerification(verified) + "\n");
+        }
+        // Non-zero exit signals the manifest did not fully verify; per-action
+        // results (verified vs failed) are still available in the output.
         if (!ok) process.exitCode = 2;
       } else {
         process.stdout.write("schema: PASS\n");

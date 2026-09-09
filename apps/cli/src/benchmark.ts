@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PlainTextAdapter } from "@actionmanifest/adapters";
-import type { Action, ActionManifest, CanonicalDocument } from "@actionmanifest/core";
+import { SCHEMA_VERSION, type Action, type ActionManifest, type CanonicalDocument } from "@actionmanifest/core";
 import { extractDeterministically } from "@actionmanifest/extractor";
 import { verifyManifest, verificationPassed } from "@actionmanifest/verifier";
 
@@ -43,6 +43,8 @@ export interface FixtureScore {
   hallucinationRate: number;
   ambiguityPreservation: number;
   verificationPass: boolean;
+  actionsTotal: number;
+  actionsVerified: number;
   goldenPass?: boolean;
   notes: string[];
 }
@@ -121,7 +123,14 @@ export async function loadFixtures(root: string): Promise<Fixture[]> {
   return fixtures;
 }
 
-function scoreFixture(fix: Fixture, extracted: Action[], doc: CanonicalDocument, verified: boolean): FixtureScore {
+function scoreFixture(
+  fix: Fixture,
+  extracted: Action[],
+  doc: CanonicalDocument,
+  verified: boolean,
+  actionsVerified: number,
+  actionsTotal: number,
+): FixtureScore {
   const matches = matchActions(fix.expected.actions, extracted);
   const matched = matches.filter((m) => m.extracted).length;
   const recall = fix.expected.actions.length ? matched / fix.expected.actions.length : 1;
@@ -211,6 +220,8 @@ function scoreFixture(fix: Fixture, extracted: Action[], doc: CanonicalDocument,
     hallucinationRate,
     ambiguityPreservation,
     verificationPass: verified,
+    actionsTotal,
+    actionsVerified,
     goldenPass,
     notes,
   };
@@ -254,12 +265,21 @@ export async function runBenchmark(root: string, smoke = false): Promise<{
     const doc = await adapter.toCanonical({ kind: "text", id: fix.meta.id, text: fix.input });
     const extracted = extractDeterministically(doc);
     const candidate: ActionManifest = {
-      schema_version: "0.1.0",
+      schema_version: SCHEMA_VERSION,
       source: { id: doc.id, hash: doc.sourceHash },
       actions: extracted,
     };
     const { flags } = verifyManifest(candidate, doc);
-    scores.push(scoreFixture(fix, extracted, doc, verificationPassed(flags)));
+    scores.push(
+      scoreFixture(
+        fix,
+        extracted,
+        doc,
+        verificationPassed(flags),
+        flags.verified_actions ?? 0,
+        flags.total_actions ?? extracted.length,
+      ),
+    );
   }
 
   const jp = scores.filter((s) => s.language === "ja");
@@ -277,6 +297,11 @@ export async function runBenchmark(root: string, smoke = false): Promise<{
     hallucinationRate: mean(scores.map((s) => s.hallucinationRate)),
     ambiguityPreservation: mean(scores.map((s) => s.ambiguityPreservation)),
     verificationPassRate: mean(scores.map((s) => (s.verificationPass ? 1 : 0))),
+    actionVerificationRate:
+      scores.reduce((a, s) => a + s.actionsTotal, 0) === 0
+        ? 1
+        : scores.reduce((a, s) => a + s.actionsVerified, 0) /
+          scores.reduce((a, s) => a + s.actionsTotal, 0),
     goldenPass: scores.filter((s) => s.golden).every((s) => s.goldenPass) ? 1 : 0,
   };
 
@@ -298,6 +323,7 @@ export function formatBenchmark(result: Awaited<ReturnType<typeof runBenchmark>>
     `Hallucination Rate: ${pct(Number(summary.hallucinationRate))}  ← lower is better`,
     `Ambiguity Preserve: ${pct(Number(summary.ambiguityPreservation))}  ← higher is better`,
     `Verifier pass rate: ${pct(Number(summary.verificationPassRate))}`,
+    `Action verify rate: ${pct(Number(summary.actionVerificationRate))}  ← verified actions / total actions`,
     `Golden fixture:     ${summary.goldenPass === 1 ? "PASS" : "FAIL"}`,
     "",
   ];

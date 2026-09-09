@@ -1,0 +1,7 @@
+{
+  "id": "sports-day-exemption",
+  "language": "ja",
+  "category": "conditional-negation-exemption",
+  "tags": ["conditional", "rain", "negation", "exemption"],
+  "golden": false
+}

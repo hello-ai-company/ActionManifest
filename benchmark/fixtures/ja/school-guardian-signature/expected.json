@@ -1,0 +1,37 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "保護者は同意書を提出する",
+      "object": "保護者は同意書",
+      "modality": "required",
+      "actor": {
+        "certainty": "explicit",
+        "text": "保護者",
+        "role": "guardian"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-20",
+        "month": 10,
+        "day": 20,
+        "year": 2026,
+        "precision": "day",
+        "deadline_qualifier": "until",
+        "end": "2026-10-20",
+        "certainty": "high",
+        "raw_text": "10月20日までに"
+      },
+      "evidence": [
+        {
+          "source_id": "school-guardian-signature",
+          "page": 1,
+          "text": "保護者は同意書に署名して、10月20日までに提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    }
+  ]
+}

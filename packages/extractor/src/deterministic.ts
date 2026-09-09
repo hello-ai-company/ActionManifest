@@ -1,6 +1,7 @@
 import {
   locateEvidence,
   newActionId,
+  normalizeForMatch,
   type Action,
   type ActionKind,
   type CanonicalDocument,
@@ -205,6 +206,15 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
 
   for (const sentence of sentences) {
     if (isInstitutionalFiller(sentence)) continue;
+
+    // Structure-aware skip (Phase 2): a sentence that IS a document heading —
+    // its located chunk's section equals the sentence itself — is document
+    // structure, not an Action. Plain-text documents carry no sections, so
+    // this never fires for the reference plain-text flow.
+    const headingAt = locateEvidence(doc, sentence);
+    if (headingAt?.section != null && normalizeForMatch(headingAt.section) === normalizeForMatch(sentence)) {
+      continue;
+    }
 
     // Conservative guards (Phase 1.2): never assert an active Action for a
     // cancelled event, a reference/quoted old instruction, or a completed past

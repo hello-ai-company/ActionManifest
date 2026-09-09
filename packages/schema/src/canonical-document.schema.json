@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actionmanifest.dev/schemas/v0.1/canonical-document.json",
+  "title": "Canonical Document",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "sourceHash": { "type": "string" },
+    "title": { "type": "string" },
+    "language": { "type": "string" },
+    "text": { "type": "string" },
+    "pages": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/CanonicalPage" }
+    },
+    "chunks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/CanonicalChunk" }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "BoundingBox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" }
+      }
+    },
+    "CanonicalChunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string" },
+        "pageNumber": { "type": "integer", "minimum": 1 },
+        "bbox": { "$ref": "#/$defs/BoundingBox" },
+        "section": { "type": "string" },
+        "sourceReference": { "type": "string" }
+      }
+    },
+    "CanonicalPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pageNumber", "text"],
+      "properties": {
+        "pageNumber": { "type": "integer", "minimum": 1 },
+        "text": { "type": "string" },
+        "chunks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CanonicalChunk" }
+        }
+      }
+    }
+  }
+}

@@ -27,6 +27,12 @@ Adversarial Document Reliability Benchmark (evaluation only — no production sc
 - **Negation targets its subject, not the last Action**: a blanket negation binds to the Action it names (object/title identity); unresolvable → prohibited/omit, never contaminating an unrelated Action. `isExemption` narrowed so a blanket "提出は不要" is not misread as an exemption.
 - Added 8 stateful adversarial fixtures (68 total) and benchmark-only failure codes `WRONG_NEGATION_TARGET` / `WRONG_CANCELLATION_TARGET`.
 
+### Fixed (PR #3 final hardening — correction cue coverage and target identity)
+
+- **From→to / gerund correction targets**: the resolver drops the superseded date (`Xの予定`, `Xから`, `changed from X`, `was X`) and keeps the replacement, so `XからYに変更`, `changed from X to Y`, and `…変更し、Yに実施します` resolve to Y (not the first/older date). Expanded `CORRECTION_CUE`; narrowed the `mdRe` prefix guard so a date after `から` is not suppressed by an earlier era mention.
+- **English target identity**: a small canonical-target resolver (lowercase, strip punctuation / leading imperative verbs / determiners) lets a negation bind its named submit across `Please submit the permission form` / `The permission form` / `permission form` without contaminating unrelated Actions.
+- Added 6 fixtures (74 total, 40 adversarial): ja correction gerund + from→to, en changed-from / revised from→to, en cross-sentence negation, en multi-submit negation.
+
 ## Phase 1.1 — 2026-09-09
 
 Per-Action Verification Semantics Hardening. Schema `0.2.0` (additive; `0.1.0` still accepted).

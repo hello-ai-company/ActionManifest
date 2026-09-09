@@ -126,10 +126,13 @@ A trust layer must never verify an Action from a positional heuristic
 stateful cases are covered explicitly:
 
 - **Correction / extension target** — the active date is the **replacement
-  target** (the dated temporal nearest the correction cue), not the chronological
-  maximum. This handles reverse corrections (`10/22 → 10/15`, `Oct 22 → Oct 15`).
-  If the target cannot be resolved safely, the date is omitted rather than
-  verified.
+  target**, never the chronological maximum and never "the first date because no
+  cue matched". The resolver drops the date explicitly marked as superseded
+  (`Xの予定`, `Xに予定していた`, `Xとしていました`, `Xから`, `changed from X`,
+  `was X`) and keeps the remaining one, so it handles forward, reverse, from→to
+  (`XからYに変更` / `changed from X to Y`) and gerund (`…変更し、Yに実施します`)
+  forms. If the target cannot be resolved uniquely, the date is omitted rather
+  than verified.
 - **Cross-sentence cancellation** — a cancellation in a later sentence deactivates
   the matching Action created earlier (by event/subject/object), while unrelated
   Actions in the same document are preserved.
@@ -137,7 +140,11 @@ stateful cases are covered explicitly:
   names (by object/title identity), never to the last Action by position; an
   eligibility / prior-submission exemption still narrows its own submit. If no
   target is identifiable, the requirement is not resurrected and no unrelated
-  Action is contaminated.
+  Action is contaminated. Target identity uses a small **canonical resolver**
+  (lowercase, strip punctuation, leading imperative verbs like `please submit` /
+  `bring`, and determiners `the`/`a`/`an`) so `Please submit the permission form`,
+  `The permission form` and `permission form` resolve to the same target in
+  English. No stemming / NLP dependency.
 
 Benchmark-only failure codes `WRONG_NEGATION_TARGET` and
 `WRONG_CANCELLATION_TARGET` name the position-heuristic mistakes. The rule is

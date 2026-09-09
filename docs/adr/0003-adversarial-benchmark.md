@@ -64,6 +64,21 @@ before and pass after (8 critical false-verified → 0):
 Benchmark-only failure codes `WRONG_NEGATION_TARGET` / `WRONG_CANCELLATION_TARGET`
 were added (never in the production schema).
 
+A second review round found two more position/identity risks, fixed the same way
+(fixtures fail before, pass after; 6 → 0 critical):
+
+- **Correction cue coverage & from→to / gerund targets.** The resolver drops the
+  date explicitly marked as superseded and keeps the replacement, so `XからYに変更`,
+  `changed from X to Y`, and `…変更し、Yに実施します` resolve to Y — not the first
+  date and not the chronological max. The `mdRe` prefix guard was narrowed so a
+  separate date after `から` is not suppressed by an era mention earlier in the
+  sentence.
+- **English target identity.** A small canonical-target resolver (lowercase,
+  strip punctuation / leading imperative verbs / determiners) lets a negation bind
+  its named submit across `Please submit the permission form` / `The permission
+  form` / `permission form`, without contaminating unrelated Actions. No NLP
+  dependency; unresolved targets are never attached.
+
 ## Consequences
 
 - Downstream consumers get a measured guarantee that critical wrong Actions are

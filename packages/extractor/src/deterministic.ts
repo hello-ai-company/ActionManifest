@@ -1,4 +1,5 @@
 import {
+  locateEvidence,
   newActionId,
   type Action,
   type ActionKind,
@@ -140,13 +141,30 @@ function actionMatchesSubject(action: Action, subject: string): boolean {
   );
 }
 
-function mergeTemporal(event: Action, alt: Temporal, evidenceText: string): void {
+function mergeTemporal(event: Action, alt: Temporal, evidenceText: string, doc: CanonicalDocument): void {
   const t = event.temporal ?? { type: "unknown" as const, raw_text: alt.raw_text };
   const alternatives = [...(t.alternatives ?? []), alt];
   event.temporal = { ...t, alternatives };
   if (!event.evidence.some((e) => e.text === evidenceText)) {
-    event.evidence.push({ source_id: event.evidence[0]!.source_id, text: evidenceText });
+    event.evidence.push(locate(doc, event.evidence[0]!.source_id, evidenceText));
   }
+}
+
+/**
+ * Build an Evidence object for a quote, attributing page/bbox/section from the
+ * CanonicalDocument. When the quote cannot be located, locators are omitted —
+ * never fabricated (unknown stays unknown).
+ */
+function locate(doc: CanonicalDocument, sourceId: string, quote: string): Action["evidence"][number] {
+  const at = locateEvidence(doc, quote);
+  return {
+    source_id: sourceId,
+    text: quote,
+    ...(at?.page != null ? { page: at.page } : {}),
+    ...(at?.bbox ? { bbox: at.bbox } : {}),
+    ...(at?.section ? { section: at.section } : {}),
+    ...(at?.sourceReference ? { source_reference: at.sourceReference } : {}),
+  };
 }
 
 export function extractDeterministically(doc: CanonicalDocument): Action[] {
@@ -164,12 +182,8 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
     },
   ): Action => {
     const evidence = [
-      { source_id: doc.id, page: 1, text: partial.evidenceText },
-      ...(partial.extraEvidence ?? []).map((text) => ({
-        source_id: doc.id,
-        page: 1,
-        text,
-      })),
+      locate(doc, doc.id, partial.evidenceText),
+      ...(partial.extraEvidence ?? []).map((text) => locate(doc, doc.id, text)),
     ];
     return {
       id: newActionId(actions.length),
@@ -220,7 +234,7 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
         certainty: "high",
       };
       if (event) {
-        mergeTemporal(event, alt, sentence);
+        mergeTemporal(event, alt, sentence, doc);
         continue;
       }
       actions.push(
@@ -253,7 +267,7 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
           ...new Set([...(submit.conditions ?? []), "前回すでに提出した方は再提出不要", sentence.replace(/[。．.]$/, "")]),
         ];
         if (!submit.evidence.some((e) => e.text === sentence)) {
-          submit.evidence.push({ source_id: doc.id, page: 1, text: sentence });
+          submit.evidence.push(locate(doc, doc.id, sentence));
         }
         continue;
       }
@@ -289,7 +303,7 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
           ...new Set([...(target.conditions ?? []), sentence.replace(/[。．.]$/, "")]),
         ];
         if (!target.evidence.some((e) => e.text === sentence)) {
-          target.evidence.push({ source_id: doc.id, page: 1, text: sentence });
+          target.evidence.push(locate(doc, doc.id, sentence));
         }
         continue;
       }

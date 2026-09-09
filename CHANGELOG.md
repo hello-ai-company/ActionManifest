@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## Phase 2.3 — 2026-09-10
+
+Release Readiness & Developer Experience. No schema change (v0.1/v0.2 frozen); conformance suite unchanged (0.2.0); **no publish** — release-candidate preparation only. Package versions remain `0.1.0`; the first public version (`0.9.0-rc.1`) is selected in the release phase per `docs/RELEASING.md`.
+
+### Fixed (BLOCKER)
+
+- **`@actionmanifest/cli` was unpublishable**: `bin`/`main`/`types` pointed at `./src/index.ts` while `files` only shipped `dist` — an installed CLI could not start. Entry points now target `./dist/index.js` / `./dist/index.d.ts`, the shebang is preserved in the built entry, and compiled test files are excluded from `dist`.
+
+### Added
+
+- **Bundled suites in the CLI**: the normative conformance suite (65 universal vectors + meta-schemas) and the synthetic benchmark corpus ship inside the `@actionmanifest/cli` tarball, staged at pack time from the repository's single source of truth. `actionman conformance` and `actionman benchmark` run from any cwd with no repo checkout (package-relative resolution first). Custom `--root` suites must now be self-contained (manifest + meta-schemas + vectors); vectors validate against their own suite's meta-schemas.
+- **Release dry-run tooling**: `pnpm release:dry-run` packs all 10 public packages into `release-artifacts/` and writes `SHA256SUMS`, `release-manifest.json` (versions, hashes, engines, dependency graph, computed topological publish order — stops on cycles), and a CycloneDX 1.5 SBOM (first-party + full external production dependency closure). Pack-only: refuses `publish` argv, fails on registry credentials in the repo `.npmrc`, never touches the registry.
+- **`pnpm release:check`**: one command composing every existing gate (governance, lint, typecheck, schema, unit, integration, conformance, reference serialization, benchmarks, pack:check, docs examples, dry-run).
+- **Release Check CI workflow** (`.github/workflows/release-check.yml`): `contents: read` only, SHA-pinned actions, uploads dry-run artifacts with 7-day retention. No `id-token`, no publish — OIDC Trusted Publishing is documented for the future release phase.
+- **Executable docs examples** (`docs/examples/`): the README library flow and per-Action verification flow, typechecked and run by `pnpm docs:examples`.
+- **Docs**: `docs/RELEASING.md` (full runbook: preconditions, version axes, publish order, OIDC Trusted Publishing prerequisites, tag strategy, post-publish verify, rollback & partial-publish policy), `docs/RELEASE-CHECKLIST.md` (readiness scorecard), `docs/API.md` (entry-point reference), `SUPPORT.md`, ADR 0007 (lockstep versioning + exact Xberg pin + supply-chain policy), per-package READMEs for all 10 packages.
+
+### Hardened
+
+- **`pack:check` now covers all 10 public packages** (was 9, no CLI): per-tarball metadata assertions (license, repository.directory, engines, publishConfig.access, sideEffects), LICENSE+NOTICE presence, no compiled test artifacts, CLI bin wiring + shebang, Xberg containment, and a standalone consumer matrix — every library installed from its tarball with **declared dependencies only**, then `tsc --noEmit` AND a runtime import. New CLI install smoke: real offline `pnpm install` of the tarball into a fresh project, bin shim exercised from a foreign cwd (extract/validate/conformance/benchmark, `--json` purity, exit codes 0/1/2, no `@xberg-io` in the installed tree).
+- **Package metadata**: all public packages now carry `license: Apache-2.0`, `repository` with monorepo `directory`, `homepage`, `bugs`, `engines` (`>=20`; adapter-xberg `>=22`), `publishConfig.access: "public"`; libraries declare `sideEffects: false`. LICENSE + NOTICE are staged into every tarball at pack time (Apache-2.0 distribution requirement).
+- **`@xberg-io/xberg` pinned to exactly `1.1.3`** (was `^1.1.3`): the adapter contract was verified against the installed 1.1.3 types; a range would silently accept future native releases (ADR 0007).
+- **CLI**: `--version` reads package.json (no drift); `validate --json` without `--doc` emits pure JSON; errors stay on stderr with distinct exit codes (1 user/IO error, 2 verification/conformance-runner).
+- **SECURITY.md**: factual supported-versions (nothing published yet; RC prep), explicit scope (verification bypass, source leakage, CLI path handling with no-sandbox caveat, schema bypass, supply chain, remote Xberg opt-in), private reporting path.
+- **README**: honest install section (not-yet-published; commands verified by dry-run), npm package names, Node/engine matrix, `actionman` name note (unscoped npm name belongs to an unrelated project).
+
 ## Phase 2.2 — 2026-09-09
 
 Parser Independence & Xberg Reference Adapter. No schema change; conformance suite unchanged (0.2.0); no release.

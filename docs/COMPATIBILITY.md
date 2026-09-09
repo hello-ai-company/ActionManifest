@@ -8,6 +8,18 @@ Three version axes evolve independently. Never conflate them.
 | **Package version** (npm, per package) | `0.1.0` | The TypeScript reference implementation's API |
 | **Conformance suite version** | `0.1.0` | The official test vectors (`conformance/manifest.json`) |
 
+## Current state (Phase 2.3)
+
+| Component | Version | Notes |
+| --- | --- | --- |
+| All 10 npm packages (lockstep) | `0.1.0` — **unpublished**; first release `0.9.0-rc.1` | Lockstep/fixed versioning (ADR 0007) |
+| Manifest schema | `0.1.0` + `0.2.0` (both frozen, sha256-pinned) | `0.2.0` is current; `0.1.0` still accepted by readers |
+| CanonicalDocument schema | unversioned | additive-only evolution (integration boundary) |
+| Conformance suite | `0.2.0` | 65 universal vectors + 4 reference-serialization goldens |
+| Node.js | `>= 20` (9 packages + CLI); `>= 22` (`adapter-xberg` only) | developed/tested on Node 22 |
+| `@xberg-io/xberg` | exactly `1.1.3` | exact pin (ADR 0007); optional package only |
+| pnpm | `10.14.0` (`packageManager`) | workspace + pack/publish tooling |
+
 ## Schema compatibility
 
 - **Published schema versions are immutable.** `0.1.0` and `0.2.0` are frozen

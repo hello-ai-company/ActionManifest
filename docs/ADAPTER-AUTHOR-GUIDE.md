@@ -22,7 +22,11 @@ generic contract. Do NOT extend the central `AdapterInput` union — it covers
 only the built-in reference adapters (plain text, Docling JSON).
 
 ```ts
-import { ensureSourceHash, type CanonicalDocument } from "@actionmanifest/core";
+import {
+  assertCanonicalDocument,
+  ensureSourceHash,
+  type CanonicalDocument,
+} from "@actionmanifest/core";
 import type { DocumentAdapter } from "@actionmanifest/adapters";
 
 export interface MarkerInput {

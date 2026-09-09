@@ -25,7 +25,35 @@ dispositions, and calendar semantics (critical parser divergence = 0). See
 
 This is **not** a PDF summarizer, OCR engine, RAG stack, or task manager. It is a common layer other apps can trust.
 
-## Quick start
+## Install
+
+> **Release status: release-candidate preparation.** The `@actionmanifest/*`
+> packages are **not yet published to npm**. The first public release will be
+> `0.9.0-rc.1` (see [docs/RELEASING.md](docs/RELEASING.md)). Until then, use
+> the repository directly (below). The commands in this section are exactly
+> what will work once published — they are verified on every PR by packing
+> the tarballs and installing them into a fresh project
+> (`pnpm release:dry-run`).
+
+Once published:
+
+```bash
+# Library (pick what you need — all packages are Apache-2.0, Node >= 20)
+npm install @actionmanifest/core @actionmanifest/adapters @actionmanifest/extractor \
+  @actionmanifest/verifier @actionmanifest/exporters @actionmanifest/consumer
+
+# CLI (ships the conformance suite + benchmark corpus; works from any directory)
+npm install -g @actionmanifest/cli
+actionman --help
+npx actionman conformance        # run the official conformance suite
+```
+
+`@actionmanifest/adapter-xberg` (Node >= 22) is an **optional** package — the
+native Xberg binding is never installed unless you choose it. The unscoped
+npm name `actionman` belongs to an unrelated project; the CLI package is
+`@actionmanifest/cli` (its bin is `actionman`).
+
+## Quick start (from this repository)
 
 ```bash
 pnpm install
@@ -34,6 +62,11 @@ pnpm actionman extract ./examples/golden-excursion.txt --json
 pnpm actionman validate manifest.json --doc ./examples/golden-excursion.txt
 pnpm actionman benchmark
 ```
+
+The CLI commands — `extract`, `validate`, `benchmark`, `conformance` — behave
+identically from an installed package; see
+[apps/cli/README.md](apps/cli/README.md) for flags, exit codes, and
+stdout/stderr conventions.
 
 Verification is **per Action** (schema 0.2.0). Each Action is verified independently, so a document with one bad Action still yields trustworthy verified Actions for the rest:
 
@@ -95,29 +128,36 @@ Full list: [docs/PUBLIC-BOUNDARY.md](docs/PUBLIC-BOUNDARY.md).
 
 ## Packages
 
-| Path | Role |
-| --- | --- |
-| `packages/schema` | JSON Schema v0.2 (language-neutral contract; 0.1.0 still accepted) |
-| `packages/core` | Canonical Document, hashing, validation, errors |
-| `packages/adapters` | Plain Text (reference) + Docling JSON (reference adapter) |
-| `packages/adapter-xberg` | Xberg reference adapter (native dependency isolated here) |
-| `packages/temporal` | Japanese/English temporal + modality |
-| `packages/extractor` | ActionExtractor + providers |
-| `packages/verifier` | Deterministic evidence checks (no LLM) |
-| `packages/consumer` | Reference consumer policy (ready / review_required / blocked) |
-| `packages/exporters` | JSON + ICS (VEVENT / VTODO), verified-only by default |
-| `apps/cli` | `actionman` CLI (name is provisional) |
-| `integration/reference-consumer` | External-consumer integration tests (public imports only) |
-| `benchmark/fixtures` | Synthetic JP+EN fixtures incl. adversarial corpus (no real PII) |
+| Package (npm) | Path | Role |
+| --- | --- | --- |
+| `@actionmanifest/schema` | `packages/schema` | JSON Schema v0.2 (language-neutral contract; 0.1.0 still accepted) |
+| `@actionmanifest/core` | `packages/core` | Canonical Document, hashing, validation, errors |
+| `@actionmanifest/adapters` | `packages/adapters` | Plain Text (reference) + Docling JSON (reference adapter) |
+| `@actionmanifest/adapter-xberg` | `packages/adapter-xberg` | Xberg reference adapter (native dependency isolated here; Node >= 22) |
+| `@actionmanifest/temporal` | `packages/temporal` | Japanese/English temporal + modality |
+| `@actionmanifest/extractor` | `packages/extractor` | ActionExtractor + providers |
+| `@actionmanifest/verifier` | `packages/verifier` | Deterministic evidence checks (no LLM) |
+| `@actionmanifest/consumer` | `packages/consumer` | Reference consumer policy (ready / review_required / blocked) |
+| `@actionmanifest/exporters` | `packages/exporters` | JSON + ICS (VEVENT / VTODO), verified-only by default |
+| `@actionmanifest/cli` | `apps/cli` | `actionman` CLI — extract / validate / benchmark / conformance |
+| — (private) | `integration/reference-consumer` | External-consumer integration tests (public imports only) |
+| — (not a package) | `benchmark/fixtures` | Synthetic JP+EN fixtures incl. adversarial corpus (no real PII) |
+
+All public packages are Apache-2.0 and require Node >= 20 except
+`@actionmanifest/adapter-xberg` (>= 22, Xberg's own requirement). Package
+version ≠ schema version ≠ conformance suite version — see
+[docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
 ## Using ActionManifest as a library
 
 Third-party code integrates through the public package entry points only —
 the same surface exercised by `integration/reference-consumer` against the
-built packages:
+built packages. The snippets below are **executable**: they live in
+[`docs/examples/`](docs/examples/) and are typechecked and run in CI
+(`pnpm docs:examples`), so they cannot drift from the API.
 
 ```ts
-import { DoclingAdapter, PlainTextAdapter } from "@actionmanifest/adapters";
+import { PlainTextAdapter } from "@actionmanifest/adapters";
 import { extractActions } from "@actionmanifest/extractor";
 import { verifyManifest } from "@actionmanifest/verifier";
 import { classifyManifest } from "@actionmanifest/consumer";
@@ -129,6 +169,10 @@ const { manifest } = verifyManifest(candidate, doc);            // per-Action ve
 const report = classifyManifest(manifest);                      // ready / review_required / blocked
 const ics = exportIcs(manifest);                                // trust-qualified only; throws on manifest-level fatal
 ```
+
+Full runnable files: [docs/examples/library-quick-start.ts](docs/examples/library-quick-start.ts)
+and [docs/examples/per-action-verification.ts](docs/examples/per-action-verification.ts).
+Entry-point reference: [docs/API.md](docs/API.md).
 
 Export is consumption: `exportJson` / `exportIcs` share the consumer's trust
 predicate (`evaluateActionTrust` in core), so the default policy exports only
@@ -177,6 +221,32 @@ deterministic DTSTAMP via an injectable clock). See
 [docs/CONFORMANCE.md](docs/CONFORMANCE.md), and
 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) for the versioning policy
 (schema version ≠ package version ≠ suite version).
+
+## Known limitations & experimental markers
+
+Honest boundaries of the current `0.x` line:
+
+- **Everything is `0.x`.** No stability promise beyond what the conformance
+  suite pins ([docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)). Breaking API
+  changes are possible between minors and are called out in CHANGELOG.
+- **Languages**: the deterministic extractor and temporal parser target
+  **Japanese and English** notices; other languages are untested.
+- **Extraction quality is benchmarked, not perfect**: the deterministic
+  reference extractor scores ~88% action recall / ~72% precision on the
+  synthetic corpus (74 fixtures). The verifier — not the extractor — is the
+  safety layer: critical false-verified is gated at 0.
+- **`@actionmanifest/adapter-xberg` is experimental**: verified against
+  `@xberg-io/xberg` 1.1.3 exactly (pinned), Node >= 22, native binaries via
+  upstream optionalDependencies. Live native-runtime tests are opt-in
+  (`pnpm xberg:integration`), not part of default CI.
+- **Docling adapter** consumes the documented `export_to_dict()` subset;
+  upstream Docling format changes are handled by adapter updates, never Core
+  changes.
+- **The CLI is not a sandbox**: it reads only paths you pass it, but do not
+  run it as a privileged user on untrusted input.
+- **ICS export** is RFC 5545-conformant with documented, intentional
+  deviations ([docs/STANDARDS.md](docs/STANDARDS.md)).
+- **Not yet published to npm** — see Install above.
 
 ## Otayori vs this OSS
 

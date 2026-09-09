@@ -3,8 +3,9 @@ import {
   UnsupportedInputError,
   type CanonicalDocument,
 } from "@actionmanifest/core";
-import type { AdapterInput, DocumentAdapter } from "@actionmanifest/adapters";
+import type { DocumentAdapter } from "@actionmanifest/adapters";
 import { mapXbergResultToCanonical } from "./mapper.js";
+import type { XbergAdapterInput } from "./types.js";
 
 function isRemoteUri(uri: string): boolean {
   return /^https?:\/\//i.test(uri);
@@ -48,10 +49,10 @@ async function runXberg(input: XbergRuntimeInput): Promise<unknown> {
  * fetches remote URLs unless the caller explicitly set `allowRemote: true`,
  * and never invents pages/bboxes the upstream result does not carry.
  */
-export class XbergAdapter implements DocumentAdapter {
+export class XbergAdapter implements DocumentAdapter<XbergAdapterInput> {
   readonly id = "xberg";
 
-  canHandle(input: AdapterInput): boolean {
+  canHandle(input: XbergAdapterInput): boolean {
     return (
       input.kind === "xberg-uri" ||
       input.kind === "xberg-bytes" ||
@@ -59,7 +60,7 @@ export class XbergAdapter implements DocumentAdapter {
     );
   }
 
-  async toCanonical(input: AdapterInput): Promise<CanonicalDocument> {
+  async toCanonical(input: XbergAdapterInput): Promise<CanonicalDocument> {
     if (input.kind === "xberg-result") {
       return mapXbergResultToCanonical(input.payload, {
         sourceId: input.sourceId,
@@ -110,7 +111,7 @@ export class XbergAdapter implements DocumentAdapter {
       });
     }
     throw new UnsupportedInputError("XbergAdapter handles xberg-uri / xberg-bytes / xberg-result only", {
-      received: input.kind,
+      received: (input as { kind?: string }).kind,
     });
   }
 }

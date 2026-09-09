@@ -84,6 +84,17 @@ const site = join(work, "consumer");
 mkdirSync(tarballs);
 mkdirSync(join(site, "node_modules", "@actionmanifest"), { recursive: true });
 
+interface PackedPackage {
+  dir: string;
+  json: {
+    name: string;
+    version: string;
+    dependencies?: Record<string, string>;
+    peerDependencies?: Record<string, string>;
+  };
+}
+const packed = new Map<string, PackedPackage>();
+
 try {
   const packedNames: string[] = [];
 
@@ -116,6 +127,7 @@ try {
       exports?: Record<string, unknown>;
       files?: string[];
       dependencies?: Record<string, string>;
+      peerDependencies?: Record<string, string>;
     };
 
     if (packedJson.name !== `@actionmanifest/${pkg}`) fail(`${pkg}: unexpected name ${packedJson.name}`);
@@ -149,6 +161,7 @@ try {
       recursive: true,
     });
     packedNames.push(pkg);
+    packed.set(pkg, { dir: join(extractDir, "package"), json: packedJson });
     console.log(`  ✓ @actionmanifest/${pkg} (${tgz})`);
   }
 
@@ -201,7 +214,153 @@ console.log("PACK-SMOKE-OK");
   const out = run("node", ["smoke.mjs"], site);
   if (!out.includes("PACK-SMOKE-OK")) fail("runtime smoke did not complete");
 
-  console.log(`pack:check PASS (${packedNames.length} packages packed, verified, and runtime-smoked)`);
+  // Every public type reference in shipped .d.ts files must be declared in
+  // the package's own dependencies — a monorepo can accidentally resolve
+  // undeclared packages via hoisting, hiding the leak from consumers.
+  checkDeclaredTypeDeps(packed);
+
+  // Standalone consumer proof for the isolated native-adapter package:
+  // tarball + declared dependencies only, no monorepo hoisting.
+  standaloneConsumerCheck(packed);
+
+  console.log(
+    `pack:check PASS (${packedNames.length} packages packed, verified, runtime-smoked, type-deps declared, standalone consumer OK)`,
+  );
 } finally {
   rmSync(work, { recursive: true, force: true });
+}
+
+/** Scan shipped .d.ts for external package references and require them declared. */
+function checkDeclaredTypeDeps(packed: Map<string, PackedPackage>): void {
+  const refPattern = /(?:from|import)\s*\(?\s*["'](@[a-z0-9-]+\/[a-z0-9-]+)["']/gi;
+  for (const [pkg, info] of packed) {
+    const declared = new Set([
+      ...Object.keys(info.json.dependencies ?? {}),
+      ...Object.keys(info.json.peerDependencies ?? {}),
+    ]);
+    const distDir = join(info.dir, "dist");
+    if (!existsSync(distDir)) continue;
+    const stack = [distDir];
+    const files: string[] = [];
+    while (stack.length) {
+      const dir = stack.pop()!;
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, entry.name);
+        if (entry.isDirectory()) stack.push(p);
+        else if (entry.name.endsWith(".d.ts")) files.push(p);
+      }
+    }
+    for (const file of files) {
+      const content = readFileSync(file, "utf8");
+      for (const match of content.matchAll(refPattern)) {
+        const ref = match[1]!;
+        if (ref.startsWith("@actionmanifest/") && ref === info.json.name) continue;
+        if (!declared.has(ref)) {
+          fail(
+            `${pkg}: ${file.slice(file.indexOf("dist"))} references "${ref}" in its public types, but it is not declared in dependencies/peerDependencies`,
+          );
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Prove a packed package works standalone: extract the tarball plus exactly
+ * its declared dependencies (recursively), then typecheck and run a tiny
+ * consumer. No workspace hoisting involved.
+ */
+function standaloneConsumerCheck(packed: Map<string, PackedPackage>): void {
+  const target = "adapter-xberg";
+  const info = packed.get(target);
+  if (!info) fail(`${target} was not packed`);
+
+  const standalone = join(work, "standalone");
+  const modules = join(standalone, "node_modules");
+  mkdirSync(join(modules, "@actionmanifest"), { recursive: true });
+
+  const seen = new Set<string>();
+  const install = (name: string): void => {
+    if (seen.has(name)) return;
+    seen.add(name);
+    if (name.startsWith("@actionmanifest/")) {
+      const short = name.slice("@actionmanifest/".length);
+      const dep = packed.get(short);
+      if (!dep) fail(`${target}: undeclared internal dependency ${name}`);
+      cpSync(dep.dir, join(modules, "@actionmanifest", short), { recursive: true });
+      for (const d of Object.keys(dep.json.dependencies ?? {})) install(d);
+    } else {
+      // External dependency: link from the workspace store (offline).
+      // Note: some packages (e.g. Xberg) do not export ./package.json, so
+      // resolve the directory directly instead of require.resolve on it.
+      const direct = join(root, "node_modules", name);
+      let pkgDir: string | undefined;
+      if (existsSync(join(direct, "package.json"))) {
+        pkgDir = direct;
+      } else {
+        let dir = dirname(require.resolve(name));
+        while (dir !== dirname(dir)) {
+          if (existsSync(join(dir, "package.json"))) {
+            pkgDir = dir;
+            break;
+          }
+          dir = dirname(dir);
+        }
+      }
+      if (!pkgDir) fail(`cannot resolve installed package dir for ${name}`);
+      const dest = join(modules, name);
+      mkdirSync(dirname(dest), { recursive: true });
+      if (!existsSync(dest)) symlinkSync(pkgDir, dest, "dir");
+    }
+  };
+  for (const d of Object.keys(info.json.dependencies ?? {})) install(d);
+  cpSync(info.dir, join(modules, "@actionmanifest", target), { recursive: true });
+
+  writeFileSync(join(standalone, "package.json"), JSON.stringify({ type: "module" }), "utf8");
+  writeFileSync(
+    join(standalone, "tsconfig.json"),
+    JSON.stringify({
+      compilerOptions: {
+        module: "nodenext",
+        moduleResolution: "nodenext",
+        strict: true,
+        noEmit: true,
+        skipLibCheck: true,
+      },
+      include: ["consumer.ts"],
+    }),
+    "utf8",
+  );
+  writeFileSync(
+    join(standalone, "consumer.ts"),
+    `import { XbergAdapter, mapXbergResultToCanonical } from "@actionmanifest/adapter-xberg";
+const adapter = new XbergAdapter();
+const doc = mapXbergResultToCanonical(
+  { results: [{ content: "hello", mimeType: "text/plain" }], errors: [] },
+  { sourceId: "doc-1" },
+);
+void adapter;
+void doc;
+`,
+    "utf8",
+  );
+  writeFileSync(
+    join(standalone, "smoke.mjs"),
+    `import { XbergAdapter, mapXbergResultToCanonical } from "@actionmanifest/adapter-xberg";
+const doc = mapXbergResultToCanonical(
+  { results: [{ content: "hello", mimeType: "text/plain" }], errors: [] },
+  { sourceId: "doc-1" },
+);
+if (doc.text !== "hello") throw new Error("standalone mapper wrong");
+if (typeof XbergAdapter !== "function") throw new Error("standalone adapter missing");
+console.log("STANDALONE-OK");
+`,
+    "utf8",
+  );
+
+  const tscBin = join(root, "node_modules", ".bin", "tsc");
+  run(tscBin, ["--noEmit", "-p", "."], standalone);
+  const smoke = run("node", ["smoke.mjs"], standalone);
+  if (!smoke.includes("STANDALONE-OK")) fail("standalone runtime smoke did not complete");
+  console.log(`  ✓ @actionmanifest/${target} standalone consumer (declared deps only): tsc + runtime OK`);
 }

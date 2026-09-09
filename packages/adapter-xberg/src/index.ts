@@ -4,3 +4,9 @@ export {
   mapXbergResultToCanonical,
 } from "./mapper.js";
 export type { XbergMapOptions } from "./mapper.js";
+export type {
+  XbergAdapterInput,
+  XbergBytesInput,
+  XbergResultInput,
+  XbergUriInput,
+} from "./types.js";

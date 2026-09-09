@@ -163,13 +163,16 @@ function evidenceCheck(
         issue("EVIDENCE_NOT_IN_SOURCE", "Evidence quote was not found in the source document", action.id),
       );
     }
+    // Source before inference: the quote must also BELONG to the current
+    // canonical source. A wrong source_id is a per-Action provenance failure,
+    // not a warning — even if the quote happens to appear in the text.
     if (ev.source_id && ev.source_id !== manifest.source.id && ev.source_id !== doc.id) {
+      supported = false;
       issues.push(
         issue(
           "EVIDENCE_SOURCE_ID",
-          `Evidence source_id ${ev.source_id} does not match document`,
+          `Evidence source_id "${ev.source_id}" does not belong to the current canonical source (manifest "${manifest.source.id}" / document "${doc.id}")`,
           action.id,
-          "warning",
         ),
       );
     }

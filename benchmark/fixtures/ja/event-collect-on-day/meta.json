@@ -1,0 +1,9 @@
+{
+  "id": "event-collect-on-day",
+  "language": "ja",
+  "category": "event",
+  "tags": [
+    "pay"
+  ],
+  "golden": false
+}

@@ -1,0 +1,33 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "必要書類を提出する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-20",
+        "year": 2026,
+        "month": 10,
+        "day": 20,
+        "precision": "day",
+        "raw_text": "令和8年10月20日",
+        "deadline_qualifier": "postmark_valid",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "gov-postmark-valid",
+          "page": 1,
+          "text": "届は令和8年10月20日消印有効です。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

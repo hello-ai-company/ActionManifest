@@ -1,0 +1,10 @@
+{
+  "id": "event-rsvp-en",
+  "language": "en",
+  "category": "event",
+  "tags": [
+    "optional",
+    "reply"
+  ],
+  "golden": false
+}

@@ -1,0 +1,50 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "open house",
+      "modality": "optional",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-20",
+        "year": 2026,
+        "month": 10,
+        "day": 20,
+        "precision": "day",
+        "raw_text": "October 20, 2026",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "event-rsvp-en",
+          "page": 1,
+          "text": "You are invited to the open house on October 20, 2026."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    },
+    {
+      "id": "act_002",
+      "kind": "reply",
+      "title": "RSVP",
+      "modality": "optional",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "event-rsvp-en",
+          "page": 1,
+          "text": "RSVP is optional."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

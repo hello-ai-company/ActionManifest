@@ -1,0 +1,29 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "健康診断",
+      "modality": "unknown",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "approximate",
+        "month": 10,
+        "precision": "month",
+        "raw_text": "10月頃",
+        "certainty": "low"
+      },
+      "evidence": [
+        {
+          "source_id": "school-around-october",
+          "page": 1,
+          "text": "健康診断は10月頃の予定です。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

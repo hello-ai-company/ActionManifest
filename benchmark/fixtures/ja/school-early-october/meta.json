@@ -1,0 +1,10 @@
+{
+  "id": "school-early-october",
+  "language": "ja",
+  "category": "school",
+  "tags": [
+    "ambiguity",
+    "approximate"
+  ],
+  "golden": false
+}

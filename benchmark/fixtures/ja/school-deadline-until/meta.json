@@ -1,0 +1,9 @@
+{
+  "id": "school-deadline-until",
+  "language": "ja",
+  "category": "school",
+  "tags": [
+    "deadline"
+  ],
+  "golden": false
+}

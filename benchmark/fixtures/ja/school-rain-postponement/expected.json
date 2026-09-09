@@ -1,0 +1,32 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "校外学習を実施する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-12",
+        "year": 2026,
+        "month": 10,
+        "day": 12,
+        "precision": "day",
+        "raw_text": "令和8年10月12日",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "school-rain-postponement",
+          "page": 1,
+          "text": "令和8年10月12日に校外学習を実施します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

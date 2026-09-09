@@ -1,0 +1,33 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "sign",
+      "title": "sign the service contract",
+      "object": "service contract",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-09-30",
+        "year": 2026,
+        "month": 9,
+        "day": 30,
+        "precision": "day",
+        "raw_text": "September 30, 2026",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "contract-sign-en",
+          "page": 1,
+          "text": "Please sign the service contract and return it by September 30, 2026."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

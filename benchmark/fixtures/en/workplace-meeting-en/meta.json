@@ -1,0 +1,9 @@
+{
+  "id": "workplace-meeting-en",
+  "language": "en",
+  "category": "workplace",
+  "tags": [
+    "event"
+  ],
+  "golden": false
+}

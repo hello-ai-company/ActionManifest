@@ -1,0 +1,32 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "apartment inspection",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-11-02",
+        "year": 2026,
+        "month": 11,
+        "day": 2,
+        "precision": "day",
+        "raw_text": "November 2, 2026",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "housing-inspection-en",
+          "page": 1,
+          "text": "The annual apartment inspection will take place on November 2, 2026."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

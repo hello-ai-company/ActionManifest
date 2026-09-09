@@ -1,0 +1,23 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "変更届は提出不要",
+      "object": "変更届",
+      "modality": "prohibited",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "gov-no-submit-needed",
+          "page": 1,
+          "text": "今回の変更届は提出不要です。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "university-application-en",
+  "language": "en",
+  "category": "university",
+  "tags": [
+    "submit"
+  ],
+  "golden": false
+}

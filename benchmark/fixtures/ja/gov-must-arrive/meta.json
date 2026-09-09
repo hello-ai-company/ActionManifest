@@ -1,0 +1,10 @@
+{
+  "id": "gov-must-arrive",
+  "language": "ja",
+  "category": "government",
+  "tags": [
+    "deadline",
+    "must-arrive"
+  ],
+  "golden": false
+}

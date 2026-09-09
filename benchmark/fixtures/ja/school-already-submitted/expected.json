@@ -1,0 +1,26 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "同意書を提出する",
+      "object": "同意書",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "school-already-submitted",
+          "page": 1,
+          "text": "未提出の方のみ提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "conditions": [
+        "前回提出した方は不要"
+      ]
+    }
+  ]
+}

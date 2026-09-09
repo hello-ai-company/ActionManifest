@@ -1,0 +1,27 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "other",
+      "title": "会場地図の配布",
+      "modality": "unknown",
+      "actor": {
+        "certainty": "explicit",
+        "text": "参加者",
+        "role": "participant"
+      },
+      "evidence": [
+        {
+          "source_id": "event-participants-only",
+          "page": 1,
+          "text": "参加者のみ会場地図を配布します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "conditions": [
+        "参加者のみ"
+      ]
+    }
+  ]
+}

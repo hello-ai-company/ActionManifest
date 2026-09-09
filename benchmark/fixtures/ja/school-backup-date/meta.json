@@ -1,0 +1,9 @@
+{
+  "id": "school-backup-date",
+  "language": "ja",
+  "category": "event",
+  "tags": [
+    "conditional"
+  ],
+  "golden": false
+}

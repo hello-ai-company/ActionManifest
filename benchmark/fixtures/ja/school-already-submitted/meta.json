@@ -1,0 +1,9 @@
+{
+  "id": "school-already-submitted",
+  "language": "ja",
+  "category": "school",
+  "tags": [
+    "negation"
+  ],
+  "golden": false
+}

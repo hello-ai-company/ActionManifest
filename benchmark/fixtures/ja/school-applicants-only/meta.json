@@ -1,0 +1,10 @@
+{
+  "id": "school-applicants-only",
+  "language": "ja",
+  "category": "school",
+  "tags": [
+    "modality",
+    "optional"
+  ],
+  "golden": false
+}

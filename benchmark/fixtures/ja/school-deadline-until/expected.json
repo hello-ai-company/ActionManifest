@@ -1,0 +1,35 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "申込書を提出する",
+      "object": "申込書",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-05",
+        "month": 10,
+        "day": 5,
+        "year": 2026,
+        "precision": "day",
+        "raw_text": "10月5日まで",
+        "deadline_qualifier": "until",
+        "end": "2026-10-05",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "school-deadline-until",
+          "page": 1,
+          "text": "10月5日までに申込書を提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

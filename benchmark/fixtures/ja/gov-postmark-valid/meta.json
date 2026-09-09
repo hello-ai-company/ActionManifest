@@ -1,0 +1,10 @@
+{
+  "id": "gov-postmark-valid",
+  "language": "ja",
+  "category": "government",
+  "tags": [
+    "deadline",
+    "postmark"
+  ],
+  "golden": false
+}

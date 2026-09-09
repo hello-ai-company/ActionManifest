@@ -1,0 +1,10 @@
+{
+  "id": "school-around-october",
+  "language": "ja",
+  "category": "school",
+  "tags": [
+    "ambiguity",
+    "hallucination-guard"
+  ],
+  "golden": false
+}

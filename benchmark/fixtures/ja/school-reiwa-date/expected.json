@@ -1,0 +1,32 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "保護者会を実施する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-05",
+        "year": 2026,
+        "month": 10,
+        "day": 5,
+        "precision": "day",
+        "raw_text": "令和8年10月5日",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "school-reiwa-date",
+          "page": 1,
+          "text": "令和8年10月5日に保護者会を実施します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

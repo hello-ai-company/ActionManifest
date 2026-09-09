@@ -1,0 +1,30 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "運動会の詳細連絡",
+      "modality": "unknown",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "approximate",
+        "month": 10,
+        "decade": "early",
+        "precision": "decade_of_month",
+        "raw_text": "10月上旬",
+        "certainty": "medium"
+      },
+      "evidence": [
+        {
+          "source_id": "school-early-october",
+          "page": 1,
+          "text": "運動会の詳細は10月上旬にお知らせします。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

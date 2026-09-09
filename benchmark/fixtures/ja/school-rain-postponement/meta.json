@@ -1,0 +1,9 @@
+{
+  "id": "school-rain-postponement",
+  "language": "ja",
+  "category": "school",
+  "tags": [
+    "conditional"
+  ],
+  "golden": false
+}

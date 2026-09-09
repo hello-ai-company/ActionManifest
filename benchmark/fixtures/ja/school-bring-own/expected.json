@@ -1,0 +1,26 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "prepare",
+      "title": "鉛筆と消しゴムを持参する",
+      "modality": "required",
+      "actor": {
+        "certainty": "implicit",
+        "role": "participant"
+      },
+      "evidence": [
+        {
+          "source_id": "school-bring-own",
+          "page": 1,
+          "text": "図工の時間は各自持参で鉛筆と消しゴムを用意してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "conditions": [
+        "各自持参"
+      ]
+    }
+  ]
+}

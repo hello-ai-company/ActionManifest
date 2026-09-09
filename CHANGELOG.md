@@ -20,6 +20,13 @@ Adversarial Document Reliability Benchmark (evaluation only — no production sc
 - **Cancellation / reference / quotation / completed-past**: the deterministic extractor skips these sentences instead of emitting an active Action.
 - **Blanket contradiction**: a required submit negated for everyone ("提出は不要" / "no longer required") is a verification conflict; genuine eligibility / prior-submission exemptions still verify.
 
+### Fixed (PR #3 pre-merge hardening — three position-heuristic false-verified risks)
+
+- **Correction target is the replacement, not the chronological max**: `primaryTemporal` picks the dated temporal nearest the correction cue, correct for reverse corrections (`10/22→10/15`); unresolvable → omit.
+- **Cross-sentence cancellation**: a cancellation in a later sentence deactivates the matching earlier Action (by subject/object) while preserving unrelated Actions.
+- **Negation targets its subject, not the last Action**: a blanket negation binds to the Action it names (object/title identity); unresolvable → prohibited/omit, never contaminating an unrelated Action. `isExemption` narrowed so a blanket "提出は不要" is not misread as an exemption.
+- Added 8 stateful adversarial fixtures (68 total) and benchmark-only failure codes `WRONG_NEGATION_TARGET` / `WRONG_CANCELLATION_TARGET`.
+
 ## Phase 1.1 — 2026-09-09
 
 Per-Action Verification Semantics Hardening. Schema `0.2.0` (additive; `0.1.0` still accepted).

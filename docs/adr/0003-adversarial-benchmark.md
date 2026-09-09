@@ -45,6 +45,25 @@ surfaced concrete false-verified bugs, fixed minimally without expanding scope:
 
 No large refactor, no LLM, no new provider.
 
+### Pre-merge hardening (PR #3 review)
+
+Real code review found three position-heuristic false-verified risks the initial
+60-fixture corpus did not exercise. Fixed minimally, with fixtures that fail
+before and pass after (8 critical false-verified → 0):
+
+- **Correction target ≠ chronological max.** `primaryTemporal` selects the dated
+  temporal nearest the correction cue (the replacement target), correct for
+  reverse corrections; unresolvable → omit.
+- **Cross-sentence cancellation.** A cancellation sentence deactivates the
+  matching earlier Action (by subject/object) without touching unrelated Actions.
+- **Negation targets its subject, not the last Action.** A blanket negation binds
+  to the Action it names; unresolvable → prohibited/omit, never contaminating an
+  unrelated Action. `isExemption` narrowed so a blanket "提出は不要" is not misread
+  as an eligibility exemption.
+
+Benchmark-only failure codes `WRONG_NEGATION_TARGET` / `WRONG_CANCELLATION_TARGET`
+were added (never in the production schema).
+
 ## Consequences
 
 - Downstream consumers get a measured guarantee that critical wrong Actions are

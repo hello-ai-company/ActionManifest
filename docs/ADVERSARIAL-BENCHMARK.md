@@ -119,6 +119,31 @@ alongside the original Golden Fixture. CI enforces:
 - **Critical false-verified = 0** (across the full suite via `pnpm benchmark`)
 - Schema validation PASS
 
+## Stateful adversarial cases (must not rely on position)
+
+A trust layer must never verify an Action from a positional heuristic
+("the later date is the new one", "the last Action is the target"). Three
+stateful cases are covered explicitly:
+
+- **Correction / extension target** — the active date is the **replacement
+  target** (the dated temporal nearest the correction cue), not the chronological
+  maximum. This handles reverse corrections (`10/22 → 10/15`, `Oct 22 → Oct 15`).
+  If the target cannot be resolved safely, the date is omitted rather than
+  verified.
+- **Cross-sentence cancellation** — a cancellation in a later sentence deactivates
+  the matching Action created earlier (by event/subject/object), while unrelated
+  Actions in the same document are preserved.
+- **Negation / exemption target** — a blanket negation attaches to the Action it
+  names (by object/title identity), never to the last Action by position; an
+  eligibility / prior-submission exemption still narrows its own submit. If no
+  target is identifiable, the requirement is not resurrected and no unrelated
+  Action is contaminated.
+
+Benchmark-only failure codes `WRONG_NEGATION_TARGET` and
+`WRONG_CANCELLATION_TARGET` name the position-heuristic mistakes. The rule is
+always: **cannot identify the target safely → omission / unverified**, never
+**probably this → verified**.
+
 ## Adding an adversarial fixture
 
 1. Author `input.txt` (synthetic, no PII).

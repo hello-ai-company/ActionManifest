@@ -16,4 +16,17 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "error",
     },
   },
+  {
+    // Plain-JS Node scripts (e.g. scripts/pack-assets.mjs) are not covered by
+    // typescript-eslint's no-undef disable; declare the Node globals they use.
+    files: ["**/*.mjs"],
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        Buffer: "readonly",
+        URL: "readonly",
+      },
+    },
+  },
 );

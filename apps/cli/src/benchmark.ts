@@ -327,6 +327,9 @@ function rate(numerator: number, denominator: number): number {
 export async function defaultFixtureRoot(): Promise<string> {
   const here = dirname(fileURLToPath(import.meta.url));
   const candidates = [
+    // Bundled corpus inside the installed @actionmanifest/cli package
+    // (dist/../benchmark/fixtures) — works from any cwd.
+    join(here, "../benchmark/fixtures"),
     join(process.cwd(), "benchmark/fixtures"),
     join(here, "../../../benchmark/fixtures"),
     join(here, "../../../../benchmark/fixtures"),

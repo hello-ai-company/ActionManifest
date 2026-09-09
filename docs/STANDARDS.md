@@ -78,11 +78,30 @@ documents, UTF-8 encoded. No JSON5, no comments, no trailing commas.
 
 ### Frozen schema integrity
 
-`packages/schema/schemas/checksums.json` pins the sha256 of the frozen v0.1
-and v0.2 manifest schemas. `pnpm schema:validate` fails CI on any drift.
-The CanonicalDocument schema is intentionally **not** pinned: it is the
+Immutable means governance-enforced, not checksum-self-declared. Two layers:
+
+1. **Checksum pins** (`packages/schema/schemas/checksums.json`): sha256 of
+   the frozen v0.1/v0.2 manifest schemas, checked by `pnpm schema:validate`.
+   Detects working-tree corruption and anchors release artifact integrity —
+   but on its own could be "updated" to bless a change, so it is NOT the
+   immutability enforcement.
+2. **Git-diff frozen-path guard** (`pnpm governance:validate`, required in
+   CI): any diff touching `packages/schema/schemas/v0.1/**` or `v0.2/**`
+   fails, regardless of what happened to checksums.json. Schema changes MUST
+   ship as a new `schema_version`.
+
+The CanonicalDocument schema is intentionally **not** frozen: it is the
 unversioned integration boundary and evolves additively (see
 COMPATIBILITY.md).
+
+### Universal ICS conformance is semantic
+
+For conformance purposes (see CONFORMANCE.md), calendar output is compared
+**semantically**: component types and their normative properties (UID,
+DTSTART/DUE, SUMMARY, COMMENT, trust markers) must match, while property
+ordering, PRODID value, legal fold positions, DTSTAMP lexical details, and
+additional X-* properties are implementation freedom. Byte-exact output is a
+separate TypeScript reference-serialization regression gate.
 
 ## Normative language
 

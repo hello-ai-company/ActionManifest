@@ -64,13 +64,63 @@ Beyond per-vector results, the suite enforces that no `blocked` /
 `review_required` Action ever reaches the default executable export. This is
 the export-side analogue of the benchmark's critical false-verified = 0.
 
+## Post-review hardening (PR #5 final governance)
+
+Three review blockers were fixed after the initial Phase 2.1 review:
+
+### 5. Universal conformance ≠ reference serialization
+
+The first cut put byte-exact `.ics` goldens inside the `ics` profile, which
+would have required third-party implementations to reproduce our serializer
+byte-for-byte — property order, PRODID, fold positions included. RFC 5545
+explicitly allows those differences. The suite is now split:
+
+- **Universal profiles** (`schema`, `canonical-document`, `evidence`,
+  `trust`, `temporal`, `ics`) check semantics only. ICS vectors compare
+  parsed component/property sets via a minimal semantic reader
+  (`ics-semantic.ts`), never raw bytes.
+- **`reference-serialization`** keeps the byte-exact goldens as a
+  TypeScript-only regression gate (`pnpm conformance:reference`). It never
+  affects the universal result.
+
+Reference implementation is not the specification.
+
+### 6. Vector meta-schemas (normative test data is code)
+
+Vectors were previously trusted as raw JSON — a typo'd expectation field
+(`not_contians`) would have been silently ignored, letting implementations
+"pass" a vector that checks nothing. Every vector and the suite manifest are
+now validated against Draft 2020-12 meta-schemas (`conformance/schema/`)
+before execution; malformed vectors are runner/config errors (exit 2). The
+meta-schemas are part of the language-neutral contract — third parties can
+validate vectors without TypeScript types.
+
+### 7. Governance-enforced immutability and suite versioning
+
+Checksum pins alone are self-declared: editing `checksums.json` could bless a
+frozen-schema edit. Two CI guards now close this:
+
+- **Frozen-path guard**: any diff touching `packages/schema/schemas/v0.1/**`
+  or `v0.2/**` fails, regardless of checksum updates. (Checksums remain for
+  corruption detection and release integrity.)
+- **Suite version guard**: normative conformance contents changed +
+  unchanged `suite_version` → CI fails. Reference-serialization goldens are
+  exempt (they track the TypeScript implementation, not the contract).
+
+Suite version bumped 0.1.0 → 0.2.0 for this structure change (profile split +
+meta-schemas), per the revised bump policy in COMPATIBILITY.md (patch =
+editorial only; minor = new normative vectors/profiles; major = changed
+existing expectations).
+
 ## Consequences
 
 - "ActionManifest conformant" is now decidable for any implementation:
-  run the official vectors, get CONFORMANT/NON-CONFORMANT.
+  run the official vectors, get CONFORMANT/NON-CONFORMANT — without
+  reproducing our serializer byte-for-byte.
 - ICS output is RFC 5545-conformant at the byte level for Japanese/emoji/
   mixed content.
-- Schema immutability is machine-enforced (checksums), not just documented.
+- Schema immutability is governance-enforced (git-diff guard) with checksums
+  as a secondary corruption detector.
 - The suite is offline and deterministic: no network, no wall clock, no
   Python/Docling runtime.
 - Known deviations (no RRULE, no VTIMEZONE, no CalDAV) are documented in

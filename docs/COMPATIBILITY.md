@@ -46,12 +46,40 @@ While packages are `0.x.y`:
 
 ## Conformance suite versioning
 
-- Patch: new additive vectors that cannot fail conformant implementations.
-- Minor: new profiles, new expectation fields, clarifications that may fail
-  non-conformant implementations.
-- Major: changed expectations on existing vectors (requires an ADR).
-- A conformant implementation declaration SHOULD name the suite version, e.g.
-  "conformant with actionmanifest-conformance 0.1.0".
+The suite version is governance-enforced: any change to normative
+conformance contents (`conformance/vectors/**`, `conformance/schema/**`,
+`conformance/manifest.json`) with an unchanged `suite_version` fails CI
+(`pnpm governance:validate`). Reference-serialization goldens
+(`conformance/vectors/reference-serialization/**`) are NOT normative — they
+regress only the TypeScript implementation and never require a suite bump.
+
+Bump levels (suite is `0.x`; semver-compatible intent, no stability promise
+before 1.0):
+
+- **Patch**: editorial/non-normative fixes only (descriptions, comments,
+  formatting). MUST NOT change what passes or fails.
+- **Minor**: new normative vectors, additive expectation fields, new optional
+  profiles. Note honestly: a new normative vector CAN fail an implementation
+  that was previously conformant — that is the point of adding it. Minor
+  bumps signal "re-run the suite".
+- **Major**: changed expected semantics on an existing vector, or changed
+  required-profile semantics. Requires an ADR.
+
+A conformant implementation declaration SHOULD name the suite version, e.g.
+"conformant with actionmanifest-conformance 0.2.0".
+
+## Universal conformance vs reference serialization
+
+**Universal conformant** = all universal profiles (`schema`,
+`canonical-document`, `evidence`, `trust`, `temporal`, `ics`) PASS **and**
+critical false exported = 0. Universal ICS checks are semantic: property
+order, PRODID, legal fold positions, and DTSTAMP lexical details are
+implementation freedom (RFC 5545).
+
+**Reference serialization** is a separate regression gate for the TypeScript
+reference implementation (byte-exact goldens under a fixed clock). A
+reference-serialization failure MUST NOT mark a third-party implementation
+universally non-conformant. The TypeScript CI gates on both.
 
 ## Adapter compatibility
 

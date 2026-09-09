@@ -13,6 +13,13 @@ Standards & Conformance Hardening. No schema version change (v0.1/v0.2 frozen, n
 - **Frozen schema integrity**: `packages/schema/schemas/checksums.json` pins sha256 of the v0.1/v0.2 manifest schemas; `pnpm schema:validate` fails on drift. Draft 2020-12 `$schema` declaration asserted for all published schemas.
 - **Docs**: `docs/STANDARDS.md` (RFC 5545 mapping + known deviations, JSON Schema dialect), `docs/CONFORMANCE.md`, `docs/COMPATIBILITY.md` (schema ≠ package ≠ suite versioning, deprecation/extension policy), ADR 0005.
 
+### Hardened (PR #5 final governance review)
+
+- **Universal vs reference serialization split**: the `ics` profile is now semantic-only (component/property comparison via a minimal RFC 5545 reader — property order, PRODID, fold positions, DTSTAMP lexical details are implementation freedom). The 4 byte-exact golden vectors moved to a new `reference-serialization` profile: TypeScript regression only, never part of universal conformance. `actionman conformance` = universal; `--reference` / `pnpm conformance:reference` adds the regression gate. JSON report carries `scope` + `reference_serialization`.
+- **Vector self-validation**: `conformance/schema/` adds Draft 2020-12 meta-schemas (suite manifest + one per profile, `additionalProperties: false`). Every vector is validated before execution; typo'd/unknown expectation fields, missing ids, unknown profiles, and directory/profile mismatches are runner/config errors (exit 2). The meta-schemas are part of the language-neutral contract.
+- **Governance-enforced immutability** (`pnpm governance:validate`, CI-gated): frozen v0.1/v0.2 schema paths MUST NOT appear in a base diff — editing `checksums.json` can no longer bless a frozen edit (checksums remain as corruption detection). Normative conformance contents changed + unchanged `suite_version` → CI fails; reference-serialization goldens are exempt.
+- **Suite version 0.1.0 → 0.2.0** for the profile split + meta-schema introduction; bump policy revised (patch = editorial only; minor = new normative vectors/profiles; major = changed existing expectations).
+
 ### Fixed
 
 - **ICS folding is now RFC 5545 §3.1 octet-aware**: physical lines ≤ 75 UTF-8 octets (previously counted JS characters — a 74-char Japanese line was 222 octets), continuation lines SPACE-prefixed, multi-byte sequences never split, `unfold(fold(x)) === x`. Property-tested over 500 deterministic pseudo-random Unicode strings.

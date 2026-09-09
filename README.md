@@ -142,14 +142,23 @@ rationale: [docs/adr/0004-integration-contract.md](docs/adr/0004-integration-con
 ## Standards & conformance
 
 ActionManifest is an implementation-independent contract. The
-**conformance suite** (`conformance/vectors/`) holds language-neutral JSON
-vectors — hand-written from the spec, never from implementation output — so a
-Python/Rust/Go implementation passing them is *ActionManifest conformant*:
+**conformance suite** (`conformance/vectors/`) holds language-neutral,
+schema-validated JSON vectors — hand-written from the spec, never from
+implementation output — so a Python/Rust/Go implementation passing them is
+*ActionManifest conformant*. Universal conformance is **semantic** (no
+byte-identical ICS required); byte-exact goldens are a separate
+TypeScript-only regression gate (`reference-serialization`):
 
 ```bash
-pnpm conformance              # 65 vectors, 6 profiles
+pnpm conformance               # universal suite (65 vectors, 6 profiles)
+pnpm conformance:reference     # + TypeScript byte-exact regression (4 goldens)
 pnpm actionman conformance --json
 ```
+
+Frozen v0.1/v0.2 schemas are **governance-enforced**: sha256 pins plus a
+git-diff guard (`pnpm governance:validate`) that fails CI on any frozen-path
+change — editing the checksum file cannot bless a schema edit. Normative
+conformance changes require a `suite_version` bump, enforced the same way.
 
 ICS export is RFC 5545-conformant at the byte level (UTF-8 octet-aware
 folding, CRLF-only, injection-safe TEXT escaping, strict calendar dates,

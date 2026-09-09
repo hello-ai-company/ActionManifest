@@ -12,22 +12,33 @@ contract.
 
 ## Definitions
 
-- **Official conformance** is defined by the vectors under
-  `conformance/vectors/` plus the normative documents (SPECIFICATION.md,
-  INTEGRATION-CONTRACT.md, STANDARDS.md). It is NOT defined by TypeScript
-  internal functions.
+- **Official conformance** is defined by the normative documents
+  (SPECIFICATION.md, INTEGRATION-CONTRACT.md, STANDARDS.md) **plus the vector
+  meta-schemas (`conformance/schema/`)** plus the vectors
+  (`conformance/vectors/`). TypeScript interfaces are NOT normative.
+- **Universal conformance** is semantic and implementation-independent. It
+  never requires byte-identical output with the reference implementation.
+- **Reference serialization** (`reference-serialization` profile) is a
+  TypeScript-only regression gate: byte-exact `.ics` goldens under a fixed
+  clock. It is never part of universal conformance; a failure there does not
+  make a third-party implementation non-conformant.
 - **Implementations MAY create their own runner.** The reference runner only
   consumes public package entry points; it requires no private/internal
   utility.
 - **Vectors are normative.** They are hand-written from the specification.
   Never generate `expected` from implementation output. If the reference
   implementation fails a vector, the implementation is wrong.
+- **Normative test data is code.** Every vector is validated against its
+  profile meta-schema (Draft 2020-12, `additionalProperties: false`) before
+  execution. A malformed vector — typo'd field, unknown profile, missing
+  required key — is a runner/config error (exit 2), never a silent pass.
 
 ## Suite versioning
 
-The suite has its own version (`conformance/manifest.json` →
-`suite_version`, currently `0.1.0`), independent of the manifest schema
-versions and npm package versions. See COMPATIBILITY.md.
+The suite has its own version (`conformance/manifest.json` → `suite_version`,
+currently `0.2.0`), independent of the manifest schema versions and npm
+package versions. Changing normative contents without bumping the version
+fails CI (`pnpm governance:validate`). See COMPATIBILITY.md.
 
 ## Vector format
 
@@ -52,10 +63,14 @@ Vectors are plain JSON (RFC 8259), one file per vector:
 | `evidence` | `{ manifest, document }` | per-action `evidence_supported` / `page_refs_valid` / `passed` |
 | `trust` | `{ action, verification \| null }` | `ready`, `reason`, `disposition`, `exportable_default` |
 | `temporal` | `{ kind, temporal }` | `artifact` (VEVENT/VTODO/null), `executable_date` (YYYYMMDD/null), optional `comment_includes` |
-| `ics` | `{ manifest, options: { now, include? } }` | `golden` (byte-exact file), `contains`, `not_contains`, `artifact_counts`, `max_octets_per_line`, `crlf_only`, `uid_pattern`, `uid_not_contains`, or `export_error` |
+| `ics` (universal) | `{ manifest, options: { now, include? } }` | `components` (semantic component/property comparison), `contains`, `not_contains`, `artifact_counts`, `max_octets_per_line`, `crlf_only`, `uid_pattern`, `uid_not_contains`, or `export_error`. `golden` is FORBIDDEN here. |
+| `reference-serialization` | same as `ics` | `golden` (byte-exact file, required) plus any semantic checks |
 
-ICS vectors inject `options.now` so output is byte-deterministic. Golden
-`.ics` files live in `vectors/ics/golden/`.
+Universal `ics` comparison is semantic: `components` matches component types
+and property sets order-independently (property order, PRODID, fold position,
+DTSTAMP lexical details are not normative). Byte-exact goldens live only in
+`reference-serialization` (`vectors/reference-serialization/golden/`), used
+with an injected `options.now` clock.
 
 ## Reference runner
 

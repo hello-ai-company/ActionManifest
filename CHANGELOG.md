@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## Phase 2 — 2026-09-09
+
+Integration Contract & Reference Adapter. No production schema version change (manifest schemas v0.1/v0.2 untouched; CanonicalDocument schema gains an optional `mediaType` and a bbox convention annotation — additive only).
+
+### Added
+
+- **Integration contract** (`docs/INTEGRATION-CONTRACT.md`, ADR 0004): CanonicalDocument boundary, source identity chain (`CanonicalDocument.id/sourceHash` ↔ `Manifest.source.id/hash` ↔ `Evidence.source_id`), bbox convention (normalized 0..1, top-left origin), adapter error model, consumer and export policies, public package surface, Node support (>= 20, tested on 22).
+- **Canonical document validation** (`@actionmanifest/core`): `checkCanonicalDocument()` / `assertCanonicalDocument()` — empty content, duplicate page numbers, orphan chunk page refs, invalid source hash shape, out-of-convention bbox (error); text/pages mismatch (warning). `locateEvidence()` resolves quote → page/bbox/section/sourceReference.
+- **Adapter error taxonomy** (`@actionmanifest/core`): `UnsupportedInputError`, `MalformedAdapterPayloadError`, `MissingSourceIdError`, `InvalidPageError`, `InvalidBoundingBoxError`, `InvalidDocumentError` (all extend `DocumentAdapterError`), plus `ExportError` (`EXPORT_BLOCKED`).
+- **Docling reference adapter** (`@actionmanifest/adapters`): converts parsed Docling document JSON (texts/prov/pages, TOPLEFT/BOTTOMLEFT bboxes, section labels) into CanonicalDocument; bbox normalized only when coordinate origin and page size are known, otherwise omitted with a metadata warning. Phase 1 fixture shorthand remains supported. Explicit failures — never a silent empty document. New synthetic two-page fixture `examples/docling-school-notice.json`.
+- **Reference consumer** (`@actionmanifest/consumer`): `classifyManifest()` → `ready` / `review_required` / `blocked` from the per-Action receipt; manifest-level fatal blocks every Action.
+- **Integration suite** (`integration/reference-consumer`): imports only public entry points resolved against built dist; round-trip tests A–F; Integration Golden E2E (Docling JSON → adapter → extractor → verifier → consumer → exports). `pnpm integration:test`.
+- **Packaging verification**: `pnpm pack:check` packs all 8 public packages offline, asserts tarball contents/exports, and runtime-smokes the extracted tarballs. Nothing is published.
+
+### Changed
+
+- **Exporters default to verified-only** (`exportJson` / `exportIcs`): unverified Actions require explicit `include: "all"` (ICS marks them `X-ACTIONMANIFEST-STATUS`). A manifest-level fatal receipt throws `ExportError`. CLI `extract` gains `--include-unverified`.
+- **Extractor provenance**: evidence page/bbox/section are resolved from the CanonicalDocument via `locateEvidence()` instead of hardcoded page 1; sentences that are document headings are skipped as structure. Plain-text behavior and the 74-fixture benchmark are unchanged (critical false-verified = 0).
+
 ## Phase 1.2 — 2026-09-09
 
 Adversarial Document Reliability Benchmark (evaluation only — no production schema change).

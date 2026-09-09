@@ -6,12 +6,12 @@ School notices, invoices, contracts, and government mail are full of things huma
 
 ```
 Document / Email / OCR / Structured
-        ↓  adapter (plain text now; Docling later)
- Canonical Document
+        ↓  adapter (plain text; Docling JSON)
+Canonical Document
         ↓  extractor (model is replaceable)
- Candidate Action Manifest
+Candidate Action Manifest
         ↓  deterministic verifier
- Proposed Actions  →  human / app review  →  export (JSON / ICS)
+Proposed Actions  →  human / app review  →  export (JSON / ICS, verified-only by default)
 ```
 
 This is **not** a PDF summarizer, OCR engine, RAG stack, or task manager. It is a common layer other apps can trust.
@@ -90,13 +90,47 @@ Full list: [docs/PUBLIC-BOUNDARY.md](docs/PUBLIC-BOUNDARY.md).
 | --- | --- |
 | `packages/schema` | JSON Schema v0.2 (language-neutral contract; 0.1.0 still accepted) |
 | `packages/core` | Canonical Document, hashing, validation, errors |
-| `packages/adapters` | Plain Text (working), Docling (interface + fixtures) |
+| `packages/adapters` | Plain Text (reference) + Docling JSON (reference adapter) |
 | `packages/temporal` | Japanese/English temporal + modality |
 | `packages/extractor` | ActionExtractor + providers |
 | `packages/verifier` | Deterministic evidence checks (no LLM) |
-| `packages/exporters` | JSON + ICS (VEVENT / VTODO) |
+| `packages/consumer` | Reference consumer policy (ready / review_required / blocked) |
+| `packages/exporters` | JSON + ICS (VEVENT / VTODO), verified-only by default |
 | `apps/cli` | `actionman` CLI (name is provisional) |
+| `integration/reference-consumer` | External-consumer integration tests (public imports only) |
 | `benchmark/fixtures` | Synthetic JP+EN fixtures incl. adversarial corpus (no real PII) |
+
+## Using ActionManifest as a library
+
+Third-party code integrates through the public package entry points only —
+the same surface exercised by `integration/reference-consumer` against the
+built packages:
+
+```ts
+import { DoclingAdapter, PlainTextAdapter } from "@actionmanifest/adapters";
+import { extractActions } from "@actionmanifest/extractor";
+import { verifyManifest } from "@actionmanifest/verifier";
+import { classifyManifest } from "@actionmanifest/consumer";
+import { exportIcs, exportJson } from "@actionmanifest/exporters";
+
+const doc = await new PlainTextAdapter().toCanonical({ kind: "text", id: "notice-1", text });
+const candidate = await extractActions(doc);                    // deterministic by default
+const { manifest } = verifyManifest(candidate, doc);            // per-Action verification
+const report = classifyManifest(manifest);                      // ready / review_required / blocked
+const ics = exportIcs(manifest);                                // verified-only; throws on manifest-level fatal
+```
+
+Docling (Python) runs **upstream**: pass `DoclingDocument.export_to_dict()`
+JSON to `DoclingAdapter`. The TypeScript core never embeds Python, never
+spawns subprocesses, and CI needs no network.
+
+**Runtime support:** Node.js >= 20 (`engines`), developed and tested on
+Node 22.
+
+The normative contract — CanonicalDocument fields, source identity, bbox
+convention, adapter error model, consumer policy, export policy — is
+[docs/INTEGRATION-CONTRACT.md](docs/INTEGRATION-CONTRACT.md). Design
+rationale: [docs/adr/0004-integration-contract.md](docs/adr/0004-integration-contract.md).
 
 ## Otayori vs this OSS
 

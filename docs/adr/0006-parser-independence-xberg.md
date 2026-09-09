@@ -78,6 +78,48 @@ Adapter compatibility is not universal conformance. No normative vectors
 changed; suite stays 0.2.0; the frozen schemas are untouched (governance
 guard passes).
 
+## Post-review hardening (PR #6 review)
+
+Two blockers were fixed after review:
+
+### 7. Standalone package typing
+
+The first cut imported `DocumentAdapter`/`AdapterInput` types from
+`@actionmanifest/adapters` without declaring it in
+`@actionmanifest/adapter-xberg/package.json` — the monorepo resolved it via
+workspace hoisting, but a standalone `npm install @actionmanifest/adapter-xberg`
+would break TypeScript consumers. A package must declare every dependency its
+public contract exposes:
+
+- `@actionmanifest/adapters` is now a declared dependency (normal
+  `dependencies`, not peer: the types are always referenced by the public
+  contract, so there is no optional-usage scenario to justify peer).
+- `tsconfig` project references match (`../core`, `../adapters`).
+- `pack:check` gained two guards: (a) a **declaration dependency scan** —
+  every `@scope/pkg` reference in shipped `.d.ts` must be declared, for all
+  public packages; (b) a **standalone consumer proof** — the packed
+  adapter-xberg tarball plus exactly its declared dependencies in an isolated
+  tree must pass `tsc --noEmit` and a runtime smoke.
+
+### 8. Generic adapter contract (extensibility without central edits)
+
+The first cut added `xberg-uri`/`xberg-bytes`/`xberg-result` to the central
+`AdapterInput` union — meaning every future parser would have to edit the
+central package, contradicting parser independence. Now:
+
+- `DocumentAdapter<I = AdapterInput>` is generic; the default keeps built-in
+  adapters and consumers source-compatible.
+- `AdapterInput` covers only built-in reference adapters (plain text, Docling
+  JSON) and is documented as such.
+- Xberg input types (`XbergUriInput`, `XbergBytesInput`, `XbergResultInput`,
+  `XbergAdapterInput`) live in `@actionmanifest/adapter-xberg` and are
+  publicly exported.
+- A compile-only third-party proof (`ExampleMarkerAdapter` with its own
+  `MarkerInput`) is typechecked in CI without touching the central package.
+
+Final package graph: `core ← adapters ← adapter-xberg → xberg native`.
+Reverse dependencies are forbidden and guarded.
+
 ## Consequences
 
 - ActionManifest no longer depends on any single parser's semantics; the

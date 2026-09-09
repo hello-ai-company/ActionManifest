@@ -15,6 +15,50 @@ Your parser  →  YOUR adapter  →  CanonicalDocument  →  ActionManifest Core
 If your adapter emits Actions, deadlines, or "events" directly, it is
 bypassing Evidence — the verifier can no longer check anything. Don't.
 
+## Your own input type (never edit the central union)
+
+Third-party adapters define their **own** input type and implement the
+generic contract. Do NOT extend the central `AdapterInput` union — it covers
+only the built-in reference adapters (plain text, Docling JSON).
+
+```ts
+import { ensureSourceHash, type CanonicalDocument } from "@actionmanifest/core";
+import type { DocumentAdapter } from "@actionmanifest/adapters";
+
+export interface MarkerInput {
+  kind: "marker-json";
+  sourceId: string;
+  payload: unknown;
+}
+
+export class MarkerAdapter implements DocumentAdapter<MarkerInput> {
+  readonly id = "marker";
+
+  canHandle(input: MarkerInput): boolean {
+    return input.kind === "marker-json";
+  }
+
+  async toCanonical(input: MarkerInput): Promise<CanonicalDocument> {
+    // parse/normalize ONLY; validate output; fail closed on malformed input
+    return assertCanonicalDocument(ensureSourceHash({ id: input.sourceId, text: "…" }));
+  }
+}
+```
+
+A compile-only proof lives at
+`integration/reference-consumer/src/example-marker-adapter.ts` (typechecked
+in CI without any change to `@actionmanifest/adapters`).
+
+## Packaging rules
+
+- **Declare every dependency your public contract exposes.** If your `.d.ts`
+  references `@actionmanifest/adapters` (for `DocumentAdapter`), it MUST be
+  in your package.json `dependencies`. `pnpm pack:check` scans shipped
+  declarations and fails on undeclared references, and typechecks a
+  standalone consumer installed from the tarball with declared deps only.
+- Heavy or native parser dependencies belong in YOUR package, never in Core
+  or the central adapters package.
+
 ## Checklist
 
 1. **Stable source identity.** `CanonicalDocument.id` comes from the caller

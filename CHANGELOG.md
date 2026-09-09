@@ -18,6 +18,11 @@ Parser Independence & Xberg Reference Adapter. No schema change; conformance sui
 
 - `pnpm pack:check` now packs 9 packages, smoke-tests the Xberg pure mapper from the extracted tarball without loading native code, and fails if any `@xberg-io/*` dependency leaks into a non-adapter package.
 
+### Hardened (PR #6 review)
+
+- **Standalone package typing**: `@actionmanifest/adapter-xberg` now declares `@actionmanifest/adapters` (its public `.d.ts` references `DocumentAdapter`) with matching tsconfig project references. `pack:check` gained a declaration dependency scan (every external package referenced from shipped `.d.ts` must be declared) and a standalone consumer proof (tarball + declared deps only → `tsc --noEmit` + runtime smoke, no monorepo hoisting).
+- **Generic adapter contract**: `DocumentAdapter<I = AdapterInput>` — third-party adapters define their own input type without editing the central package. The central `AdapterInput` union now covers only built-in reference adapters (plain text, Docling); Xberg-specific input types (`XbergAdapterInput` / `XbergUriInput` / `XbergBytesInput` / `XbergResultInput`) moved into `@actionmanifest/adapter-xberg` and are publicly exported. Compile-only third-party proof (`ExampleMarkerAdapter`) typechecked in CI.
+
 ## Phase 2.1 — 2026-09-09
 
 Standards & Conformance Hardening. No schema version change (v0.1/v0.2 frozen, now checksum-pinned); no package release.

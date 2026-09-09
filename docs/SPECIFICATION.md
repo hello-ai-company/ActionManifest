@@ -1,13 +1,23 @@
-# Action Manifest Specification v0.1
+# Action Manifest Specification v0.2
 
-Schema version: `0.1.0`  
+Schema version: `0.2.0` (readers also accept `0.1.0`)
 JSON Schema: `packages/schema/src/action-manifest.schema.json`
 
 ## Compatibility policy
 
-- **Patch** (`0.1.x`): documentation, extra optional fields that old readers ignore (`additionalProperties: false` on v0.1 means patch MUST NOT add fields without a minor bump).
+- **Patch** (`0.x.y`): documentation, extra optional fields that old readers ignore (`additionalProperties: false` means patch MUST NOT add fields without a minor bump).
 - **Minor** (`0.x`): additive optional fields, new `x-*` enum values, new action kinds via `x-*`. Old manifests remain valid.
 - **Major** (`1.0.0+`): breaking field renames or required-field changes. A migrator MUST be documented.
+
+### 0.1.0 → 0.2.0 (Phase 1.1, additive minor)
+
+`0.2.0` adds only **optional** fields to `receipt.verification` (`passed`,
+`total_actions`, `verified_actions`, `failed_actions`, `warning_actions`,
+`actions[]`) plus the `ActionVerificationResult` def. Because these are optional
+under `additionalProperties: false`, adding them is a **minor** bump (not patch).
+Readers accept both `0.1.0` and `0.2.0`, so existing 0.1.0 manifests validate
+unchanged; writers emit `0.2.0`. Rationale in
+[adr/0002-per-action-verification.md](adr/0002-per-action-verification.md).
 
 Readers SHOULD ignore unknown `x-*` kinds/modalities. Writers SHOULD NOT emit unknown kinds except `x-*` extensions.
 
@@ -30,6 +40,10 @@ Eligibility (希望者のみ, 参加者のみ) is **not** a sixth modality. Enco
 ### actor.certainty
 
 `explicit | implicit | unknown`
+
+- **explicit** — the document names the actor. `actor.text` is **required** and MUST appear in that Action's evidence; otherwise `actor_supported=false` (`ACTOR_TEXT_MISSING` / `ACTOR_UNSUPPORTED`). Use for e.g. 「保護者」, 「参加を希望する方」, "applicants".
+- **implicit** — the actor is implied by context (e.g. 各自 / "each participant"). `actor.text` is optional and is NOT forced to match evidence verbatim.
+- **unknown** — the actor is not determinable. Never invent one; `actor_supported` is always true.
 
 ### temporal
 
@@ -65,9 +79,38 @@ Japanese era: 令和1=2019, 令和8=2026 (`year = 2018 + n`).
 
 Core sets `proposed` or `verified`. Apps set `accepted` / `rejected` / `exported`. Exporting does not mean the action was executed.
 
+### status (review lifecycle) — promotion is per Action
+
+`proposed → verified → accepted | rejected → exported`. The verifier promotes
+each Action **independently**: `proposed → verified` only when that Action's own
+checks pass AND there is no manifest-level fatal failure (source hash mismatch,
+empty document). A failing Action stays `proposed`; its `verification.passed`
+is `false`. No new failure status is introduced — `status=proposed` +
+`actions[].passed=false` expresses an unverified Action.
+
 ## Receipt
 
-See Architecture. Verification flags are **deterministic** in Phase 1.
+See Architecture. Verification flags are **deterministic** in Phase 1/1.1.
+
+`receipt.verification` carries both the v0.1 aggregate booleans (summary) and,
+from 0.2.0, per-Action results:
+
+```jsonc
+"verification": {
+  "passed": false,
+  "source_hash_matched": true,
+  "total_actions": 3, "verified_actions": 2, "failed_actions": 1, "warning_actions": 0,
+  "evidence_supported": false, "temporal_supported": false, "actor_supported": true,
+  "modality_supported": true, "negation_conflict": false, "page_refs_valid": true,
+  "actions": [
+    { "action_id": "act_001", "passed": true,  "evidence_supported": true,  "temporal_supported": true,  "actor_supported": true, "modality_supported": true, "negation_conflict": false, "page_refs_valid": true, "issues": [] },
+    { "action_id": "act_002", "passed": false, "evidence_supported": true,  "temporal_supported": false, "actor_supported": true, "modality_supported": true, "negation_conflict": false, "page_refs_valid": true, "issues": [ { "code": "TEMPORAL_UNSUPPORTED", "message": "…", "action_id": "act_002", "severity": "error" } ] }
+  ]
+}
+```
+
+APIs: `verificationPassed(flags)` → manifest-level full pass;
+`actionVerificationPassed(result)` → one Action's intrinsic pass.
 
 ## Errors (no silent fallback)
 
@@ -94,6 +137,6 @@ Retries: `ACTIONMAN_MAX_RETRIES` default **0**. No provider downgrade.
 
 ## Benchmark metrics
 
-Action Recall / Precision, Deadline / Actor / Modality accuracy, Evidence Match, **Hallucination Rate** (lower better), **Ambiguity Preservation** (higher better). Golden fixture MUST pass.
+Action Recall / Precision, Deadline / Actor / Modality accuracy, Evidence Match, **Hallucination Rate** (lower better), **Ambiguity Preservation** (higher better), **Verifier pass rate** (manifest-level) and **Action verify rate** (verified Actions / total Actions, action-level). Golden fixture MUST pass.
 
 Fixture layout (50+ ready): `benchmark/fixtures/{ja,en}/<id>/{input.txt,expected.json,meta.json}`.

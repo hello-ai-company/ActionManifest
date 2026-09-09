@@ -9,6 +9,7 @@ Action Manifest is a **common extraction-and-verification layer**. Downstream ap
 3. **Extraction is not execution.** Core, extractor, verifier, and exporters MUST NOT call Google Calendar, Gmail, Todoist, or any execution API. Exporters emit files (JSON, ICS). Lifecycle: `proposed → verified → accepted | rejected → exported`.
 4. **Models are replaceable.** `LlmProvider` is the seam. Phase 1: `deterministic` (default, offline) and `openai-compatible`. No silent fallback between providers.
 5. **Documents are replaceable.** Core understands `CanonicalDocument` only — never PDF bytes. Adapters produce canonical form. Docling/Marker/PaddleOCR are upstream engines, not in-tree competitors.
+6. **Verification is per Action** (Phase 1.1). Each Action is verified independently from its own Evidence/Temporal/Actor/Modality/Negation. One Action's failure MUST NOT invalidate an unrelated Action. The manifest-level verdict is a *summary* of per-Action results, not a gate that blocks valid Actions. See [adr/0002-per-action-verification.md](adr/0002-per-action-verification.md).
 
 ## Pipeline
 
@@ -43,15 +44,27 @@ Rationale: OCR and layout engines disagree. Normalizing once at the adapter boun
 Not W3C PROV-O. A small Receipt is attached so a future mapping is possible:
 
 - `extraction`: `provider`, `model`, `extractor_version`, `schema_version`, `created_at`
-- `verification`: boolean flags (`evidence_supported`, `temporal_supported`, `actor_supported`, `modality_supported`, `source_hash_matched`, `negation_conflict`, `page_refs_valid`) + `issues[]`
+- `verification` (v0.1 summary, still present): boolean flags (`evidence_supported`, `temporal_supported`, `actor_supported`, `modality_supported`, `source_hash_matched`, `negation_conflict`, `page_refs_valid`) + `issues[]`. Each boolean is the AND-aggregate across Actions (`negation_conflict` is the OR-aggregate).
+- `verification` (v0.2 additive, optional): `passed`, `total_actions`, `verified_actions`, `failed_actions`, `warning_actions`, and `actions[]` — a per-Action `ActionVerificationResult` array. Old readers ignore these; new readers get per-Action trust.
 
 PROV-O mapping sketch: extraction activity used a software agent (provider/model); verification is a later activity with generated `wasDerivedFrom` Evidence entities.
+
+### Fatal vs per-Action failures
+
+| Class | Examples | Effect |
+| --- | --- | --- |
+| **Manifest-level fatal** (cross-cutting) | source hash mismatch, empty canonical document, schema-invalid / corrupted manifest | Document/manifest is untrustworthy → no Action is promoted to `verified`, even ones that pass intrinsically. |
+| **Per-Action failure** | evidence not in source, temporal hallucination, actor unsupported, modality unsupported, negation conflict, invalid page ref for one Action | Only that Action fails; other Actions are unaffected. |
+
+`source_hash_matched` is a summary/fatal signal; a per-Action result never folds it in, so `actions[].passed` always reflects that Action's intrinsic verdict.
 
 ## Verifier (Phase 1)
 
 Deterministic only. An LLM-as-judge is a **future extension point**, not used here.
 
-Checks: evidence exists; quote appears in source; declared dates/actors/modalities are supported by evidence; negation vs required-without-exemption; source hash; page refs.
+Checks (run **per Action**): evidence exists; quote appears in source; declared dates/actors/modalities are supported by evidence; negation vs required-without-exemption; page refs. Source hash is a manifest-level (fatal) check. Status promotion is per Action: `proposed → verified` only when that Action passes AND there is no manifest-level fatal failure. `verificationPassed()` reports the manifest-level verdict; `actionVerificationPassed()` reports a single Action's.
+
+Actor rule (Phase 1.1): `explicit` requires `actor.text` present **and** found in that Action's evidence; `implicit` text is optional and not forced to match; `unknown` never invents an actor.
 
 ## Trust order
 

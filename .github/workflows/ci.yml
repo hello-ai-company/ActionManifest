@@ -18,7 +18,10 @@ jobs:
         # Version comes from package.json "packageManager" (do not also set `version` here).
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Default CI lane is Node 20 (the supported floor for all packages
+          # except the optional Xberg bridge). The native Xberg runtime is
+          # covered by opt-in `pnpm xberg:integration` on Node 22+ only.
+          node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Ensure esbuild binary

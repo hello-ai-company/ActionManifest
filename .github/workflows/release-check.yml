@@ -48,7 +48,10 @@ jobs:
         # Version comes from package.json "packageManager" (do not also set `version` here).
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          # Default lane is Node 20 (supported floor; CTO Round-1). The
+          # adapter-xberg native bridge stays Node >= 22 and is exercised by
+          # opt-in `pnpm xberg:integration`, not by this workflow.
+          node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Ensure esbuild binary

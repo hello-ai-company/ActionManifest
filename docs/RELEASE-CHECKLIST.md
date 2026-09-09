@@ -32,8 +32,10 @@ Last verified: Phase 2.3 (against `main` tip
 | 13 | `license: Apache-2.0`, `repository.directory`, `homepage`, `bugs` set | PASS |
 | 14 | `sideEffects: false` on libraries; absent on CLI | PASS |
 | 15 | Public `.d.ts` external references all declared as dependencies | PASS (declaration scan) |
-| 16 | `@xberg-io/xberg` pinned exactly (1.1.3) | PASS (ADR 0007) |
+| 16 | `@xberg-io/xberg` pinned exactly (1.1.3), enforced by gate | PASS (ADR 0007; `pack:check` fails on any range operator) |
 | 17 | No circular package dependencies; publish order computed | PASS (`release:dry-run` stops on cycles) |
+| 17a | Node engines separation: all packages >= 20, adapter-xberg >= 22; default CI on Node 20 | PASS (full `release:check` verified on Node 20.20.2; `xberg:integration` opt-in Node 22+) |
+| 17b | Experimental markers: Xberg Layer B bridge triple-marked (README + COMPATIBILITY + JSDoc `@experimental`); Layer A labeled stable structural mapper | PASS |
 
 ## Safety gates (unchanged by this phase)
 

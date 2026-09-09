@@ -2,6 +2,12 @@
 
 **This repository is public. Every commit is public.**
 
+> **Terminology (CTO Round-1, PA-20260910-001):** "Publishable" below means
+> *allowed to be committed to this public GitHub repository*. It is **not**
+> permission to publish to npm, cut tags, or create GitHub Releases — release
+> execution is a separate, gated phase ([RELEASING.md](RELEASING.md)). This
+> boundary is HARD and must not be weakened.
+
 PA-dev-meeting HARD gates (ENG-20260909-001 / closed PA-20260909-001):
 
 1. Only OSS core code, **synthetic** Golden fixtures, and architecture/spec docs.

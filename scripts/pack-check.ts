@@ -481,6 +481,13 @@ try {
       if (dep.startsWith("@xberg-io/") && !XBERG_ALLOWED_PACKAGES.has(pkg.name)) {
         fail(`${pkg.name}: Xberg dependency leaked into a non-adapter package (${dep})`);
       }
+      // CTO Round-1: the native Xberg binding must be an EXACT pin — no
+      // caret/tilde/range. The adapter contract is verified against the
+      // installed 1.1.3 types; a range would silently accept future native
+      // releases at install time (ADR 0007).
+      if (dep === "@xberg-io/xberg" && !/^\d+\.\d+\.\d+$/.test(range)) {
+        fail(`${pkg.name}: @xberg-io/xberg must be an exact pin (e.g. 1.1.3), got ${JSON.stringify(range)}`);
+      }
       // The CLI must stay Node 20 capable: it must not pull the native
       // Xberg adapter (Node >= 22) as a default dependency.
       if (pkg.kind === "cli" && dep === "@actionmanifest/adapter-xberg") {

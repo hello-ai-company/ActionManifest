@@ -185,8 +185,9 @@ Docling (Python) runs **upstream**: pass `DoclingDocument.export_to_dict()`
 JSON to `DoclingAdapter`. The TypeScript core never embeds Python, never
 spawns subprocesses, and CI needs no network.
 
-**Runtime support:** Node.js >= 20 (`engines`), developed and tested on
-Node 22.
+**Runtime support:** Node.js >= 20 (`engines`); default CI runs on Node 20.
+The optional `@actionmanifest/adapter-xberg` native bridge requires
+Node >= 22 and is covered by opt-in `pnpm xberg:integration` (Node 22+).
 
 The normative contract — CanonicalDocument fields, source identity, bbox
 convention, adapter error model, consumer policy, export policy — is

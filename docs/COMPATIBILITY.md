@@ -20,6 +20,21 @@ Three version axes evolve independently. Never conflate them.
 | `@xberg-io/xberg` | exactly `1.1.3` | exact pin (ADR 0007); optional package only |
 | pnpm | `10.14.0` (`packageManager`) | workspace + pack/publish tooling |
 
+## Stability & experimental markers (0.x line)
+
+The whole line is `0.x` and **unpublished** until `0.9.0-rc.1`: no stability
+promise beyond what the conformance suite pins. Within that line, markers are
+applied in three places (package README + this document + JSDoc):
+
+| Surface | Stability | Marking |
+| --- | --- | --- |
+| 9 core packages (schema, core, temporal, adapters, extractor, verifier, exporters, consumer, cli) | `0.x` — normal pre-1.0 policy (this document) | README "Known limitations"; no per-API marker |
+| `@actionmanifest/adapter-xberg` Layer A — `mapXbergResultToCanonical` | **Stable structural mapper** (pure; no native binding, no network) — normal 0.x policy | README stability split; JSDoc stability note |
+| `@actionmanifest/adapter-xberg` Layer B — `XbergAdapter` runtime bridge (`xberg-uri` / `xberg-bytes`, dynamic NAPI import) | **Experimental** — may change between 0.x minors; Node >= 22; live tests opt-in (`pnpm xberg:integration`, Node 22+) | README stability split; this table; JSDoc `@experimental` on `XbergAdapter` |
+
+Default CI runs on **Node 20** (all packages except the Xberg bridge paths);
+`pnpm xberg:integration` is the opt-in Node 22+ lane for the native runtime.
+
 ## Schema compatibility
 
 - **Published schema versions are immutable.** `0.1.0` and `0.2.0` are frozen

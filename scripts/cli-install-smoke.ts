@@ -67,14 +67,25 @@ export function cliInstallSmoke(input: CliSmokeInput): void {
           name: "actionman-cli-consumer-smoke",
           private: true,
           type: "module",
+          // Pin the package manager so the smoke is deterministic across
+          // environments (corepack provisions exactly this pnpm).
+          packageManager: "pnpm@10.14.0",
           dependencies: { "@actionmanifest/cli": `file:${input.cliTarball}` },
-          pnpm: { overrides },
         },
         null,
         2,
       ),
       "utf8",
     );
+    // Overrides live in pnpm-workspace.yaml — the supported settings home in
+    // pnpm 10+ (the package.json "pnpm" field is ignored by newer pnpm).
+    const overridesYaml =
+      "overrides:\n" +
+      Object.entries(overrides)
+        .map(([name, spec]) => `  ${JSON.stringify(name)}: ${JSON.stringify(spec)}`)
+        .join("\n") +
+      "\n";
+    writeFileSync(join(work, "pnpm-workspace.yaml"), overridesYaml, "utf8");
 
     // Install offline-first: every @actionmanifest/* package always resolves
     // from the local tarballs via the overrides above — never from a registry.

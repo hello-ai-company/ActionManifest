@@ -1,0 +1,96 @@
+{
+  "schema_name": "DoclingDocument",
+  "version": "1.0.0",
+  "name": "synthetic-autumn-excursion-notice",
+  "origin": {
+    "mimetype": "application/pdf",
+    "filename": "synthetic-autumn-excursion-notice.pdf",
+    "binary_hash": 1234567890
+  },
+  "body": { "self_ref": "#/body", "children": [] },
+  "furniture": { "self_ref": "#/furniture", "children": [] },
+  "texts": [
+    {
+      "self_ref": "#/texts/0",
+      "label": "title",
+      "text": "保護者向け行事案内",
+      "orig": "保護者向け行事案内",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": { "l": 72, "t": 72, "r": 540, "b": 108, "coord_origin": "TOPLEFT" },
+          "charspan": [0, 9]
+        }
+      ]
+    },
+    {
+      "self_ref": "#/texts/1",
+      "label": "paragraph",
+      "text": "令和8年10月15日に秋の遠足を実施します。",
+      "orig": "令和8年10月15日に秋の遠足を実施します。",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": { "l": 72, "t": 140, "r": 540, "b": 164, "coord_origin": "TOPLEFT" },
+          "charspan": [0, 20]
+        }
+      ]
+    },
+    {
+      "self_ref": "#/texts/2",
+      "label": "paragraph",
+      "text": "雨天の場合は10月22日に延期します。",
+      "orig": "雨天の場合は10月22日に延期します。",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": { "l": 72, "t": 172, "r": 540, "b": 196, "coord_origin": "TOPLEFT" },
+          "charspan": [0, 16]
+        }
+      ]
+    },
+    {
+      "self_ref": "#/texts/3",
+      "label": "section_header",
+      "text": "提出物と持ち物",
+      "orig": "提出物と持ち物",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": { "l": 72, "t": 72, "r": 540, "b": 100, "coord_origin": "TOPLEFT" },
+          "charspan": [0, 7]
+        }
+      ]
+    },
+    {
+      "self_ref": "#/texts/4",
+      "label": "paragraph",
+      "text": "参加を希望する方は、10月5日までに参加確認票を提出してください。",
+      "orig": "参加を希望する方は、10月5日までに参加確認票を提出してください。",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": { "l": 72, "t": 128, "r": 540, "b": 152, "coord_origin": "TOPLEFT" },
+          "charspan": [0, 30]
+        }
+      ]
+    },
+    {
+      "self_ref": "#/texts/5",
+      "label": "list_item",
+      "text": "当日は弁当、水筒、タオルを持参してください。",
+      "orig": "当日は弁当、水筒、タオルを持参してください。",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": { "l": 90, "t": 180, "r": 540, "b": 204, "coord_origin": "TOPLEFT" },
+          "charspan": [0, 21]
+        }
+      ]
+    }
+  ],
+  "pages": {
+    "1": { "page_no": 1, "size": { "width": 612, "height": 792 } },
+    "2": { "page_no": 2, "size": { "width": 612, "height": 792 } }
+  }
+}

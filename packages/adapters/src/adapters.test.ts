@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DoclingAdapter, PlainTextAdapter } from "./index.js";
-import { NotImplementedError } from "@actionmanifest/core";
+import { DoclingAdapter, PlainTextAdapter, getAdapter, resolveAdapter } from "./index.js";
+import { DocumentAdapterError, InvalidDocumentError } from "@actionmanifest/core";
 
 describe("adapters", () => {
   it("plain text produces hashed canonical document", async () => {
@@ -10,11 +10,18 @@ describe("adapters", () => {
       text: "hello",
     });
     expect(doc.text).toBe("hello");
+    expect(doc.mediaType).toBe("text/plain");
     expect(doc.sourceHash).toMatch(/^[a-f0-9]{64}$/);
     expect(doc.pages?.[0]?.pageNumber).toBe(1);
   });
 
-  it("docling fixture maps texts/pages", async () => {
+  it("plain text rejects empty content instead of returning an empty document", async () => {
+    await expect(
+      new PlainTextAdapter().toCanonical({ kind: "text", id: "empty", text: "" }),
+    ).rejects.toBeInstanceOf(InvalidDocumentError);
+  });
+
+  it("docling fixture maps texts/pages (Phase 1 shorthand stays supported)", async () => {
     const doc = await new DoclingAdapter().toCanonical({
       kind: "docling-json",
       id: "d1",
@@ -28,12 +35,20 @@ describe("adapters", () => {
     expect(doc.metadata?.adapter).toBe("docling");
   });
 
-  it("docling without payload is not implemented (no live OCR)", async () => {
+  it("docling empty payload fails explicitly (no silent empty document)", async () => {
     await expect(
       new DoclingAdapter().toCanonical({
         kind: "docling-json",
         payload: { name: "empty" },
       }),
-    ).rejects.toBeInstanceOf(NotImplementedError);
+    ).rejects.toBeInstanceOf(InvalidDocumentError);
+  });
+
+  it("registry resolves adapters and rejects unknown ids", () => {
+    expect(getAdapter("plain-text").id).toBe("plain-text");
+    expect(getAdapter("docling").id).toBe("docling");
+    expect(() => getAdapter("nope")).toThrowError(DocumentAdapterError);
+    expect(resolveAdapter({ kind: "text", text: "x" }).id).toBe("plain-text");
+    expect(resolveAdapter({ kind: "docling-json", payload: {} }).id).toBe("docling");
   });
 });

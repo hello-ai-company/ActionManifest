@@ -15,12 +15,18 @@ export function resolveAdapter(input: AdapterInput): DocumentAdapter {
   const found = registry.find((a) => a.canHandle(input));
   if (!found) {
     throw new DocumentAdapterError(
-      `No adapter for input kind=${input.kind}. Phase 1 supports plain text and Docling JSON fixtures only.`,
+      `No adapter for input kind=${input.kind}. Supported inputs: plain text (text/path) and parsed Docling JSON (docling-json).`,
     );
   }
   return found;
 }
 
 export { PlainTextAdapter } from "./plain-text.js";
-export { DoclingAdapter, mapDoclingFixture } from "./docling.js";
+export {
+  DoclingAdapter,
+  DOCLING_ADAPTER_VERSION,
+  mapDoclingDocument,
+  mapDoclingFixture,
+} from "./docling.js";
+export type { DoclingMapOptions } from "./docling.js";
 export type { AdapterInput, DocumentAdapter } from "./types.js";

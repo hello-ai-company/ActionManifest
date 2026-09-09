@@ -37,7 +37,9 @@ function fail(message: string): never {
 function run(cmd: string, args: string[], cwd: string): string {
   const r = spawnSync(cmd, args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   if (r.status !== 0) {
-    fail(`${cmd} ${args.join(" ")} exited ${r.status}: ${r.stderr ?? ""}`);
+    fail(
+      `${cmd} ${args.join(" ")} exited ${r.status}: ${(r.stderr ?? "").trim() || (r.stdout ?? "").trim()}`,
+    );
   }
   return r.stdout ?? "";
 }
@@ -74,7 +76,17 @@ export function cliInstallSmoke(input: CliSmokeInput): void {
       "utf8",
     );
 
-    run("pnpm", ["install", "--offline", "--ignore-scripts"], work);
+    // Install offline-first: every @actionmanifest/* package always resolves
+    // from the local tarballs via the overrides above — never from a registry.
+    // External deps (commander/ajv/…) come from the local pnpm store. A cold
+    // CI runner restores the store but not the packument metadata cache, so
+    // version *resolution* may need the network there; fall back to
+    // --prefer-offline (store tarballs still win; only metadata may be fetched).
+    const offline = probe("pnpm", ["install", "--offline", "--ignore-scripts"], work);
+    if (offline.status !== 0) {
+      console.log("  … offline install unavailable (cold metadata cache); retrying --prefer-offline");
+      run("pnpm", ["install", "--prefer-offline", "--ignore-scripts"], work);
+    }
 
     const bin = join(work, "node_modules", ".bin", "actionman");
     if (!existsSync(bin)) fail("node_modules/.bin/actionman was not created by install");

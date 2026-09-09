@@ -50,7 +50,11 @@ program
   .option("--out <file>", "write JSON manifest to a file")
   .option("--provider <name>", "deterministic | openai", "deterministic")
   .option("--skip-verify", "do not run the deterministic verifier")
-  .action(async (file: string, opts: { json?: boolean; ics?: string; out?: string; provider?: string; skipVerify?: boolean }) => {
+  .option(
+    "--include-unverified",
+    "export proposed/unverified actions too (default: verified-only)",
+  )
+  .action(async (file: string, opts: { json?: boolean; ics?: string; out?: string; provider?: string; skipVerify?: boolean; includeUnverified?: boolean }) => {
     try {
       const adapter = resolveAdapter({ kind: "path", path: resolve(file) });
       const doc = await adapter.toCanonical({ kind: "path", path: resolve(file) });
@@ -60,10 +64,11 @@ program
       if (!opts.skipVerify) {
         manifest = verifyManifest(manifest, doc).manifest;
       }
-      if (opts.out) await writeFile(opts.out, exportJson(manifest), "utf8");
-      if (opts.ics) await writeFile(opts.ics, exportIcs(manifest), "utf8");
+      const exportPolicy = { include: opts.includeUnverified ? ("all" as const) : ("verified-only" as const) };
+      if (opts.out) await writeFile(opts.out, exportJson(manifest, exportPolicy), "utf8");
+      if (opts.ics) await writeFile(opts.ics, exportIcs(manifest, exportPolicy), "utf8");
       if (opts.json) {
-        process.stdout.write(exportJson(manifest));
+        process.stdout.write(exportJson(manifest, exportPolicy));
       } else {
         process.stdout.write(formatSummary(manifest) + "\n");
       }

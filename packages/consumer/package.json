@@ -1,0 +1,24 @@
+{
+  "name": "@actionmanifest/consumer",
+  "version": "0.1.0",
+  "description": "Reference consumer policy: classify verified Actions into ready / review_required / blocked. Never executes anything.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@actionmanifest/core": "workspace:*"
+  }
+}

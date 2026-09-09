@@ -8,6 +8,7 @@
     { "path": "./packages/extractor" },
     { "path": "./packages/verifier" },
     { "path": "./packages/exporters" },
+    { "path": "./packages/consumer" },
     { "path": "./apps/cli" }
   ]
 }

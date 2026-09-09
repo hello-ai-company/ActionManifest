@@ -57,7 +57,37 @@ importers:
         specifier: ^14.0.0
         version: 14.0.3
 
+  integration/reference-consumer:
+    dependencies:
+      '@actionmanifest/adapters':
+        specifier: workspace:*
+        version: link:../../packages/adapters
+      '@actionmanifest/consumer':
+        specifier: workspace:*
+        version: link:../../packages/consumer
+      '@actionmanifest/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@actionmanifest/exporters':
+        specifier: workspace:*
+        version: link:../../packages/exporters
+      '@actionmanifest/extractor':
+        specifier: workspace:*
+        version: link:../../packages/extractor
+      '@actionmanifest/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
+      '@actionmanifest/verifier':
+        specifier: workspace:*
+        version: link:../../packages/verifier
+
   packages/adapters:
+    dependencies:
+      '@actionmanifest/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/consumer:
     dependencies:
       '@actionmanifest/core':
         specifier: workspace:*

@@ -14,6 +14,7 @@ export default defineConfig({
       "@actionmanifest/extractor": join(root, "packages/extractor/src/index.ts"),
       "@actionmanifest/verifier": join(root, "packages/verifier/src/index.ts"),
       "@actionmanifest/exporters": join(root, "packages/exporters/src/index.ts"),
+      "@actionmanifest/consumer": join(root, "packages/consumer/src/index.ts"),
     },
   },
   test: {

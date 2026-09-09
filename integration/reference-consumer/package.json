@@ -1,0 +1,19 @@
+{
+  "name": "@actionmanifest/reference-consumer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "External-consumer integration tests: imports ActionManifest only through public package entry points (built dist), like a third-party application.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@actionmanifest/adapters": "workspace:*",
+    "@actionmanifest/consumer": "workspace:*",
+    "@actionmanifest/core": "workspace:*",
+    "@actionmanifest/exporters": "workspace:*",
+    "@actionmanifest/extractor": "workspace:*",
+    "@actionmanifest/schema": "workspace:*",
+    "@actionmanifest/verifier": "workspace:*"
+  }
+}

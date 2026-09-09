@@ -38,10 +38,74 @@ export class ProviderError extends ActionManifestError {
   }
 }
 
+/**
+ * Adapter / document-boundary failures (Phase 2 integration contract).
+ *
+ * Every failure at the document boundary carries a stable machine-readable
+ * `code` so a third-party adapter or consumer can branch without parsing
+ * messages. All of them extend {@link DocumentAdapterError}, so existing
+ * `instanceof DocumentAdapterError` handlers keep working.
+ */
 export class DocumentAdapterError extends ActionManifestError {
-  constructor(message: string, details?: unknown) {
-    super("DOCUMENT_ADAPTER", message, details);
+  constructor(message: string, details?: unknown, code = "DOCUMENT_ADAPTER") {
+    super(code, message, details);
     this.name = "DocumentAdapterError";
+  }
+}
+
+/** The adapter cannot handle the supplied input kind/shape at all. */
+export class UnsupportedInputError extends DocumentAdapterError {
+  constructor(message: string, details?: unknown) {
+    super(message, details, "UNSUPPORTED_INPUT");
+    this.name = "UnsupportedInputError";
+  }
+}
+
+/** The adapter payload is structurally malformed (not the documented shape). */
+export class MalformedAdapterPayloadError extends DocumentAdapterError {
+  constructor(message: string, details?: unknown) {
+    super(message, details, "MALFORMED_ADAPTER_PAYLOAD");
+    this.name = "MalformedAdapterPayloadError";
+  }
+}
+
+/** The produced CanonicalDocument violates the document contract. */
+export class InvalidDocumentError extends DocumentAdapterError {
+  constructor(message: string, details?: unknown) {
+    super(message, details, "INVALID_DOCUMENT");
+    this.name = "InvalidDocumentError";
+  }
+}
+
+/** A page reference is invalid (non-positive, non-numeric, or unknown page). */
+export class InvalidPageError extends DocumentAdapterError {
+  constructor(message: string, details?: unknown) {
+    super(message, details, "INVALID_PAGE");
+    this.name = "InvalidPageError";
+  }
+}
+
+/** A bounding box is malformed or outside the canonical 0..1 convention. */
+export class InvalidBoundingBoxError extends DocumentAdapterError {
+  constructor(message: string, details?: unknown) {
+    super(message, details, "INVALID_BBOX");
+    this.name = "InvalidBoundingBoxError";
+  }
+}
+
+/** A required source identity field (document id / evidence source_id) is missing. */
+export class MissingSourceIdError extends DocumentAdapterError {
+  constructor(message: string, details?: unknown) {
+    super(message, details, "MISSING_SOURCE_ID");
+    this.name = "MissingSourceIdError";
+  }
+}
+
+/** Export refused: the manifest is not consumable under the requested policy. */
+export class ExportError extends ActionManifestError {
+  constructor(message: string, details?: unknown) {
+    super("EXPORT_BLOCKED", message, details);
+    this.name = "ExportError";
   }
 }
 

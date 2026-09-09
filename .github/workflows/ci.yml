@@ -21,9 +21,16 @@ jobs:
       - name: Ensure esbuild binary
         run: node node_modules/esbuild/install.js
       - run: pnpm lint
+      # Typechecks packages AND the external reference consumer against built d.ts.
       - run: pnpm typecheck
       - run: pnpm schema:validate
       - run: pnpm test
+      # Phase 2: external-consumer integration tests resolve public packages
+      # through package.json exports against the built dist (no source aliases).
+      # Fully offline: synthetic Docling JSON fixtures, no Python runtime.
+      - run: pnpm integration:test
+      # Phase 2: pack every public package and runtime-smoke the tarballs.
+      - run: pnpm pack:check
       # Golden + Adversarial Golden, gated on critical false-verified = 0.
       - run: pnpm benchmark:smoke
       # Full adversarial suite: fails on ANY critical false-verified action.

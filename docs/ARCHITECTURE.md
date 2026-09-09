@@ -15,15 +15,21 @@ Action Manifest is a **common extraction-and-verification layer**. Downstream ap
 
 ```
 AdapterInput
-  → DocumentAdapter.toCanonical()
-  → CanonicalDocument { id, sourceHash, title?, pages?, chunks?, text? }
+  → DocumentAdapter.toCanonical()   // parse/normalize only; validated output
+  → CanonicalDocument { id, sourceHash, title?, mediaType?, pages?, chunks?, text? }
   → ActionExtractor + LlmProvider
   → schema-validate (Ajv) — invalid JSON is an error
   → ActionManifest (status=proposed)
   → Verifier (deterministic)
-  → ActionManifest (status=verified if all flags pass)
-  → Exporter (JSON | ICS)   // still not execution
+  → ActionManifest (per-Action status=verified)
+  → Consumer policy (ready / review_required / blocked)
+  → Exporter (JSON | ICS, verified-only by default)   // still not execution
 ```
+
+The external integration boundary (CanonicalDocument conventions, source
+identity, bbox, adapter error model, consumer/export policy) is normative in
+[INTEGRATION-CONTRACT.md](INTEGRATION-CONTRACT.md) and
+[adr/0004-integration-contract.md](adr/0004-integration-contract.md).
 
 ## Canonical Document
 

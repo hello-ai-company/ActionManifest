@@ -255,10 +255,26 @@ export interface CanonicalPage {
   chunks?: CanonicalChunk[];
 }
 
+/**
+ * Canonical Document — the interoperability boundary between external document
+ * parsers (Docling, OCR, email, …) and ActionManifest Core.
+ *
+ * Conventions (docs/INTEGRATION-CONTRACT.md):
+ * - `id` is the adapter-assigned source identity; `Evidence.source_id` and
+ *   `Manifest.source.id` must resolve back to it.
+ * - `sourceHash` is the SHA-256 hex of the canonical text (`canonicalText()`),
+ *   computed by the adapter/core when the upstream parser has no equivalent.
+ * - `bbox` uses the canonical normalized convention: `{x, y, width, height}`
+ *   in 0..1 relative to the page, origin top-left, x→right, y→down. Adapters
+ *   MUST NOT guess a normalization when the input coordinate system is unknown
+ *   (omit the bbox instead — unknown stays unknown).
+ * - `pageNumber` is 1-based.
+ */
 export interface CanonicalDocument {
   id: string;
   sourceHash?: string;
   title?: string;
+  mediaType?: string;
   language?: string;
   text?: string;
   pages?: CanonicalPage[];

@@ -1,0 +1,33 @@
+{
+  "id": "bbox-out-of-range-001",
+  "profile": "canonical-document",
+  "description": "x + width > 1 violates the normalized 0..1 convention.",
+  "input": {
+    "id": "d5",
+    "pages": [
+      {
+        "pageNumber": 1,
+        "text": "x"
+      }
+    ],
+    "chunks": [
+      {
+        "text": "x",
+        "pageNumber": 1,
+        "bbox": {
+          "x": 0.9,
+          "y": 0,
+          "width": 0.3,
+          "height": 0.1
+        }
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "errors": [
+      "INVALID_BBOX"
+    ],
+    "warnings": []
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "chunks-only-001",
+  "profile": "canonical-document",
+  "description": "Chunks-only document is valid (no pages → no orphan check).",
+  "input": {
+    "id": "d3",
+    "chunks": [
+      {
+        "text": "断片",
+        "pageNumber": 1
+      }
+    ]
+  },
+  "expected": {
+    "valid": true,
+    "errors": [],
+    "warnings": []
+  }
+}

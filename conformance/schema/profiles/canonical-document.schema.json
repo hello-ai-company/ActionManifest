@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actionmanifest.dev/conformance/profiles/canonical-document.schema.json",
+  "title": "Conformance vector — canonical-document profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "profile",
+    "input",
+    "expected"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "profile": {
+      "const": "canonical-document"
+    },
+    "description": {
+      "type": "string"
+    },
+    "input": {
+      "type": "object",
+      "description": "A CanonicalDocument JSON value."
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valid",
+        "errors",
+        "warnings"
+      ],
+      "properties": {
+        "valid": {
+          "type": "boolean"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "EMPTY_DOCUMENT",
+              "DUPLICATE_PAGE_NUMBER",
+              "INVALID_BBOX",
+              "INVALID_SOURCE_HASH",
+              "CHUNK_PAGE_UNKNOWN",
+              "TEXT_PAGES_MISMATCH"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "EMPTY_DOCUMENT",
+              "DUPLICATE_PAGE_NUMBER",
+              "INVALID_BBOX",
+              "INVALID_SOURCE_HASH",
+              "CHUNK_PAGE_UNKNOWN",
+              "TEXT_PAGES_MISMATCH"
+            ]
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

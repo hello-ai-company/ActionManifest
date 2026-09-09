@@ -1,0 +1,32 @@
+{
+  "id": "invalid-source-001",
+  "profile": "schema",
+  "description": "source.id is required (minLength 1).",
+  "input": {
+    "schema_version": "0.2.0",
+    "source": {},
+    "actions": [
+      {
+        "id": "act_001",
+        "kind": "event",
+        "title": "秋の遠足",
+        "modality": "required",
+        "actor": {
+          "certainty": "unknown"
+        },
+        "evidence": [
+          {
+            "source_id": "conf",
+            "text": "令和8年10月15日に秋の遠足を実施します。"
+          }
+        ],
+        "inference": "explicit",
+        "status": "proposed"
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "error_code": "SCHEMA_VALIDATION"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "invalid-date-001",
+  "profile": "temporal",
+  "description": "even if a broken producer emits an impossible date, the exporter emits no artifact.",
+  "input": {
+    "kind": "event",
+    "temporal": {
+      "type": "exact",
+      "date": "2026-13-40",
+      "raw_text": "x"
+    }
+  },
+  "expected": {
+    "artifact": null,
+    "executable_date": null
+  }
+}

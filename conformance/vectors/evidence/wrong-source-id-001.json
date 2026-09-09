@@ -1,0 +1,49 @@
+{
+  "id": "wrong-source-id-001",
+  "profile": "evidence",
+  "description": "Evidence source_id that does not belong to the canonical source fails per-Action (EVIDENCE_SOURCE_ID).",
+  "input": {
+    "manifest": {
+      "schema_version": "0.2.0",
+      "source": {
+        "id": "conf-doc"
+      },
+      "actions": [
+        {
+          "id": "act_001",
+          "kind": "event",
+          "title": "秋の遠足",
+          "modality": "required",
+          "actor": {
+            "certainty": "unknown"
+          },
+          "temporal": {
+            "type": "exact",
+            "date": "2026-10-15",
+            "raw_text": "令和8年10月15日"
+          },
+          "evidence": [
+            {
+              "source_id": "other-doc",
+              "text": "令和8年10月15日に秋の遠足を実施します。"
+            }
+          ],
+          "inference": "explicit",
+          "status": "proposed"
+        }
+      ]
+    },
+    "document": {
+      "id": "conf-doc",
+      "text": "令和8年10月15日に秋の遠足を実施します。\n参加を希望する方は、10月5日までに参加確認票を提出してください。"
+    }
+  },
+  "expected": {
+    "actions": {
+      "act_001": {
+        "evidence_supported": false,
+        "passed": false
+      }
+    }
+  }
+}

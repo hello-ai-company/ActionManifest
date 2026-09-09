@@ -1,0 +1,69 @@
+{
+  "id": "valid-v02-001",
+  "profile": "schema",
+  "description": "Valid v0.2 manifest with per-action verification receipt.",
+  "input": {
+    "schema_version": "0.2.0",
+    "source": {
+      "id": "conf"
+    },
+    "actions": [
+      {
+        "id": "act_001",
+        "kind": "event",
+        "title": "秋の遠足",
+        "modality": "required",
+        "actor": {
+          "certainty": "unknown"
+        },
+        "evidence": [
+          {
+            "source_id": "conf",
+            "text": "令和8年10月15日に秋の遠足を実施します。"
+          }
+        ],
+        "inference": "explicit",
+        "status": "verified"
+      }
+    ],
+    "receipt": {
+      "extraction": {
+        "provider": "deterministic",
+        "model": "notice-rules-v0.1",
+        "extractor_version": "0.1.0",
+        "schema_version": "0.2.0",
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "verification": {
+        "evidence_supported": true,
+        "temporal_supported": true,
+        "actor_supported": true,
+        "modality_supported": true,
+        "source_hash_matched": true,
+        "negation_conflict": false,
+        "page_refs_valid": true,
+        "passed": true,
+        "total_actions": 1,
+        "verified_actions": 1,
+        "failed_actions": 0,
+        "warning_actions": 0,
+        "actions": [
+          {
+            "action_id": "act_001",
+            "passed": true,
+            "evidence_supported": true,
+            "temporal_supported": true,
+            "actor_supported": true,
+            "modality_supported": true,
+            "negation_conflict": false,
+            "page_refs_valid": true,
+            "issues": []
+          }
+        ]
+      }
+    }
+  },
+  "expected": {
+    "valid": true
+  }
+}

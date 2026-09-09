@@ -1,0 +1,88 @@
+{
+  "id": "trust-blocked-no-default-001",
+  "profile": "ics",
+  "description": "status=verified with failed per-action receipt → NOT exported by default (status alone is not trust).",
+  "input": {
+    "manifest": {
+      "schema_version": "0.2.0",
+      "source": {
+        "id": "conf-doc",
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "actions": [
+        {
+          "id": "act_001",
+          "kind": "event",
+          "title": "秋の遠足",
+          "modality": "required",
+          "actor": {
+            "certainty": "unknown"
+          },
+          "temporal": {
+            "type": "exact",
+            "date": "2026-10-15",
+            "raw_text": "10月15日"
+          },
+          "evidence": [
+            {
+              "source_id": "conf-doc",
+              "text": "令和8年10月15日に秋の遠足を実施します。"
+            }
+          ],
+          "inference": "explicit",
+          "status": "verified"
+        }
+      ],
+      "receipt": {
+        "extraction": {
+          "provider": "conformance",
+          "model": "none",
+          "extractor_version": "0",
+          "schema_version": "0.2.0",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        "verification": {
+          "evidence_supported": true,
+          "temporal_supported": false,
+          "actor_supported": true,
+          "modality_supported": true,
+          "source_hash_matched": true,
+          "negation_conflict": false,
+          "page_refs_valid": true,
+          "passed": false,
+          "actions": [
+            {
+              "action_id": "act_001",
+              "passed": false,
+              "evidence_supported": true,
+              "temporal_supported": false,
+              "actor_supported": true,
+              "modality_supported": true,
+              "negation_conflict": false,
+              "page_refs_valid": true,
+              "issues": [
+                {
+                  "code": "TEMPORAL_UNSUPPORTED",
+                  "message": "not in evidence",
+                  "action_id": "act_001"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "options": {
+      "now": "2026-01-01T00:00:00.000Z"
+    }
+  },
+  "expected": {
+    "artifact_counts": {
+      "VEVENT": 0,
+      "VTODO": 0
+    },
+    "not_contains": [
+      "DTSTART"
+    ]
+  }
+}

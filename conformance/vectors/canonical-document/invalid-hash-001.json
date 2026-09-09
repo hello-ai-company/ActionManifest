@@ -1,0 +1,17 @@
+{
+  "id": "invalid-hash-001",
+  "profile": "canonical-document",
+  "description": "Non-SHA256-hex sourceHash is invalid.",
+  "input": {
+    "id": "d11",
+    "text": "x",
+    "sourceHash": "not-a-hash"
+  },
+  "expected": {
+    "valid": false,
+    "errors": [
+      "INVALID_SOURCE_HASH"
+    ],
+    "warnings": []
+  }
+}

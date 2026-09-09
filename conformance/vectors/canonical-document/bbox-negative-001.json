@@ -1,0 +1,33 @@
+{
+  "id": "bbox-negative-001",
+  "profile": "canonical-document",
+  "description": "Negative coordinates are invalid.",
+  "input": {
+    "id": "d6",
+    "pages": [
+      {
+        "pageNumber": 1,
+        "text": "x"
+      }
+    ],
+    "chunks": [
+      {
+        "text": "x",
+        "pageNumber": 1,
+        "bbox": {
+          "x": -0.1,
+          "y": 0,
+          "width": 0.1,
+          "height": 0.1
+        }
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "errors": [
+      "INVALID_BBOX"
+    ],
+    "warnings": []
+  }
+}

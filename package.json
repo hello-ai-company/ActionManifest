@@ -19,10 +19,16 @@
     "benchmark:smoke": "tsx apps/cli/src/index.ts benchmark --smoke",
     "integration:test": "pnpm build && vitest run --config integration/vitest.config.ts",
     "pack:check": "pnpm build && tsx scripts/pack-check.ts",
-    "actionman": "tsx apps/cli/src/index.ts"
+    "conformance": "tsx apps/cli/src/index.ts conformance",
+    "conformance:smoke": "tsx apps/cli/src/index.ts conformance --smoke",
+    "conformance:reference": "tsx apps/cli/src/index.ts conformance --reference",
+    "actionman": "tsx apps/cli/src/index.ts",
+    "governance:validate": "tsx scripts/governance.ts"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",

@@ -11,6 +11,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so governance guards can diff against the PR base.
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         # Version comes from package.json "packageManager" (do not also set `version` here).
       - uses: actions/setup-node@v4
@@ -20,6 +23,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Ensure esbuild binary
         run: node node_modules/esbuild/install.js
+      # Phase 2.1 governance: frozen v0.1/v0.2 schema paths MUST NOT change
+      # (cannot be bypassed by editing checksums.json), and normative
+      # conformance changes require a suite_version bump.
+      - name: Governance guards (frozen schemas + suite version integrity)
+        run: pnpm governance:validate
+        env:
+          GOVERNANCE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
       - run: pnpm lint
       # Typechecks packages AND the external reference consumer against built d.ts.
       - run: pnpm typecheck
@@ -31,6 +41,13 @@ jobs:
       - run: pnpm integration:test
       # Phase 2: pack every public package and runtime-smoke the tarballs.
       - run: pnpm pack:check
+      # Phase 2.1: official conformance suite (offline, deterministic) —
+      # fails on any vector failure or any critical false export.
+      - run: pnpm conformance
+      # Reference serialization regression (byte-exact goldens) — gated in CI
+      # for this TypeScript implementation, but NOT part of universal
+      # conformance for third-party implementations.
+      - run: pnpm conformance:reference
       # Golden + Adversarial Golden, gated on critical false-verified = 0.
       - run: pnpm benchmark:smoke
       # Full adversarial suite: fails on ANY critical false-verified action.

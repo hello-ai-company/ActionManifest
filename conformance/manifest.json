@@ -1,0 +1,24 @@
+{
+  "suite": "actionmanifest-conformance",
+  "suite_version": "0.2.0",
+  "schema_versions": [
+    "0.1.0",
+    "0.2.0"
+  ],
+  "profiles": [
+    "schema",
+    "canonical-document",
+    "evidence",
+    "trust",
+    "temporal",
+    "ics"
+  ],
+  "reference_profiles": [
+    "reference-serialization"
+  ],
+  "smoke_profiles": [
+    "trust",
+    "ics"
+  ],
+  "$comment": "Language-neutral conformance suite for ActionManifest. Universal profiles define implementation-independent conformance. reference_profiles are TypeScript reference-implementation regression only (byte-exact serialization) and NEVER affect universal conformance. Suite version is independent of schema versions and package versions (docs/COMPATIBILITY.md). Vectors are normative and hand-written from the specification; implementation output is never the oracle."
+}

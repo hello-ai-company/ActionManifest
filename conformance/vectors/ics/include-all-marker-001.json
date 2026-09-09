@@ -1,0 +1,125 @@
+{
+  "id": "include-all-marker-001",
+  "profile": "ics",
+  "description": "include:all → every entry carries STATUS and DISPOSITION markers (verified+failed shows blocked).",
+  "input": {
+    "manifest": {
+      "schema_version": "0.2.0",
+      "source": {
+        "id": "conf-doc",
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "actions": [
+        {
+          "id": "act_001",
+          "kind": "event",
+          "title": "秋の遠足",
+          "modality": "required",
+          "actor": {
+            "certainty": "unknown"
+          },
+          "temporal": {
+            "type": "exact",
+            "date": "2026-10-15",
+            "raw_text": "10月15日"
+          },
+          "evidence": [
+            {
+              "source_id": "conf-doc",
+              "text": "令和8年10月15日に秋の遠足を実施します。"
+            }
+          ],
+          "inference": "explicit",
+          "status": "verified"
+        },
+        {
+          "id": "act_002",
+          "kind": "submit",
+          "title": "検証に落ちた提出物",
+          "modality": "required",
+          "actor": {
+            "certainty": "unknown"
+          },
+          "temporal": {
+            "type": "exact",
+            "date": "2026-11-01",
+            "raw_text": "11月1日"
+          },
+          "evidence": [
+            {
+              "source_id": "conf-doc",
+              "text": "令和8年10月15日に秋の遠足を実施します。"
+            }
+          ],
+          "inference": "explicit",
+          "status": "proposed"
+        }
+      ],
+      "receipt": {
+        "extraction": {
+          "provider": "conformance",
+          "model": "none",
+          "extractor_version": "0",
+          "schema_version": "0.2.0",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        "verification": {
+          "evidence_supported": true,
+          "temporal_supported": false,
+          "actor_supported": true,
+          "modality_supported": true,
+          "source_hash_matched": true,
+          "negation_conflict": false,
+          "page_refs_valid": true,
+          "passed": false,
+          "actions": [
+            {
+              "action_id": "act_001",
+              "passed": true,
+              "evidence_supported": true,
+              "temporal_supported": true,
+              "actor_supported": true,
+              "modality_supported": true,
+              "negation_conflict": false,
+              "page_refs_valid": true,
+              "issues": []
+            },
+            {
+              "action_id": "act_002",
+              "passed": false,
+              "evidence_supported": true,
+              "temporal_supported": false,
+              "actor_supported": true,
+              "modality_supported": true,
+              "negation_conflict": false,
+              "page_refs_valid": true,
+              "issues": [
+                {
+                  "code": "TEMPORAL_UNSUPPORTED",
+                  "message": "not in evidence",
+                  "action_id": "act_002"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "options": {
+      "now": "2026-01-01T00:00:00.000Z",
+      "include": "all"
+    }
+  },
+  "expected": {
+    "artifact_counts": {
+      "VEVENT": 1,
+      "VTODO": 1
+    },
+    "contains": [
+      "X-ACTIONMANIFEST-STATUS:verified",
+      "X-ACTIONMANIFEST-DISPOSITION:ready",
+      "X-ACTIONMANIFEST-STATUS:proposed",
+      "X-ACTIONMANIFEST-DISPOSITION:blocked"
+    ]
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actionmanifest.dev/conformance/suite-manifest.schema.json",
+  "title": "ActionManifest Conformance Suite Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "suite",
+    "suite_version",
+    "schema_versions",
+    "profiles",
+    "reference_profiles",
+    "smoke_profiles"
+  ],
+  "properties": {
+    "suite": {
+      "const": "actionmanifest-conformance"
+    },
+    "suite_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Independent suite version (semver). NOT the manifest schema version."
+    },
+    "schema_versions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "minItems": 1
+    },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "minItems": 1,
+      "description": "Universal conformance profiles."
+    },
+    "reference_profiles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "description": "Reference-implementation regression profiles; never part of universal conformance."
+    },
+    "smoke_profiles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "description": "Subset of profiles (checked by the runner)."
+    },
+    "$comment": {
+      "type": "string"
+    }
+  }
+}

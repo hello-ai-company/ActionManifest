@@ -1,0 +1,19 @@
+{
+  "id": "range-001",
+  "profile": "temporal",
+  "description": "range with a start date → primary date is executable.",
+  "input": {
+    "kind": "event",
+    "temporal": {
+      "type": "range",
+      "date": "2026-10-15",
+      "start": "2026-10-15",
+      "end": "2026-10-16",
+      "raw_text": "10月15日から16日"
+    }
+  },
+  "expected": {
+    "artifact": "VEVENT",
+    "executable_date": "20261015"
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "id": "valid-page-001",
+  "profile": "evidence",
+  "description": "Evidence page present in the document is valid.",
+  "input": {
+    "manifest": {
+      "schema_version": "0.2.0",
+      "source": {
+        "id": "conf-doc"
+      },
+      "actions": [
+        {
+          "id": "act_001",
+          "kind": "event",
+          "title": "秋の遠足",
+          "modality": "required",
+          "actor": {
+            "certainty": "unknown"
+          },
+          "temporal": {
+            "type": "exact",
+            "date": "2026-10-15",
+            "raw_text": "令和8年10月15日"
+          },
+          "evidence": [
+            {
+              "source_id": "conf-doc",
+              "text": "令和8年10月15日に秋の遠足を実施します。",
+              "page": 2
+            }
+          ],
+          "inference": "explicit",
+          "status": "proposed"
+        }
+      ]
+    },
+    "document": {
+      "id": "conf-doc",
+      "text": "令和8年10月15日に秋の遠足を実施します。\n参加を希望する方は、10月5日までに参加確認票を提出してください。",
+      "pages": [
+        {
+          "pageNumber": 1,
+          "text": "令和8年10月15日に秋の遠足を実施します。"
+        },
+        {
+          "pageNumber": 2,
+          "text": "参加を希望する方は、10月5日までに参加確認票を提出してください。"
+        }
+      ]
+    }
+  },
+  "expected": {
+    "actions": {
+      "act_001": {
+        "evidence_supported": true,
+        "page_refs_valid": true,
+        "passed": true
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "text-pages-mismatch-001",
+  "profile": "canonical-document",
+  "description": "text differing from joined pages is a warning, not an error.",
+  "input": {
+    "id": "d12",
+    "text": "別のテキスト",
+    "pages": [
+      {
+        "pageNumber": 1,
+        "text": "ページのテキスト"
+      }
+    ]
+  },
+  "expected": {
+    "valid": true,
+    "errors": [],
+    "warnings": [
+      "TEXT_PAGES_MISMATCH"
+    ]
+  }
+}

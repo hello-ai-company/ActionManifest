@@ -1,0 +1,26 @@
+{
+  "id": "primary-with-conditional-alt-001",
+  "profile": "temporal",
+  "description": "exact primary + conditional rain alternative → DTSTART is the primary; alternative stays a COMMENT.",
+  "input": {
+    "kind": "event",
+    "temporal": {
+      "type": "exact",
+      "date": "2026-10-15",
+      "raw_text": "10月15日",
+      "alternatives": [
+        {
+          "type": "conditional",
+          "date": "2026-10-22",
+          "raw_text": "雨天の場合は10月22日",
+          "condition": "雨天"
+        }
+      ]
+    }
+  },
+  "expected": {
+    "artifact": "VEVENT",
+    "executable_date": "20261015",
+    "comment_includes": "alternative 2026-10-22"
+  }
+}

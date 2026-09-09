@@ -1,0 +1,27 @@
+{
+  "id": "orphan-chunk-page-001",
+  "profile": "canonical-document",
+  "description": "Chunk referencing a non-existent page is invalid.",
+  "input": {
+    "id": "d8",
+    "pages": [
+      {
+        "pageNumber": 1,
+        "text": "a"
+      }
+    ],
+    "chunks": [
+      {
+        "text": "b",
+        "pageNumber": 9
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "errors": [
+      "CHUNK_PAGE_UNKNOWN"
+    ],
+    "warnings": []
+  }
+}

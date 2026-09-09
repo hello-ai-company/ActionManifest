@@ -1,0 +1,18 @@
+{
+  "id": "end-only-deadline-001",
+  "profile": "temporal",
+  "description": "exact with ISO end only → end is the executable deadline day.",
+  "input": {
+    "kind": "deadline",
+    "temporal": {
+      "type": "exact",
+      "end": "2026-10-05",
+      "raw_text": "10月5日まで",
+      "deadline_qualifier": "until"
+    }
+  },
+  "expected": {
+    "artifact": "VTODO",
+    "executable_date": "20261005"
+  }
+}

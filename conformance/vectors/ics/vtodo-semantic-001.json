@@ -1,0 +1,101 @@
+{
+  "id": "vtodo-semantic-001",
+  "profile": "ics",
+  "description": "Verified exact-date submit → one VTODO with DUE semantics.",
+  "input": {
+    "manifest": {
+      "schema_version": "0.2.0",
+      "source": {
+        "id": "conf-doc",
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "actions": [
+        {
+          "id": "act_001",
+          "kind": "submit",
+          "title": "参加確認票を提出する",
+          "modality": "required",
+          "actor": {
+            "certainty": "unknown"
+          },
+          "temporal": {
+            "type": "exact",
+            "date": "2026-10-05",
+            "raw_text": "10月5日まで",
+            "deadline_qualifier": "until"
+          },
+          "evidence": [
+            {
+              "source_id": "conf-doc",
+              "text": "10月5日までに参加確認票を提出してください。"
+            }
+          ],
+          "inference": "explicit",
+          "status": "verified"
+        }
+      ],
+      "receipt": {
+        "extraction": {
+          "provider": "conformance",
+          "model": "none",
+          "extractor_version": "0",
+          "schema_version": "0.2.0",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        "verification": {
+          "evidence_supported": true,
+          "temporal_supported": true,
+          "actor_supported": true,
+          "modality_supported": true,
+          "source_hash_matched": true,
+          "negation_conflict": false,
+          "page_refs_valid": true,
+          "passed": true,
+          "actions": [
+            {
+              "action_id": "act_001",
+              "passed": true,
+              "evidence_supported": true,
+              "temporal_supported": true,
+              "actor_supported": true,
+              "modality_supported": true,
+              "negation_conflict": false,
+              "page_refs_valid": true,
+              "issues": []
+            }
+          ]
+        }
+      }
+    },
+    "options": {
+      "now": "2026-01-01T00:00:00.000Z"
+    }
+  },
+  "expected": {
+    "components": [
+      {
+        "type": "VTODO",
+        "props": {
+          "UID": [
+            "3c96dd907b71266938b96e816a206229976a74c5233521b8ef05114254bb2700@actionmanifest"
+          ],
+          "DUE;VALUE=DATE": [
+            "20261005"
+          ],
+          "SUMMARY": [
+            "参加確認票を提出する"
+          ],
+          "STATUS": [
+            "NEEDS-ACTION"
+          ]
+        }
+      }
+    ],
+    "artifact_counts": {
+      "VEVENT": 0,
+      "VTODO": 1
+    },
+    "max_octets_per_line": 75,
+    "crlf_only": true
+  }
+}

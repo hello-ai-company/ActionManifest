@@ -1,0 +1,29 @@
+{
+  "id": "missing-evidence-001",
+  "profile": "schema",
+  "description": "Action without evidence violates source-before-inference (minItems 1).",
+  "input": {
+    "schema_version": "0.2.0",
+    "source": {
+      "id": "conf"
+    },
+    "actions": [
+      {
+        "id": "act_001",
+        "kind": "event",
+        "title": "秋の遠足",
+        "modality": "required",
+        "actor": {
+          "certainty": "unknown"
+        },
+        "evidence": [],
+        "inference": "explicit",
+        "status": "proposed"
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "error_code": "SCHEMA_VALIDATION"
+  }
+}

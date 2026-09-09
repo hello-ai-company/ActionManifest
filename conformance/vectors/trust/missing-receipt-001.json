@@ -1,0 +1,36 @@
+{
+  "id": "missing-receipt-001",
+  "profile": "trust",
+  "description": "verified status with no verification receipt → review_required, NOT exportable.",
+  "input": {
+    "action": {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "参加確認票を提出する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-05",
+        "raw_text": "10月5日まで"
+      },
+      "evidence": [
+        {
+          "source_id": "conf",
+          "text": "10月5日までに提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    },
+    "verification": null
+  },
+  "expected": {
+    "ready": false,
+    "reason": "VERIFICATION_MISSING",
+    "disposition": "review_required",
+    "exportable_default": false
+  }
+}

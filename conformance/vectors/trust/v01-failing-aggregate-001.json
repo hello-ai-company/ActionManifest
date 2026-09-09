@@ -1,0 +1,45 @@
+{
+  "id": "v01-failing-aggregate-001",
+  "profile": "trust",
+  "description": "v0.1 receipt with failing aggregate: cannot attribute trust → review_required, NOT exportable.",
+  "input": {
+    "action": {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "参加確認票を提出する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-05",
+        "raw_text": "10月5日まで"
+      },
+      "evidence": [
+        {
+          "source_id": "conf",
+          "text": "10月5日までに提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    },
+    "verification": {
+      "evidence_supported": false,
+      "temporal_supported": false,
+      "actor_supported": true,
+      "modality_supported": true,
+      "source_hash_matched": true,
+      "negation_conflict": false,
+      "page_refs_valid": true,
+      "passed": false
+    }
+  },
+  "expected": {
+    "ready": false,
+    "reason": "PER_ACTION_RESULT_MISSING",
+    "disposition": "review_required",
+    "exportable_default": false
+  }
+}

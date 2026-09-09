@@ -118,5 +118,6 @@ New TypeScript monorepo: `packages/{schema,core,adapters,temporal,extractor,veri
 ## Git Status (branch, commit, working tree)
 
 - Branch: `cursor/phase1-action-manifest-edf9` (from `main`)
-- Working tree: clean on this PR
+- HEAD: `c53008b`
+- Working tree: clean
 - Commits: schema → core → verifier/extractor/CLI → golden fixtures → docs

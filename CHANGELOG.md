@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## Phase 1.2 — 2026-09-09
+
+Adversarial Document Reliability Benchmark (evaluation only — no production schema change).
+
+### Added
+
+- **Adversarial benchmark** (`apps/cli/src/adversarial.ts`): benchmark-only `must_not_extract` negative expectations, a failure taxonomy, severity (critical/high/medium), and the **False Verified Action** safety metric.
+- 26 synthetic adversarial fixtures (JA 16 / EN 10; 60 total) across correction, extension, cancellation, negation, conditional eligibility, exemption, conditional date, reference-only, quoted-old-instruction, OCR noise, approximate date, postmark vs arrival, modality scale, repeated actions, multiple dates, and cross-action contamination.
+- A 10-fixture **Adversarial Golden Set** run in CI smoke; new benchmark metrics (falseVerifiedActionRate, forbiddenActionRate, staleActionRate, duplicateActionRate, correctionResolution, negationPreservation, conditionalPreservation, criticalFalseVerified) and an action-level structure.
+- CI runs the full `pnpm benchmark`; **any critical false-verified action fails the build**.
+- `docs/ADVERSARIAL-BENCHMARK.md` (methodology + integrity guard) and ADR 0003. Integrity rule: *Expected truth is normative; extractor output is not the oracle.*
+
+### Fixed (minimal, discovered by the adversarial corpus)
+
+- **Correction / extension**: `primaryTemporal` selects the corrected (later) date; a superseded date is never verified as active.
+- **Cancellation / reference / quotation / completed-past**: the deterministic extractor skips these sentences instead of emitting an active Action.
+- **Blanket contradiction**: a required submit negated for everyone ("提出は不要" / "no longer required") is a verification conflict; genuine eligibility / prior-submission exemptions still verify.
+
 ## Phase 1.1 — 2026-09-09
 
 Per-Action Verification Semantics Hardening. Schema `0.2.0` (additive; `0.1.0` still accepted).

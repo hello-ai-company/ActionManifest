@@ -186,8 +186,12 @@ export function parseTemporals(text: string, ctx: YearContext = {}): Temporal[] 
   const mdRe = /(\d{1,2})月\s*(\d{1,2})日(?!まで)/g;
   for (const m of text.matchAll(mdRe)) {
     const start = m.index ?? 0;
-    const prefix = text.slice(Math.max(0, start - 12), start);
-    if (/(令和|平成|昭和|\d{4}年)/.test(prefix)) continue;
+    // Only skip when this month/day is the tail of an era/gregorian full date
+    // already captured (…N年M月D日) — i.e. immediately preceded by 年 or a digit.
+    // A nearby era mention elsewhere in the sentence (e.g. "令和8年10月22日から
+    // 10月15日") must NOT suppress a separate date.
+    const prev = start > 0 ? (text[start - 1] ?? "") : "";
+    if (/[0-9０-９年]/.test(prev)) continue;
     const month = Number(m[1]);
     const day = Number(m[2]);
     const date = ctx.year ? ymd(ctx.year, month, day) : undefined;
@@ -385,16 +389,20 @@ export function parseTemporals(text: string, ctx: YearContext = {}): Temporal[] 
 
 export function primaryTemporal(text: string, ctx: YearContext = {}): Temporal | undefined {
   const all = parseTemporals(text, ctx);
-  // Correction / extension: the active date is the REPLACEMENT TARGET, not the
-  // chronological maximum. The target is the dated temporal nearest the correction
-  // cue ("…を10月22日に変更します" / "…changed to October 22"). This handles both
-  // forward (10/15→10/22) and reverse (10/22→10/15) corrections. If the target
-  // cannot be resolved safely, omit it (Unknown stays unknown) rather than verify
-  // a possibly-superseded date.
+  // Correction / extension: the active date is the REPLACEMENT TARGET, never the
+  // chronological maximum and never "the first date because no cue was found".
+  // Primary rule: drop dates explicitly marked as superseded ("Xの予定",
+  // "Xに予定していた", "Xとしていました", "Xから…", "changed from X", "was X") and
+  // keep the one remaining date. This handles from→to and gerund forms
+  // ("10月22日の予定を変更し、10月15日に実施します", "changed from X to Y") as well as
+  // forward and reverse corrections. Secondary rule: the dated temporal nearest
+  // the correction cue. If neither resolves uniquely, omit (Unknown stays unknown).
   if (isCorrectionContext(text)) {
     const dated = all.filter((t) => t.date && (t.type === "exact" || t.type === "conditional"));
     if (dated.length === 1) return dated[0];
     if (dated.length > 1) {
+      const candidates = dated.filter((t) => !isSupersededDate(text, t));
+      if (candidates.length === 1) return candidates[0];
       const cueIdx = correctionCueIndex(text);
       if (cueIdx >= 0) {
         let best: Temporal | undefined;
@@ -466,9 +474,13 @@ export function isPastCompletedContext(text: string): boolean {
   );
 }
 
-/** Correction / extension cue: a stated date/plan is being replaced by a new one. */
+/**
+ * Correction / extension cue: a stated date/plan is being replaced by a new one.
+ * Includes the 連用形 "変更し" / "延長し" and "を変更", and English "changed from" /
+ * "revised" / "moved from" so from→to and gerund forms are recognized.
+ */
 const CORRECTION_CUE =
-  /変更します|変更しました|変更になりました|に変更|へ変更|訂正|延長します|延長しました|改定|rescheduled|extended to|changed to|revised to|updated to|now (?:on|due)/i;
+  /変更し|を変更|変更になりました|に変更|へ変更|訂正|延長し|改定|rescheduled|extended to|changed to|changed from|revised|moved from|updated to|now (?:on|due)/i;
 
 export function isCorrectionContext(text: string): boolean {
   return CORRECTION_CUE.test(text);
@@ -478,4 +490,22 @@ export function isCorrectionContext(text: string): boolean {
 export function correctionCueIndex(text: string): number {
   const m = CORRECTION_CUE.exec(text);
   return m ? m.index : -1;
+}
+
+/**
+ * A dated temporal is SUPERSEDED (the old value being replaced) when it is
+ * explicitly marked as such — followed by "の予定 / に予定していた / としていました /
+ * と案内 / と記載 / から" in JP, or preceded by "from" / "was … from" in EN. This
+ * lets the correction resolver keep the replacement target regardless of date
+ * order or position. Only meaningful inside a correction context.
+ */
+function isSupersededDate(text: string, t: Temporal): boolean {
+  if (!t.raw_text) return false;
+  const idx = text.indexOf(t.raw_text);
+  if (idx < 0) return false;
+  const after = text.slice(idx + t.raw_text.length);
+  const before = text.slice(0, idx);
+  if (/^(?:に予定していた|の予定|と案内|と記載|としていました|としてい|から|より)/.test(after)) return true;
+  if (/(?:\bfrom|\bwas)\s*$/i.test(before)) return true;
+  return false;
 }

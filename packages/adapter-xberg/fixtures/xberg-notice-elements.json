@@ -1,0 +1,109 @@
+{
+  "results": [
+    {
+      "content": "保護者向け行事案内\n  遠足について\n令和8年10月15日に秋の遠足を実施します。\n\n雨天の場合は10月22日に延期します。\n\n  提出物\n参加を希望する方は、10月5日までに参加確認票を提出してください。\n\n  持ち物\n当日は弁当、水筒、タオルを持参してください。",
+      "mimeType": "text/markdown",
+      "metadata": {
+        "title": "保護者向け行事案内",
+        "format": null,
+        "outputFormat": "plain",
+        "ocrUsed": false
+      },
+      "extractionMethod": "native",
+      "tables": [],
+      "counts": {
+        "pages": 0,
+        "tables": 0,
+        "images": 0
+      },
+      "elements": [
+        {
+          "elementId": "elem-da4a9ad299df7c46",
+          "elementType": "title",
+          "text": "保護者向け行事案内",
+          "metadata": {
+            "elementIndex": 0,
+            "additional": {
+              "heading_level": "1"
+            }
+          }
+        },
+        {
+          "elementId": "elem-a84b4f568655d45b",
+          "elementType": "heading",
+          "text": "遠足について",
+          "metadata": {
+            "elementIndex": 1,
+            "additional": {
+              "heading_level": "2"
+            }
+          }
+        },
+        {
+          "elementId": "elem-bd80bd883ecbe44d",
+          "elementType": "narrative_text",
+          "text": "令和8年10月15日に秋の遠足を実施します。",
+          "metadata": {
+            "elementIndex": 2,
+            "additional": {}
+          }
+        },
+        {
+          "elementId": "elem-ca230bdef377e27b",
+          "elementType": "narrative_text",
+          "text": "雨天の場合は10月22日に延期します。",
+          "metadata": {
+            "elementIndex": 3,
+            "additional": {}
+          }
+        },
+        {
+          "elementId": "elem-50948f74dde725dd",
+          "elementType": "heading",
+          "text": "提出物",
+          "metadata": {
+            "elementIndex": 4,
+            "additional": {
+              "heading_level": "2"
+            }
+          }
+        },
+        {
+          "elementId": "elem-1857132038ce57e4",
+          "elementType": "narrative_text",
+          "text": "参加を希望する方は、10月5日までに参加確認票を提出してください。",
+          "metadata": {
+            "elementIndex": 5,
+            "additional": {}
+          }
+        },
+        {
+          "elementId": "elem-507e350b5d340314",
+          "elementType": "heading",
+          "text": "持ち物",
+          "metadata": {
+            "elementIndex": 6,
+            "additional": {
+              "heading_level": "2"
+            }
+          }
+        },
+        {
+          "elementId": "elem-894ff933fb398791",
+          "elementType": "narrative_text",
+          "text": "当日は弁当、水筒、タオルを持参してください。",
+          "metadata": {
+            "elementIndex": 7,
+            "additional": {}
+          }
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "summary": {
+    "inputs": 1,
+    "results": 1,
+    "errors": 0
+  }
+}

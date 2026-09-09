@@ -5,14 +5,23 @@
 School notices, invoices, contracts, and government mail are full of things humans must actually *do* — submit a form, bring a lunch, pay a fee, show up on a rain date. Action Manifest extracts those Actions and keeps every one of them glued to source **Evidence**.
 
 ```
-Document / Email / OCR / Structured
-        ↓  adapter (plain text; Docling JSON)
-Canonical Document
-        ↓  extractor (model is replaceable)
-Candidate Action Manifest
-        ↓  deterministic verifier
-Proposed Actions  →  human / app review  →  export (JSON / ICS, verified-only by default)
+            ┌─ plain text ──────────────┐
+            ├─ Docling JSON             ├─ adapters (parse/normalize ONLY)
+Inputs ─────┼─ Xberg (native, isolated) ┘
+            └─ future parsers (Marker / OCR / email / …)
+                    ↓
+            Canonical Document   ← parser-independent boundary
+                    ↓  extractor (model is replaceable)
+            Candidate Action Manifest
+                    ↓  deterministic verifier
+            Proposed Actions  →  human / app review  →  export (JSON / ICS, verified-only by default)
 ```
+
+**Parser independence is proven, not assumed**: the same synthetic notice
+flows through Docling and Xberg adapters and yields identical Actions, trust
+dispositions, and calendar semantics (critical parser divergence = 0). See
+[docs/PARSER-INDEPENDENCE.md](docs/PARSER-INDEPENDENCE.md) and
+[docs/ADAPTER-AUTHOR-GUIDE.md](docs/ADAPTER-AUTHOR-GUIDE.md).
 
 This is **not** a PDF summarizer, OCR engine, RAG stack, or task manager. It is a common layer other apps can trust.
 
@@ -91,6 +100,7 @@ Full list: [docs/PUBLIC-BOUNDARY.md](docs/PUBLIC-BOUNDARY.md).
 | `packages/schema` | JSON Schema v0.2 (language-neutral contract; 0.1.0 still accepted) |
 | `packages/core` | Canonical Document, hashing, validation, errors |
 | `packages/adapters` | Plain Text (reference) + Docling JSON (reference adapter) |
+| `packages/adapter-xberg` | Xberg reference adapter (native dependency isolated here) |
 | `packages/temporal` | Japanese/English temporal + modality |
 | `packages/extractor` | ActionExtractor + providers |
 | `packages/verifier` | Deterministic evidence checks (no LLM) |

@@ -14,6 +14,7 @@
     "@actionmanifest/exporters": "workspace:*",
     "@actionmanifest/extractor": "workspace:*",
     "@actionmanifest/schema": "workspace:*",
-    "@actionmanifest/verifier": "workspace:*"
+    "@actionmanifest/verifier": "workspace:*",
+    "@actionmanifest/adapter-xberg": "workspace:*"
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "@actionmanifest/schema",
   "version": "0.1.0",
-  "description": "Language-neutral Action Manifest JSON Schema v0.1 and TypeScript types.",
+  "description": "Language-neutral Action Manifest JSON Schemas (immutable, versioned: v0.1, v0.2) and TypeScript types.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -10,10 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./action-manifest.schema.json": "./src/action-manifest.schema.json",
-    "./canonical-document.schema.json": "./src/canonical-document.schema.json"
+    "./schemas/v0.1/action-manifest.schema.json": "./schemas/v0.1/action-manifest.schema.json",
+    "./schemas/v0.2/action-manifest.schema.json": "./schemas/v0.2/action-manifest.schema.json",
+    "./schemas/canonical-document.schema.json": "./schemas/canonical-document.schema.json"
   },
-  "files": ["dist", "src/*.json"],
+  "files": ["dist", "schemas"],
   "scripts": {
     "build": "tsc -b"
   }

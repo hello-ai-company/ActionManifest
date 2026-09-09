@@ -1,0 +1,343 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actionmanifest.dev/schemas/v0.2/action-manifest.json",
+  "$comment": "Action Manifest v0.2 — language-neutral contract. Adds per-action verification receipts (additive over v0.1). Enums accept x-* extensions for forward compatibility.",
+  "title": "Action Manifest v0.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "source", "actions"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.2.0",
+      "description": "Manifest schema version. This is the immutable v0.2 contract; a 0.2.0 manifest MUST validate here. 0.1.0 manifests validate against the frozen v0.1 schema, which does not contain per-action verification fields."
+    },
+    "source": { "$ref": "#/$defs/SourceRef" },
+    "actions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Action" }
+    },
+    "receipt": { "$ref": "#/$defs/Receipt" }
+  },
+  "$defs": {
+    "extensibleEnum": {
+      "type": "string",
+      "pattern": "^x-[a-z0-9][a-z0-9-]*$"
+    },
+    "SourceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "hash": {
+          "type": "string",
+          "description": "SHA-256 hex of canonical source text"
+        },
+        "title": { "type": "string" },
+        "uri": { "type": "string" }
+      }
+    },
+    "ActionKind": {
+      "anyOf": [
+        {
+          "enum": [
+            "event",
+            "deadline",
+            "submit",
+            "prepare",
+            "pay",
+            "review",
+            "reply",
+            "sign",
+            "attend",
+            "contact",
+            "read",
+            "complete",
+            "other"
+          ]
+        },
+        { "$ref": "#/$defs/extensibleEnum" }
+      ]
+    },
+    "Modality": {
+      "anyOf": [
+        {
+          "enum": [
+            "required",
+            "recommended",
+            "optional",
+            "prohibited",
+            "unknown"
+          ]
+        },
+        { "$ref": "#/$defs/extensibleEnum" }
+      ]
+    },
+    "ActorCertainty": {
+      "enum": ["explicit", "implicit", "unknown"]
+    },
+    "TemporalType": {
+      "enum": [
+        "exact",
+        "approximate",
+        "range",
+        "relative",
+        "recurring",
+        "conditional",
+        "unknown"
+      ]
+    },
+    "TemporalPrecision": {
+      "enum": [
+        "year",
+        "month",
+        "decade_of_month",
+        "week",
+        "day",
+        "hour",
+        "minute",
+        "unknown"
+      ]
+    },
+    "ConfidenceBand": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "Inference": {
+      "enum": ["explicit", "inferred"]
+    },
+    "ReviewStatus": {
+      "enum": ["proposed", "verified", "accepted", "rejected", "exported"]
+    },
+    "BoundingBox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" }
+      }
+    },
+    "Evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "text"],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1 },
+        "page": { "type": "integer", "minimum": 1 },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "Short source quote. Do not copy the full document."
+        },
+        "bbox": { "$ref": "#/$defs/BoundingBox" },
+        "section": { "type": "string" },
+        "source_reference": { "type": "string" }
+      }
+    },
+    "Actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["certainty"],
+      "properties": {
+        "text": { "type": "string" },
+        "role": { "type": "string" },
+        "certainty": { "$ref": "#/$defs/ActorCertainty" }
+      }
+    },
+    "Temporal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "raw_text"],
+      "properties": {
+        "type": { "$ref": "#/$defs/TemporalType" },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "YYYY-MM-DD only when a calendar day is actually stated or year is inherited from the same document. Forbidden for 頃/上旬-style approximations."
+        },
+        "datetime": { "type": "string", "format": "date-time" },
+        "timezone": { "type": "string" },
+        "precision": { "$ref": "#/$defs/TemporalPrecision" },
+        "raw_text": { "type": "string", "minLength": 1 },
+        "certainty": { "enum": ["high", "medium", "low", "unknown"] },
+        "year": { "type": "integer" },
+        "month": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "day": { "type": "integer", "minimum": 1, "maximum": 31 },
+        "decade": { "enum": ["early", "mid", "late"] },
+        "start": { "type": "string" },
+        "end": { "type": "string" },
+        "condition": { "type": "string" },
+        "recurrence": { "type": "string" },
+        "deadline_qualifier": {
+          "enum": ["until", "must_arrive", "postmark_valid", "on_day", "later", "unknown"]
+        },
+        "alternatives": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Temporal" }
+        }
+      }
+    },
+    "Confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "action": { "$ref": "#/$defs/ConfidenceBand" },
+        "temporal": { "$ref": "#/$defs/ConfidenceBand" },
+        "actor": { "$ref": "#/$defs/ConfidenceBand" },
+        "evidence": { "$ref": "#/$defs/ConfidenceBand" }
+      }
+    },
+    "Action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "modality",
+        "actor",
+        "evidence",
+        "inference",
+        "status"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "$ref": "#/$defs/ActionKind" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "object": {
+          "type": "string",
+          "description": "Thing acted on, e.g. 参加確認票"
+        },
+        "modality": { "$ref": "#/$defs/Modality" },
+        "actor": { "$ref": "#/$defs/Actor" },
+        "temporal": { "$ref": "#/$defs/Temporal" },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/Evidence" }
+        },
+        "confidence": { "$ref": "#/$defs/Confidence" },
+        "inference": { "$ref": "#/$defs/Inference" },
+        "status": { "$ref": "#/$defs/ReviewStatus" },
+        "conditions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "VerificationFlags": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_supported",
+        "temporal_supported",
+        "actor_supported",
+        "modality_supported",
+        "source_hash_matched",
+        "negation_conflict",
+        "page_refs_valid"
+      ],
+      "properties": {
+        "evidence_supported": { "type": "boolean" },
+        "temporal_supported": { "type": "boolean" },
+        "actor_supported": { "type": "boolean" },
+        "modality_supported": { "type": "boolean" },
+        "source_hash_matched": { "type": "boolean" },
+        "negation_conflict": { "type": "boolean" },
+        "page_refs_valid": { "type": "boolean" },
+        "checked_at": { "type": "string", "format": "date-time" },
+        "issues": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/VerificationIssue" }
+        },
+        "passed": {
+          "type": "boolean",
+          "description": "Phase 1.1: true only when no manifest-level fatal failure AND every Action passed."
+        },
+        "total_actions": { "type": "integer", "minimum": 0 },
+        "verified_actions": { "type": "integer", "minimum": 0 },
+        "failed_actions": { "type": "integer", "minimum": 0 },
+        "warning_actions": { "type": "integer", "minimum": 0 },
+        "actions": {
+          "type": "array",
+          "description": "Phase 1.1: per-Action verification results. Independent of one another.",
+          "items": { "$ref": "#/$defs/ActionVerificationResult" }
+        }
+      }
+    },
+    "ActionVerificationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action_id",
+        "passed",
+        "evidence_supported",
+        "temporal_supported",
+        "actor_supported",
+        "modality_supported",
+        "negation_conflict",
+        "page_refs_valid"
+      ],
+      "properties": {
+        "action_id": { "type": "string", "minLength": 1 },
+        "passed": { "type": "boolean" },
+        "evidence_supported": { "type": "boolean" },
+        "temporal_supported": { "type": "boolean" },
+        "actor_supported": { "type": "boolean" },
+        "modality_supported": { "type": "boolean" },
+        "negation_conflict": { "type": "boolean" },
+        "page_refs_valid": { "type": "boolean" },
+        "issues": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/VerificationIssue" }
+        }
+      }
+    },
+    "VerificationIssue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "action_id": { "type": "string" },
+        "severity": { "enum": ["error", "warning"] }
+      }
+    },
+    "ExtractionReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "model",
+        "extractor_version",
+        "schema_version",
+        "created_at"
+      ],
+      "properties": {
+        "provider": { "type": "string" },
+        "model": { "type": "string" },
+        "extractor_version": { "type": "string" },
+        "schema_version": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["extraction"],
+      "properties": {
+        "extraction": { "$ref": "#/$defs/ExtractionReceipt" },
+        "verification": { "$ref": "#/$defs/VerificationFlags" }
+      }
+    }
+  }
+}

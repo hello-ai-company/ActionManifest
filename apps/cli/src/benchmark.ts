@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PlainTextAdapter } from "@actionmanifest/adapters";
-import type { Action, ActionManifest, CanonicalDocument } from "@actionmanifest/core";
+import { SCHEMA_VERSION, type Action, type ActionManifest, type CanonicalDocument } from "@actionmanifest/core";
 import { extractDeterministically } from "@actionmanifest/extractor";
 import { verifyManifest, verificationPassed } from "@actionmanifest/verifier";
 
@@ -265,7 +265,7 @@ export async function runBenchmark(root: string, smoke = false): Promise<{
     const doc = await adapter.toCanonical({ kind: "text", id: fix.meta.id, text: fix.input });
     const extracted = extractDeterministically(doc);
     const candidate: ActionManifest = {
-      schema_version: "0.1.0",
+      schema_version: SCHEMA_VERSION,
       source: { id: doc.id, hash: doc.sourceHash },
       actions: extracted,
     };

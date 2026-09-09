@@ -1,16 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://actionmanifest.dev/schemas/v0.1/action-manifest.json",
-  "$comment": "Action Manifest v0.1 — language-neutral contract. Enums accept x-* extensions for forward compatibility.",
-  "title": "Action Manifest",
+  "$comment": "Action Manifest v0.1 — language-neutral contract (Phase 1, frozen/immutable). Enums accept x-* extensions for forward compatibility. Does NOT contain per-action verification fields; those live in v0.2.",
+  "title": "Action Manifest v0.1",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "source", "actions"],
   "properties": {
     "schema_version": {
       "type": "string",
-      "enum": ["0.1.0", "0.2.0"],
-      "description": "Manifest schema version. 0.1.0 (Phase 1) and 0.2.0 (Phase 1.1, additive per-action verification) are both accepted. 0.2.0 only adds optional fields, so 0.1.0 manifests remain valid."
+      "const": "0.1.0",
+      "description": "Manifest schema version. Phase 1 is 0.1.0."
     },
     "source": { "$ref": "#/$defs/SourceRef" },
     "actions": {
@@ -254,47 +254,6 @@
         "negation_conflict": { "type": "boolean" },
         "page_refs_valid": { "type": "boolean" },
         "checked_at": { "type": "string", "format": "date-time" },
-        "issues": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/VerificationIssue" }
-        },
-        "passed": {
-          "type": "boolean",
-          "description": "Phase 1.1: true only when no manifest-level fatal failure AND every Action passed."
-        },
-        "total_actions": { "type": "integer", "minimum": 0 },
-        "verified_actions": { "type": "integer", "minimum": 0 },
-        "failed_actions": { "type": "integer", "minimum": 0 },
-        "warning_actions": { "type": "integer", "minimum": 0 },
-        "actions": {
-          "type": "array",
-          "description": "Phase 1.1: per-Action verification results. Independent of one another.",
-          "items": { "$ref": "#/$defs/ActionVerificationResult" }
-        }
-      }
-    },
-    "ActionVerificationResult": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "action_id",
-        "passed",
-        "evidence_supported",
-        "temporal_supported",
-        "actor_supported",
-        "modality_supported",
-        "negation_conflict",
-        "page_refs_valid"
-      ],
-      "properties": {
-        "action_id": { "type": "string", "minLength": 1 },
-        "passed": { "type": "boolean" },
-        "evidence_supported": { "type": "boolean" },
-        "temporal_supported": { "type": "boolean" },
-        "actor_supported": { "type": "boolean" },
-        "modality_supported": { "type": "boolean" },
-        "negation_conflict": { "type": "boolean" },
-        "page_refs_valid": { "type": "boolean" },
         "issues": {
           "type": "array",
           "items": { "$ref": "#/$defs/VerificationIssue" }

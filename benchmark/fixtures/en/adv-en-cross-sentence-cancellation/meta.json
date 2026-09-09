@@ -1,0 +1,11 @@
+{
+  "id": "adv-en-cross-sentence-cancellation",
+  "language": "en",
+  "category": "cancellation",
+  "tags": [
+    "adversarial",
+    "cancellation",
+    "cross-sentence-cancellation"
+  ],
+  "golden": false
+}

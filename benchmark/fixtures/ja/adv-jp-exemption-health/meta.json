@@ -8,6 +8,5 @@
     "negation",
     "conditional"
   ],
-  "golden": false,
-  "adversarialGolden": true
+  "golden": false
 }

@@ -25,6 +25,8 @@ export const FAILURE_CODES = [
   "WRONG_EVIDENCE",
   "REFERENCE_MISREAD_AS_ACTION",
   "AMBIGUITY_COLLAPSED",
+  "WRONG_NEGATION_TARGET",
+  "WRONG_CANCELLATION_TARGET",
 ] as const;
 export type FailureCode = (typeof FAILURE_CODES)[number];
 

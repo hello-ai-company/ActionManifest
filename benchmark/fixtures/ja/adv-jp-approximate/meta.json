@@ -7,6 +7,5 @@
     "approximate",
     "hallucination-risk"
   ],
-  "golden": false,
-  "adversarialGolden": true
+  "golden": false
 }

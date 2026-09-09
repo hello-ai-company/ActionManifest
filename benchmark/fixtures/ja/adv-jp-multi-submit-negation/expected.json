@@ -1,0 +1,31 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "健康カードを提出する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-multi-submit-negation",
+          "text": "健康カードを提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "kind": "submit",
+      "object": "参加確認票",
+      "modality": "required",
+      "failure": "NEGATION_LOST",
+      "severity": "critical",
+      "reason": "only the 参加確認票 submit is negated; 健康カード must remain required"
+    }
+  ]
+}

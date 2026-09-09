@@ -1,0 +1,12 @@
+{
+  "id": "adv-jp-cross-sentence-cancellation",
+  "language": "ja",
+  "category": "cancellation",
+  "tags": [
+    "adversarial",
+    "cancellation",
+    "cross-sentence-cancellation"
+  ],
+  "golden": false,
+  "adversarialGolden": true
+}

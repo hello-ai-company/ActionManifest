@@ -1,0 +1,12 @@
+{
+  "actions": [],
+  "must_not_extract": [
+    {
+      "kind": "event",
+      "date": "2026-10-15",
+      "failure": "WRONG_CANCELLATION_TARGET",
+      "severity": "critical",
+      "reason": "an event cancelled in a later sentence must not stay verified"
+    }
+  ]
+}

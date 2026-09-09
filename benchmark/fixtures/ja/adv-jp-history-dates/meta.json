@@ -7,6 +7,5 @@
     "stale-action",
     "multiple-dates"
   ],
-  "golden": false,
-  "adversarialGolden": true
+  "golden": false
 }

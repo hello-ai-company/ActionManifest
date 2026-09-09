@@ -3,7 +3,15 @@
  * these types mirror it for the TypeScript implementation.
  */
 
-export const SCHEMA_VERSION = "0.1.0" as const;
+export const SCHEMA_VERSION = "0.2.0" as const;
+
+/**
+ * Schema versions a Phase 1.1 reader accepts. 0.1.0 manifests remain valid
+ * (the per-action verification fields added in 0.2.0 are optional/additive),
+ * so existing manifests validate unchanged. See docs/adr/0002-per-action-verification.md.
+ */
+export const SUPPORTED_SCHEMA_VERSIONS = ["0.1.0", "0.2.0"] as const;
+export type SupportedSchemaVersion = (typeof SUPPORTED_SCHEMA_VERSIONS)[number];
 
 export const ACTION_KINDS = [
   "event",
@@ -156,6 +164,41 @@ export interface VerificationIssue {
   severity?: "error" | "warning";
 }
 
+/**
+ * Per-Action verification result (Phase 1.1).
+ *
+ * Each Action is verified independently against its own Evidence, Temporal,
+ * Actor, Modality and Negation. `passed` reflects only this Action's intrinsic
+ * checks — it is NOT influenced by other Actions and does NOT fold in the
+ * manifest-level fatal condition (`source_hash_matched`). Status promotion of a
+ * single Action requires `passed === true` AND no manifest-level fatal failure.
+ */
+export interface ActionVerificationResult {
+  action_id: string;
+  passed: boolean;
+  evidence_supported: boolean;
+  temporal_supported: boolean;
+  actor_supported: boolean;
+  modality_supported: boolean;
+  negation_conflict: boolean;
+  page_refs_valid: boolean;
+  issues: VerificationIssue[];
+}
+
+/**
+ * Manifest verification receipt.
+ *
+ * The seven boolean flags plus `issues[]` are the backward-compatible v0.1
+ * summary: each boolean is the AND-aggregate across every Action's per-action
+ * result (`negation_conflict` is the OR-aggregate), and `source_hash_matched`
+ * is a manifest-level (cross-cutting fatal) check. Phase 1.1 adds optional
+ * per-action fields (`passed`, counts, `actions[]`) so a manifest that has some
+ * invalid Actions can still carry the verified results of the valid ones.
+ *
+ * Meaning of the aggregate booleans is unchanged from v0.1: `evidence_supported
+ * === true` still means "every Action's evidence is supported". New readers get
+ * strictly more information; old readers keep working.
+ */
 export interface VerificationFlags {
   evidence_supported: boolean;
   temporal_supported: boolean;
@@ -166,6 +209,16 @@ export interface VerificationFlags {
   page_refs_valid: boolean;
   checked_at?: string;
   issues?: VerificationIssue[];
+  /** True only when no manifest-level fatal failure AND every Action passed. */
+  passed?: boolean;
+  total_actions?: number;
+  /** Actions promoted to verified (per-action pass AND no manifest-level fatal). */
+  verified_actions?: number;
+  /** Actions not verified: `total_actions - verified_actions`. */
+  failed_actions?: number;
+  /** Verified Actions that also carry a warning-severity issue. */
+  warning_actions?: number;
+  actions?: ActionVerificationResult[];
 }
 
 export interface ExtractionReceipt {

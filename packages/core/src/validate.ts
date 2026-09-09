@@ -3,7 +3,7 @@ import type { ErrorObject } from "ajv";
 import {
   actionManifestSchema,
   canonicalDocumentSchema,
-  SCHEMA_VERSION,
+  SUPPORTED_SCHEMA_VERSIONS,
   type ActionManifest,
   type CanonicalDocument,
 } from "@actionmanifest/schema";
@@ -37,9 +37,9 @@ export function validateActionManifest(data: unknown): ActionManifest {
     );
   }
   const manifest = data as ActionManifest;
-  if (manifest.schema_version !== SCHEMA_VERSION) {
+  if (!(SUPPORTED_SCHEMA_VERSIONS as readonly string[]).includes(manifest.schema_version)) {
     throw new SchemaValidationError(
-      `Unsupported schema_version ${manifest.schema_version}; expected ${SCHEMA_VERSION}`,
+      `Unsupported schema_version ${manifest.schema_version}; expected one of ${SUPPORTED_SCHEMA_VERSIONS.join(", ")}`,
     );
   }
   for (const action of manifest.actions) {

@@ -5,7 +5,7 @@
  * File exporters live in `@actionmanifest/exporters`. Optional LLM HTTP
  * lives in `@actionmanifest/extractor` and is not Core.
  */
-export { SCHEMA_VERSION } from "@actionmanifest/schema";
+export { SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSIONS } from "@actionmanifest/schema";
 export type * from "@actionmanifest/schema";
 export * from "./errors.js";
 export * from "./hash.js";

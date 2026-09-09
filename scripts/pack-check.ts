@@ -22,7 +22,7 @@
  *
  * Fully offline: external deps resolve from the workspace pnpm store.
  */
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import {
   cpSync,
@@ -32,13 +32,13 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
-  statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { cliInstallSmoke } from "./cli-install-smoke.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(join(root, "package.json"));
@@ -125,16 +125,6 @@ function fail(message: string): never {
 
 function run(cmd: string, args: string[], cwd: string): string {
   return execFileSync(cmd, args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-}
-
-/** Run allowing non-zero exits; returns status/stdout/stderr for assertions. */
-function probe(
-  cmd: string,
-  args: string[],
-  cwd: string,
-): { status: number; stdout: string; stderr: string } {
-  const r = spawnSync(cmd, args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-  return { status: r.status ?? -1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 }
 
 const work = mkdtempSync(join(tmpdir(), "actionmanifest-pack-"));
@@ -578,7 +568,14 @@ console.log("PACK-SMOKE-OK");
 
   // CLI: real package-manager install of the tarball in a fresh project,
   // then bin-shim smoke from a foreign cwd (no repository checkout).
-  cliInstallSmoke(packed);
+  const cliInfo = packed.get("cli");
+  if (!cliInfo) fail("cli was not packed");
+  cliInstallSmoke({
+    cliTarball: cliInfo.tgz,
+    expectedVersion: cliInfo.json.version,
+    libraryTarballs: new Map(LIBRARIES.map((p) => [p.name, packed.get(p.name)!.tgz])),
+    expectedConformanceTotal: 65,
+  });
 
   console.log(
     `pack:check PASS (${packedNames.length} packages packed, verified, runtime-smoked, type-deps declared, standalone matrix + CLI install smoke OK)`,
@@ -697,116 +694,4 @@ function standaloneConsumerCheck(packed: Map<string, PackedPackage>, target: str
   const smoke = run("node", ["smoke.mjs"], standalone);
   if (!smoke.includes("STANDALONE-OK")) fail(`${target}: standalone runtime smoke did not complete`);
   console.log(`  ✓ @actionmanifest/${target} standalone consumer (declared deps only): tsc + runtime OK`);
-}
-
-/**
- * Prove the packed CLI installs and runs like a real third-party install:
- * fresh project, `pnpm install` of the tarball (internal deps redirected to
- * the just-packed tarballs via pnpm overrides; external deps from the local
- * store, offline), then the `actionman` bin shim is exercised from a foreign
- * cwd — including the bundled conformance suite with no repo checkout.
- */
-function cliInstallSmoke(packed: Map<string, PackedPackage>): void {
-  const cli = packed.get("cli");
-  if (!cli) fail("cli was not packed");
-
-  const consumerDir = join(work, "cli-consumer");
-  mkdirSync(consumerDir, { recursive: true });
-
-  const overrides: Record<string, string> = {};
-  for (const pkg of LIBRARIES) {
-    const info = packed.get(pkg.name);
-    if (!info) fail(`${pkg.name} was not packed`);
-    overrides[`@actionmanifest/${pkg.name}`] = `file:${info.tgz}`;
-  }
-  writeFileSync(
-    join(consumerDir, "package.json"),
-    JSON.stringify(
-      {
-        name: "actionman-cli-consumer-smoke",
-        private: true,
-        type: "module",
-        dependencies: { "@actionmanifest/cli": `file:${cli.tgz}` },
-        pnpm: { overrides },
-      },
-      null,
-      2,
-    ),
-    "utf8",
-  );
-
-  run("pnpm", ["install", "--offline", "--ignore-scripts"], consumerDir);
-
-  const bin = join(consumerDir, "node_modules", ".bin", "actionman");
-  if (!existsSync(bin)) fail("cli: node_modules/.bin/actionman was not created by install");
-  if ((statSync(bin).mode & 0o111) === 0) fail("cli: bin shim is not executable");
-
-  const version = probe(bin, ["--version"], consumerDir);
-  if (version.status !== 0 || version.stdout.trim() !== cli.json.version) {
-    fail(`cli: --version failed or mismatched (status ${version.status}, got ${JSON.stringify(version.stdout)})`);
-  }
-
-  const help = probe(bin, ["--help"], consumerDir);
-  if (help.status !== 0 || !help.stdout.includes("Usage: actionman")) {
-    fail("cli: --help did not print usage");
-  }
-
-  // Data on stdout must be pure JSON when --json is passed.
-  writeFileSync(
-    join(consumerDir, "sample.txt"),
-    "令和8年10月15日に秋の遠足を実施します。雨天の場合は10月22日に延期します。",
-    "utf8",
-  );
-  const extract = probe(bin, ["extract", "sample.txt", "--json"], consumerDir);
-  if (extract.status !== 0) fail(`cli: extract failed: ${extract.stderr}`);
-  try {
-    JSON.parse(extract.stdout) as unknown;
-  } catch {
-    fail("cli: extract --json stdout is not pure JSON");
-  }
-  if (extract.stderr.trim() !== "") fail("cli: extract wrote to stderr on success");
-
-  writeFileSync(join(consumerDir, "manifest.json"), extract.stdout, "utf8");
-  const validate = probe(bin, ["validate", "manifest.json", "--doc", "sample.txt", "--json"], consumerDir);
-  if (validate.status !== 0) fail(`cli: validate failed: ${validate.stderr}`);
-  const validateReport = JSON.parse(validate.stdout) as { ok?: boolean };
-  if (validateReport.ok !== true) fail("cli: validate --json did not report ok");
-
-  // Bundled conformance suite: runs with no repo checkout, from a foreign cwd.
-  const conformance = probe(bin, ["conformance", "--json"], consumerDir);
-  if (conformance.status !== 0) {
-    fail(`cli: bundled conformance failed (status ${conformance.status}): ${conformance.stderr}`);
-  }
-  const report = JSON.parse(conformance.stdout) as {
-    result?: string;
-    totals?: { passed: number; total: number };
-    critical_false_exported?: number;
-  };
-  if (report.result !== "conformant" || report.totals?.passed !== report.totals?.total) {
-    fail("cli: bundled conformance is not fully conformant");
-  }
-  if ((report.critical_false_exported ?? 1) !== 0) {
-    fail("cli: critical false exported must be 0");
-  }
-
-  // Bundled benchmark corpus works out of the box too.
-  const benchmark = probe(bin, ["benchmark", "--smoke"], consumerDir);
-  if (benchmark.status !== 0) fail(`cli: bundled benchmark --smoke failed: ${benchmark.stderr}`);
-
-  // Error paths: distinct exit codes, errors on stderr (not stdout).
-  const missing = probe(bin, ["validate", "does-not-exist.json"], consumerDir);
-  if (missing.status !== 1 || missing.stdout.trim() !== "" || missing.stderr.trim() === "") {
-    fail("cli: missing-file validate must exit 1 with the error on stderr only");
-  }
-  const badRoot = probe(bin, ["conformance", "--root", "/nonexistent-suite"], consumerDir);
-  if (badRoot.status !== 2) fail("cli: bad --root must exit 2 (runner/config error)");
-
-  // The CLI must not install the native Xberg binding by default.
-  if (existsSync(join(consumerDir, "node_modules", "@xberg-io"))) {
-    fail("cli: install pulled in @xberg-io/* — native dependency must stay opt-in");
-  }
-
-  console.log(
-    `  ✓ @actionmanifest/cli installed from tarball (offline, foreign cwd): bin shim, extract/validate/conformance/benchmark, exit codes, no Xberg — OK`,
-  );
 }

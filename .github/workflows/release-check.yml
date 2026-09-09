@@ -1,0 +1,57 @@
+name: Release Check
+
+# Dry-run release verification: packs every public package, verifies the
+# artifacts (metadata, tarball contents, standalone consumers, CLI install
+# smoke), and uploads the tarballs + SHA256SUMS + release manifest + SBOM as
+# short-lived CI artifacts. This workflow NEVER publishes: it has no registry
+# credentials, no id-token permission, and runs `pnpm pack` only.
+#
+# The future live publish workflow is documented in docs/RELEASING.md and will
+# use OIDC Trusted Publishing (id-token: write) + provenance — intentionally
+# not enabled yet.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  release-dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # Full history so governance guards can diff against the PR base.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        # Version comes from package.json "packageManager" (do not also set `version` here).
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Ensure esbuild binary
+        run: node node_modules/esbuild/install.js
+      # Full gate chain (governance, lint, typecheck, schema, unit,
+      # integration, conformance, reference serialization, benchmarks,
+      # pack:check incl. CLI install smoke, docs examples) then the release
+      # dry-run (pack all, SHA256SUMS, release manifest, SBOM, install smoke).
+      - name: Release gate chain + dry-run artifacts
+        run: pnpm release:check
+        env:
+          GOVERNANCE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      - name: Upload dry-run release artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-dry-run
+          path: |
+            release-artifacts/tarballs/*.tgz
+            release-artifacts/SHA256SUMS
+            release-artifacts/release-manifest.json
+            release-artifacts/sbom.cdx.json
+          # Short retention: these are verification artifacts, not releases.
+          retention-days: 7

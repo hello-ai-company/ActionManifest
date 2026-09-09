@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actionmanifest.dev/conformance/profiles/temporal.schema.json",
+  "title": "Conformance vector — temporal profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "profile",
+    "input",
+    "expected"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "profile": {
+      "const": "temporal"
+    },
+    "description": {
+      "type": "string"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "temporal"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "temporal": {
+          "type": "object"
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact",
+        "executable_date"
+      ],
+      "properties": {
+        "artifact": {
+          "enum": [
+            "VEVENT",
+            "VTODO",
+            null
+          ]
+        },
+        "executable_date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^\\d{8}$"
+        },
+        "comment_includes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

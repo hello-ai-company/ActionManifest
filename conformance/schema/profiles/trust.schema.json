@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actionmanifest.dev/conformance/profiles/trust.schema.json",
+  "title": "Conformance vector — trust profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "profile",
+    "input",
+    "expected"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "profile": {
+      "const": "trust"
+    },
+    "description": {
+      "type": "string"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action"
+      ],
+      "properties": {
+        "action": {
+          "type": "object"
+        },
+        "verification": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ready",
+        "reason",
+        "disposition",
+        "exportable_default"
+      ],
+      "properties": {
+        "ready": {
+          "type": "boolean"
+        },
+        "reason": {
+          "enum": [
+            "READY",
+            "MANIFEST_FATAL",
+            "VERIFICATION_MISSING",
+            "PER_ACTION_RESULT_MISSING",
+            "VERIFICATION_FAILED",
+            "STATUS_NOT_VERIFIED_TIER",
+            "ACTION_REJECTED"
+          ]
+        },
+        "disposition": {
+          "enum": [
+            "ready",
+            "review_required",
+            "blocked"
+          ]
+        },
+        "exportable_default": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

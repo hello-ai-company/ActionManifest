@@ -1,14 +1,16 @@
 {
   "name": "@actionmanifest/cli",
   "version": "0.1.0",
-  "description": "actionman CLI — extract, validate, and benchmark Action Manifests.",
+  "description": "actionman CLI \u2014 extract, validate, and benchmark Action Manifests.",
   "type": "module",
   "bin": {
     "actionman": "./src/index.ts"
   },
   "main": "./src/index.ts",
   "types": "./src/index.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b",
     "start": "tsx src/index.ts"
@@ -19,6 +21,8 @@
     "@actionmanifest/extractor": "workspace:*",
     "@actionmanifest/exporters": "workspace:*",
     "@actionmanifest/verifier": "workspace:*",
-    "commander": "^14.0.0"
+    "commander": "^14.0.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
   }
 }

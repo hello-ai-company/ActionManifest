@@ -53,6 +53,12 @@ importers:
       '@actionmanifest/verifier':
         specifier: workspace:*
         version: link:../../packages/verifier
+      ajv:
+        specifier: ^8.17.1
+        version: 8.20.0
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.20.0)
       commander:
         specifier: ^14.0.0
         version: 14.0.3

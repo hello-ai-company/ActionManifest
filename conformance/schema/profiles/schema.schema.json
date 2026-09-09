@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actionmanifest.dev/conformance/profiles/schema.schema.json",
+  "title": "Conformance vector — schema profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "profile",
+    "input",
+    "expected"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "profile": {
+      "const": "schema"
+    },
+    "description": {
+      "type": "string"
+    },
+    "input": {
+      "type": "object",
+      "description": "A manifest JSON value (any shape — the point is acceptance/rejection)."
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valid"
+      ],
+      "properties": {
+        "valid": {
+          "type": "boolean"
+        },
+        "error_code": {
+          "const": "SCHEMA_VALIDATION"
+        }
+      }
+    }
+  }
+}

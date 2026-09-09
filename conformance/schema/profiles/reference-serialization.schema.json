@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actionmanifest.dev/conformance/profiles/reference-serialization.schema.json",
+  "title": "Conformance vector — reference-serialization profile (TypeScript regression only)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "profile",
+    "input",
+    "expected"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "profile": {
+      "const": "reference-serialization"
+    },
+    "description": {
+      "type": "string"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest"
+      ],
+      "properties": {
+        "manifest": {
+          "type": "object"
+        },
+        "options": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "now": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "include": {
+              "enum": [
+                "verified-only",
+                "all"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "golden"
+      ],
+      "properties": {
+        "export_error": {
+          "const": "EXPORT_BLOCKED"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "enum": [
+                  "VEVENT",
+                  "VTODO"
+                ]
+              },
+              "props": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "forbid_props": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "uniqueItems": true
+              }
+            }
+          }
+        },
+        "contains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "not_contains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "artifact_counts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "max_octets_per_line": {
+          "const": 75
+        },
+        "crlf_only": {
+          "const": true
+        },
+        "uid_pattern": {
+          "type": "string"
+        },
+        "uid_not_contains": {
+          "type": "string"
+        },
+        "golden": {
+          "type": "string",
+          "pattern": "^golden/.+\\.ics$"
+        }
+      }
+    }
+  }
+}

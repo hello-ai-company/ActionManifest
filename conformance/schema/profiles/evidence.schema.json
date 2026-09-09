@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actionmanifest.dev/conformance/profiles/evidence.schema.json",
+  "title": "Conformance vector — evidence profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "profile",
+    "input",
+    "expected"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "profile": {
+      "const": "evidence"
+    },
+    "description": {
+      "type": "string"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest",
+        "document"
+      ],
+      "properties": {
+        "manifest": {
+          "type": "object"
+        },
+        "document": {
+          "type": "object"
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actions"
+      ],
+      "properties": {
+        "actions": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "evidence_supported": {
+                "type": "boolean"
+              },
+              "page_refs_valid": {
+                "type": "boolean"
+              },
+              "passed": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -27,7 +27,8 @@
     "governance:validate": "tsx scripts/governance.ts",
     "docs:examples": "tsc --noEmit -p docs/examples/tsconfig.json && tsx --tsconfig docs/examples/tsconfig.json docs/examples/library-quick-start.ts && tsx --tsconfig docs/examples/tsconfig.json docs/examples/per-action-verification.ts",
     "release:dry-run": "pnpm build && tsx scripts/release-dry-run.ts",
-    "release:check": "pnpm governance:validate && pnpm lint && pnpm typecheck && pnpm schema:validate && pnpm test && pnpm integration:test && pnpm conformance && pnpm conformance:reference && pnpm benchmark:smoke && pnpm benchmark && pnpm pack:check && pnpm docs:examples && pnpm release:dry-run"
+    "release:check": "pnpm governance:validate && pnpm lint && pnpm typecheck && pnpm schema:validate && pnpm test && pnpm integration:test && pnpm conformance && pnpm conformance:reference && pnpm benchmark:smoke && pnpm benchmark && pnpm pack:check && pnpm docs:examples && pnpm release:dry-run",
+    "release:check:quick": "pnpm pack:check && pnpm docs:examples && pnpm release:dry-run"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

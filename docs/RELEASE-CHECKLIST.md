@@ -56,9 +56,22 @@ Last verified: Phase 2.3 (against `main` tip
 | 27 | release-manifest.json (versions, hashes, engines, dep graph, publish order) | PASS |
 | 28 | CycloneDX SBOM (first-party + full external production closure) | PASS (24 components) |
 | 29 | No registry credentials in repo `.npmrc` | PASS (dry-run guard) |
-| 30 | Release Check workflow: `contents: read` only, SHA-pinned actions, artifact retention 7d | PASS |
+| 30 | Release Check workflow: `contents: read` only, SHA-pinned actions | PASS |
 | 31 | No long-lived npm tokens; OIDC Trusted Publishing specified for the future publish workflow | READY (documented in RELEASING.md §6; not yet enabled) |
 | 32 | Provenance attestations (`--provenance`) | READY (part of the future publish command) |
+
+## Ops constraints (Round-1, PA-20260910-001)
+
+| # | Item | Status |
+| --- | --- | --- |
+| ⑥a | `release:check` is verification-only — never publishes, tags, or creates GitHub Releases; separate from any future publish workflow | PASS (pack-only; guards enforced in `release-dry-run.ts`) |
+| ⑥b | Publish guards: default dry-run; `NPM_TOKEN`/`NODE_AUTH_TOKEN` present → fail closed (never used); publish argv refused; repo `.npmrc` credentials refused | PASS (enforced) |
+| ⑥c | Dirty tree fails in CI (warned + recorded locally); tag-mismatch and ungated-CI guards specified for the publish path | PASS (RELEASING.md §3/§8) |
+| ⑦ | CI concurrency `release-check-<ref>`; cancel-in-progress on PRs, never on main/tag/RC paths | PASS (implemented + documented) |
+| ③ | Single entry `pnpm release:check`; PR quick path (`release:check:quick`) vs full path on main/tag/dispatch — no duplicated gates per PR | PASS (implemented + documented) |
+| ⑤a | Artifacts named `release-check-<sha>`; retention 14d PR / 90d main+RC | PASS (workflow) |
+| ⑤b | Binaries never committed to the repo (`release-artifacts/` gitignored) | PASS |
+| ⑧ | Retention + evidence summary path documented (RELEASING.md §3 "Artifacts & evidence"; evidence/ dirs are Eng-ops-only per PUBLIC-BOUNDARY) | PASS |
 
 ## Documentation / DX
 

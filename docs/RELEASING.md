@@ -83,8 +83,35 @@ with declared deps only, CLI install smoke from a foreign cwd) → executable
 docs examples → `release:dry-run` (release artifacts + SBOM + install
 smoke). Any failure aborts the chain. Do not proceed on a yellow chain.
 
-Expected artifacts in `release-artifacts/` (gitignored; also uploaded by the
-Release Check workflow with 7-day retention):
+### Verification paths (ops constraint ③)
+
+`pnpm release:check` is the **single entry** for full verification. CI does
+not duplicate the whole chain on every PR:
+
+| Path | Trigger | Runs |
+| --- | --- | --- |
+| Quick | `pull_request` | `pnpm release:check:quick` = `pack:check` + `docs:examples` + `release:dry-run`. All other gates already run in the CI workflow on the same ref. |
+| Full | `push` to `main`, tag `v*` (pre-tag/RC verification), `workflow_dispatch` | `pnpm release:check` (the complete chain above) |
+
+### Verification can never publish (ops constraints ①④)
+
+- `release:check` / `release:dry-run` run `pnpm pack` only. They never call
+  `npm publish` / `pnpm publish`, never create GitHub Releases, never push
+  tags. The future publish workflow is a **separate** gated workflow (§6/§8).
+- The dry-run **fails closed** if `NPM_TOKEN` or `NODE_AUTH_TOKEN` are
+  present in the environment (the Release Check workflow sets them
+  explicitly empty), if argv contains "publish", or if the repo `.npmrc`
+  carries registry credentials.
+- The dry-run **fails on a dirty git tree in CI** (locally it records
+  `git.dirty` in the manifest and warns). The publish path additionally
+  hard-requires: clean tree, tag version == all package.json versions
+  (tag mismatch aborts), and green CI + Release Check on the exact release
+  commit (ungated CI aborts) — see §8.
+
+### Artifacts & evidence (ops constraint ⑤⑧)
+
+Expected artifacts in `release-artifacts/` (gitignored — binaries are never
+committed to the repo):
 
 - `tarballs/*.tgz` — the exact 10 artifacts that would be published
 - `SHA256SUMS` — sha256 of each tarball
@@ -92,6 +119,18 @@ Release Check workflow with 7-day retention):
   computed publish order
 - `sbom.cdx.json` — CycloneDX 1.5 SBOM (first-party + full external
   production closure)
+
+In CI they upload as artifact **`release-check-<commit-sha>`** with
+retention **14 days (PRs)** / **90 days (main, tags, dispatch)**. The
+Release Check workflow serializes runs per ref
+(`concurrency: release-check-<ref>`): superseded PR runs cancel;
+main/tag/RC runs always complete so release evidence is never interrupted.
+
+**Evidence summary path:** the release evidence for a candidate is the
+`release-check-<sha>` CI artifact plus its run URL, referenced from the
+release PR. Repository-local evidence directories (`evidence/<ticket>/`)
+are filled by Eng ops after review per
+[PUBLIC-BOUNDARY.md](PUBLIC-BOUNDARY.md) — agents never write there.
 
 ## 4. Version selection & inventory
 
@@ -152,7 +191,20 @@ Long-lived npm tokens are **not used**. Before the first publish:
 
 ## 8. Publish (the actual release — separate phase)
 
-Only after §1–§7 are satisfied and the release PR is merged:
+Only after §1–§7 are satisfied and the release PR is merged. The publish
+workflow is **separate** from Release Check and hard-fails on any of these
+guards (ops constraint ④):
+
+- **Dirty tree** — `git status --porcelain` must be empty on the release
+  commit.
+- **Tag mismatch** — the triggering tag `vX.Y.Z` must equal the `version` in
+  every public package.json (lockstep); any mismatch aborts before the first
+  publish.
+- **Ungated CI** — CI and Release Check must both be green on the exact
+  tagged commit; the workflow verifies this via the commit status API and
+  aborts otherwise.
+- **Credentials** — OIDC only (`id-token: write`); the job fails closed if
+  `NPM_TOKEN`/`NODE_AUTH_TOKEN` are present. No long-lived tokens exist.
 
 ```bash
 # In the OIDC release workflow — never from a laptop with a long-lived token.
@@ -201,5 +253,7 @@ Also verify provenance attestations are visible on npmjs.com
 
 - No `npm publish` / `pnpm publish` has been run. No tags, no GitHub
   Releases. The live OIDC workflow is specified but intentionally not
-  enabled. `pnpm release:dry-run` proves everything short of the registry
-  write.
+  enabled. `pnpm release:check` / `pnpm release:dry-run` are
+  **verification-only** and prove everything short of the registry write;
+  they fail closed in the presence of registry credentials (ops constraints
+  ①–⑧ are implemented and enforced, not just documented).

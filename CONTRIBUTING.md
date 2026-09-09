@@ -40,6 +40,11 @@ Node 20+. pnpm workspaces. Default extractor is deterministic (no network).
 | `pnpm pack:check` | Every public package packs; tarballs contain dist/LICENSE/NOTICE and no tests; standalone consumers typecheck + run with declared deps only; CLI installs and runs from a foreign cwd |
 | `pnpm docs:examples` | README examples are executable and typechecked |
 | `pnpm release:dry-run` | Release artifacts (tarballs, SHA256SUMS, manifest, SBOM) without any registry write |
+| `pnpm release:check:quick` | PR quick path: pack:check + docs examples + dry-run (the Release Check workflow runs this on PRs; the full chain runs on main/tags/dispatch) |
+
+`pnpm release:check` is verification-only: it never publishes, never tags,
+never creates GitHub Releases, and fails closed if registry credentials are
+present in the environment. See [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Packaging rules (Phase 2.2/2.3)
 

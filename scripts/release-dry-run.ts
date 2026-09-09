@@ -15,9 +15,14 @@
  * (offline; internal deps redirected to the local tarballs) and the bin shim
  * is smoke-tested from a foreign cwd (shared gate: scripts/cli-install-smoke).
  *
- * HARD GUARANTEE: this script never publishes. It runs `pnpm pack` only,
- * refuses to run if argv contains "publish", and fails if the repository
- * .npmrc contains registry credentials.
+ * HARD GUARANTEE (ops constraint ①/④): this script never publishes. It runs
+ * `pnpm pack` only, refuses to run if argv contains "publish", fails closed
+ * if NPM_TOKEN/NODE_AUTH_TOKEN are present in the environment (they are never
+ * used — verification must not run with registry credentials loaded), fails
+ * if the repository .npmrc contains registry credentials, and fails on a
+ * dirty git tree in CI (locally: recorded as a warning in the manifest).
+ * The future publish path (tag mismatch / ungated CI guards) is documented
+ * in docs/RELEASING.md and is a separate, gated workflow — never this one.
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -69,9 +74,17 @@ function run(cmd: string, args: string[], cwd: string): string {
   return execFileSync(cmd, args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
-// ---------- accidental-publish guard ----------
+// ---------- accidental-publish guards (fail closed) ----------
 if (process.argv.slice(2).some((a) => /publish/i.test(a))) {
   fail("refusing to run: argv contains 'publish'. This script packs; it never publishes.");
+}
+for (const tokenVar of ["NPM_TOKEN", "NODE_AUTH_TOKEN"]) {
+  if (process.env[tokenVar]) {
+    fail(
+      `${tokenVar} is present in the environment. Release verification is credential-free: ` +
+        `unset it (the check workflow never provides it). Tokens are never used here.`,
+    );
+  }
 }
 const repoNpmrc = join(root, ".npmrc");
 if (existsSync(repoNpmrc)) {
@@ -85,6 +98,15 @@ if (existsSync(repoNpmrc)) {
 const head = run("git", ["rev-parse", "HEAD"], root);
 const branch = run("git", ["rev-parse", "--abbrev-ref", "HEAD"], root);
 const dirty = run("git", ["status", "--porcelain"], root).length > 0;
+// Ops constraint ④: a release-candidate dry-run in CI must come from a clean
+// tree (the publish path will hard-require this). Locally a dirty tree is
+// normal during development — record it in the manifest and warn instead.
+if (dirty && process.env.CI === "true") {
+  fail("git working tree is dirty in CI — release artifacts must come from a clean checkout");
+}
+if (dirty) {
+  console.warn("release:dry-run WARN: working tree is dirty (recorded in manifest; CI would fail)");
+}
 
 // ---------- pack all public packages ----------
 rmSync(outDir, { recursive: true, force: true });

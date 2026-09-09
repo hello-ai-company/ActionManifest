@@ -1,22 +1,39 @@
 name: Release Check
 
-# Dry-run release verification: packs every public package, verifies the
-# artifacts (metadata, tarball contents, standalone consumers, CLI install
-# smoke), and uploads the tarballs + SHA256SUMS + release manifest + SBOM as
-# short-lived CI artifacts. This workflow NEVER publishes: it has no registry
-# credentials, no id-token permission, and runs `pnpm pack` only.
+# Verification-only release gate (ops constraints ①–⑧). This workflow NEVER
+# publishes: it holds no registry credentials (NPM_TOKEN/NODE_AUTH_TOKEN are
+# explicitly empty — the dry-run fails closed if they are ever set), has no
+# id-token permission, pushes no tags, and creates no GitHub Releases. The
+# future publish path is a separate, gated workflow (docs/RELEASING.md).
 #
-# The future live publish workflow is documented in docs/RELEASING.md and will
-# use OIDC Trusted Publishing (id-token: write) + provenance — intentionally
-# not enabled yet.
+# Path split (ops constraint ③):
+#   - pull_request: quick path — `pnpm release:check:quick` (pack:check +
+#     docs examples + dry-run artifacts). The full gate chain already runs in
+#     the CI workflow on the same ref; we do not duplicate it per PR.
+#   - push to main, tags (v* = pre-tag/RC verification), workflow_dispatch:
+#     the full single entry `pnpm release:check`.
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+# Ops constraint ②: one run per ref; PR runs cancel superseded ones, while
+# main/tag/RC runs always complete (release evidence must not be cancelled).
+concurrency:
+  group: release-check-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+env:
+  # Ops constraint ④: never present, never used. The dry-run fails closed if
+  # these ever carry a value.
+  NPM_TOKEN: ""
+  NODE_AUTH_TOKEN: ""
 
 jobs:
   release-dry-run:
@@ -36,22 +53,31 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Ensure esbuild binary
         run: node node_modules/esbuild/install.js
-      # Full gate chain (governance, lint, typecheck, schema, unit,
-      # integration, conformance, reference serialization, benchmarks,
-      # pack:check incl. CLI install smoke, docs examples) then the release
-      # dry-run (pack all, SHA256SUMS, release manifest, SBOM, install smoke).
-      - name: Release gate chain + dry-run artifacts
+      # PR quick path: packaging proof + dry-run artifacts only. Governance,
+      # lint, typecheck, schema, unit, integration, conformance, reference
+      # serialization, and benchmarks are covered by the CI workflow on the
+      # same ref — no duplicated gates per PR.
+      - name: Release quick check (PR path)
+        if: github.event_name == 'pull_request'
+        run: pnpm release:check:quick
+        env:
+          GOVERNANCE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      # Full path (single entry): main pushes, pre-tag/RC verification, and
+      # manual dispatch run the complete gate chain.
+      - name: Release full check (main / tag / dispatch path)
+        if: github.event_name != 'pull_request'
         run: pnpm release:check
         env:
           GOVERNANCE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      # Ops constraint ⑤: artifacts are named by commit and never committed
+      # to the repo; retention 14d for PRs, 90d for main/tag/dispatch runs.
       - name: Upload dry-run release artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: release-dry-run
+          name: release-check-${{ github.sha }}
           path: |
             release-artifacts/tarballs/*.tgz
             release-artifacts/SHA256SUMS
             release-artifacts/release-manifest.json
             release-artifacts/sbom.cdx.json
-          # Short retention: these are verification artifacts, not releases.
-          retention-days: 7
+          retention-days: ${{ github.event_name == 'pull_request' && 14 || 90 }}

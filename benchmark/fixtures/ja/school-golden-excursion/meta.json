@@ -1,0 +1,12 @@
+{
+  "id": "school-golden-excursion",
+  "language": "ja",
+  "category": "school",
+  "tags": [
+    "golden",
+    "negation",
+    "conditional",
+    "rain"
+  ],
+  "golden": true
+}

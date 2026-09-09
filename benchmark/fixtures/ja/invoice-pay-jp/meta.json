@@ -1,0 +1,9 @@
+{
+  "id": "invoice-pay-jp",
+  "language": "ja",
+  "category": "invoice",
+  "tags": [
+    "pay"
+  ],
+  "golden": false
+}

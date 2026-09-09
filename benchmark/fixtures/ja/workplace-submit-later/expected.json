@@ -1,0 +1,33 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "報告書を提出する",
+      "object": "報告書",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "relative",
+        "raw_text": "後日",
+        "precision": "unknown",
+        "deadline_qualifier": "later",
+        "certainty": "low"
+      },
+      "evidence": [
+        {
+          "source_id": "workplace-submit-later",
+          "page": 1,
+          "text": "報告書は後日提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "conditions": [
+        "後日提出"
+      ]
+    }
+  ]
+}

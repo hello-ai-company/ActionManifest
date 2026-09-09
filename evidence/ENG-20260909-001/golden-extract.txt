@@ -1,0 +1,29 @@
+
+> action-manifest@0.1.0 actionman /workspace
+> tsx apps/cli/src/index.ts extract ./examples/golden-excursion.txt
+
+Source: golden-excursion.txt (sha256 135cb3faf077…)
+Schema: 0.1.0
+Extracted by deterministic/notice-rules-v0.1 at 2026-09-09T03:58:43.376Z
+Verification: PASS
+
+Actions (3)
+
+1. [event] 日に秋の遠足を実施する
+   Modality: required · Actor: unknown
+   When: 2026-10-15 · alt 2026-10-22 if 雨天
+   Evidence: 「令和8年10月15日に秋の遠足を実施します。」
+   Evidence: 「雨天の場合は10月22日に延期します。」
+
+2. [submit] 10月5日までに参加確認票を提出する
+   Modality: required · Actor: unknown
+   When: 2026-10-05 · until
+   Conditions: 参加を希望する; 希望者のみ; 参加希望者に限り必須; 前回すでに提出した方は再提出不要; 前回すでに参加確認票を提出した方は、再提出する必要はありません
+   Evidence: 「参加を希望する方は、10月5日までに参加確認票を提出してください。」
+   Evidence: 「前回すでに参加確認票を提出した方は、再提出する必要はありません。」
+
+3. [prepare] 当日は弁当を持参する
+   Modality: required · Actor: unknown
+   When: relative (当日) · on_day
+   Evidence: 「当日は弁当、水筒、タオルを持参してください。」
+

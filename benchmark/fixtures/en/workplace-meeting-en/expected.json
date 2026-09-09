@@ -1,0 +1,32 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "team meeting",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-08",
+        "year": 2026,
+        "month": 10,
+        "day": 8,
+        "precision": "day",
+        "raw_text": "October 8, 2026",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "workplace-meeting-en",
+          "page": 1,
+          "text": "The team meeting will be held on October 8, 2026 at 10:00 in Conference Room B."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

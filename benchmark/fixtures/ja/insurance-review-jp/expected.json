@@ -1,0 +1,22 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "review",
+      "title": "補償内容を確認する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "insurance-review-jp",
+          "page": 1,
+          "text": "補償内容をご確認ください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "office move",
+      "modality": "unknown",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "approximate",
+        "month": 10,
+        "precision": "month",
+        "raw_text": "around October",
+        "certainty": "low"
+      },
+      "evidence": [
+        {
+          "source_id": "en-around-october",
+          "page": 1,
+          "text": "The office move is planned around October."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

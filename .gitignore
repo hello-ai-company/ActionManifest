@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+.DS_Store
+*.log
+!evidence/**/*.log
+.env
+.env.local
+.env.*.local
+.netlify
+.pnpm-store/
+*.tsbuildinfo
+.idea/
+.vscode/
+tmp/
+.cache/

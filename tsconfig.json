@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/schema" },
+    { "path": "./packages/core" },
+    { "path": "./packages/adapters" },
+    { "path": "./packages/temporal" },
+    { "path": "./packages/extractor" },
+    { "path": "./packages/verifier" },
+    { "path": "./packages/exporters" },
+    { "path": "./apps/cli" }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "pay",
+      "title": "pay the balance",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-11-15",
+        "year": 2026,
+        "month": 11,
+        "day": 15,
+        "precision": "day",
+        "raw_text": "2026-11-15",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "invoice-payment-en",
+          "page": 1,
+          "text": "Please pay the balance by 2026-11-15."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

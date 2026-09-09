@@ -1,0 +1,9 @@
+{
+  "id": "event-participants-only",
+  "language": "ja",
+  "category": "event",
+  "tags": [
+    "modality"
+  ],
+  "golden": false
+}

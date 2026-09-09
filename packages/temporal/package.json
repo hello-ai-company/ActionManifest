@@ -1,0 +1,21 @@
+{
+  "name": "@actionmanifest/temporal",
+  "version": "0.1.0",
+  "description": "Deterministic Japanese/English temporal and modality parsing. Unknown stays unknown.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@actionmanifest/core": "workspace:*"
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "秋の遠足を実施する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-15",
+        "year": 2026,
+        "month": 10,
+        "day": 15,
+        "precision": "day",
+        "raw_text": "令和8年10月15日",
+        "certainty": "high",
+        "alternatives": [
+          {
+            "type": "conditional",
+            "date": "2026-10-22",
+            "year": 2026,
+            "month": 10,
+            "day": 22,
+            "precision": "day",
+            "raw_text": "雨天の場合は10月22日に延期します",
+            "condition": "雨天",
+            "certainty": "high"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "source_id": "school-golden-excursion",
+          "page": 1,
+          "text": "令和8年10月15日に秋の遠足を実施します。"
+        },
+        {
+          "source_id": "school-golden-excursion",
+          "page": 1,
+          "text": "雨天の場合は10月22日に延期します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    },
+    {
+      "id": "act_002",
+      "kind": "submit",
+      "title": "参加確認票を提出する",
+      "object": "参加確認票",
+      "modality": "required",
+      "actor": {
+        "text": "参加を希望する方",
+        "role": "applicant",
+        "certainty": "explicit"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-05",
+        "year": 2026,
+        "month": 10,
+        "day": 5,
+        "precision": "day",
+        "raw_text": "10月5日まで",
+        "deadline_qualifier": "until",
+        "end": "2026-10-05",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "school-golden-excursion",
+          "page": 1,
+          "text": "参加を希望する方は、10月5日までに参加確認票を提出してください。"
+        },
+        {
+          "source_id": "school-golden-excursion",
+          "page": 1,
+          "text": "前回すでに参加確認票を提出した方は、再提出する必要はありません。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "conditions": [
+        "参加を希望する",
+        "希望者のみ",
+        "参加希望者に限り必須",
+        "前回すでに提出した方は再提出不要",
+        "前回すでに参加確認票を提出した方は、再提出する必要はありません"
+      ]
+    },
+    {
+      "id": "act_003",
+      "kind": "prepare",
+      "title": "弁当、水筒、タオルを持参する",
+      "object": "弁当、水筒、タオル",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "relative",
+        "precision": "day",
+        "raw_text": "当日",
+        "deadline_qualifier": "on_day",
+        "certainty": "medium"
+      },
+      "evidence": [
+        {
+          "source_id": "school-golden-excursion",
+          "page": 1,
+          "text": "当日は弁当、水筒、タオルを持参してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

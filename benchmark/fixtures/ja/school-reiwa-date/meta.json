@@ -1,0 +1,10 @@
+{
+  "id": "school-reiwa-date",
+  "language": "ja",
+  "category": "school",
+  "tags": [
+    "temporal",
+    "reiwa"
+  ],
+  "golden": false
+}

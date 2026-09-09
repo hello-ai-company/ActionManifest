@@ -1,0 +1,9 @@
+{
+  "id": "invoice-payment-en",
+  "language": "en",
+  "category": "invoice",
+  "tags": [
+    "pay"
+  ],
+  "golden": false
+}

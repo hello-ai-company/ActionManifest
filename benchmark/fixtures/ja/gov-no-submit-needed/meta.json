@@ -1,0 +1,10 @@
+{
+  "id": "gov-no-submit-needed",
+  "language": "ja",
+  "category": "government",
+  "tags": [
+    "negation",
+    "prohibited"
+  ],
+  "golden": false
+}

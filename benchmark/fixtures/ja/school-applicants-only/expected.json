@@ -1,0 +1,28 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "申込書を提出する",
+      "object": "申込書",
+      "modality": "required",
+      "actor": {
+        "certainty": "explicit",
+        "text": "希望者",
+        "role": "applicant"
+      },
+      "evidence": [
+        {
+          "source_id": "school-applicants-only",
+          "page": 1,
+          "text": "申込書を提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "conditions": [
+        "希望者のみ"
+      ]
+    }
+  ]
+}

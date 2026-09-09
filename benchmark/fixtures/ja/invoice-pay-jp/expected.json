@@ -1,0 +1,34 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "pay",
+      "title": "請求金額を支払う",
+      "object": "請求金額",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-31",
+        "year": 2026,
+        "month": 10,
+        "day": 31,
+        "precision": "day",
+        "raw_text": "令和8年10月31日まで",
+        "deadline_qualifier": "until",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "invoice-pay-jp",
+          "page": 1,
+          "text": "令和8年10月31日までに請求金額を振り込んでください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

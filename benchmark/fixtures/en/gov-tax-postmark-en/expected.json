@@ -1,0 +1,33 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "file the return",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-04-15",
+        "year": 2026,
+        "month": 4,
+        "day": 15,
+        "precision": "day",
+        "raw_text": "April 15, 2026",
+        "deadline_qualifier": "postmark_valid",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "gov-tax-postmark-en",
+          "page": 1,
+          "text": "File the return by April 15, 2026."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

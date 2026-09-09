@@ -1,0 +1,9 @@
+{
+  "id": "contract-sign-en",
+  "language": "en",
+  "category": "contract",
+  "tags": [
+    "sign"
+  ],
+  "golden": false
+}

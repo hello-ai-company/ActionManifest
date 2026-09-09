@@ -1,0 +1,28 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "submit the claim form",
+      "object": "claim form",
+      "modality": "required",
+      "actor": {
+        "certainty": "explicit",
+        "role": "applicant"
+      },
+      "evidence": [
+        {
+          "source_id": "insurance-claim-en",
+          "page": 1,
+          "text": "If you wish to file a claim, submit the claim form."
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "conditions": [
+        "those who wish",
+        "already submitted — no resubmit"
+      ]
+    }
+  ]
+}

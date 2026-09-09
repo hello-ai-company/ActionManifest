@@ -1,0 +1,9 @@
+{
+  "id": "housing-inspection-en",
+  "language": "en",
+  "category": "housing",
+  "tags": [
+    "review"
+  ],
+  "golden": false
+}

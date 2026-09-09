@@ -1,0 +1,9 @@
+{
+  "id": "insurance-review-jp",
+  "language": "ja",
+  "category": "insurance",
+  "tags": [
+    "review"
+  ],
+  "golden": false
+}

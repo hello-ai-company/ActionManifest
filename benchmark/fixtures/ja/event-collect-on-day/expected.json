@@ -1,0 +1,33 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "pay",
+      "title": "参加費を支払う",
+      "object": "参加費",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "relative",
+        "raw_text": "当日",
+        "precision": "day",
+        "deadline_qualifier": "on_day",
+        "certainty": "medium"
+      },
+      "evidence": [
+        {
+          "source_id": "event-collect-on-day",
+          "page": 1,
+          "text": "参加費500円は当日徴収します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "conditions": [
+        "当日徴収"
+      ]
+    }
+  ]
+}

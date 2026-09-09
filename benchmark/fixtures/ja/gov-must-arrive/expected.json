@@ -1,0 +1,34 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "申請書を提出する",
+      "object": "申請書",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-10",
+        "year": 2026,
+        "month": 10,
+        "day": 10,
+        "precision": "day",
+        "raw_text": "令和8年10月10日",
+        "deadline_qualifier": "must_arrive",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "gov-must-arrive",
+          "page": 1,
+          "text": "令和8年10月10日必着で申請書を提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

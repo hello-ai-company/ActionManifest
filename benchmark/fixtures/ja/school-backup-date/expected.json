@@ -1,0 +1,32 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "発表会",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-11-03",
+        "year": 2026,
+        "month": 11,
+        "day": 3,
+        "precision": "day",
+        "raw_text": "令和8年11月3日",
+        "certainty": "high"
+      },
+      "evidence": [
+        {
+          "source_id": "school-backup-date",
+          "page": 1,
+          "text": "発表会は令和8年11月3日です。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ]
+}

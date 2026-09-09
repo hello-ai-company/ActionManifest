@@ -1,0 +1,9 @@
+{
+  "id": "insurance-claim-en",
+  "language": "en",
+  "category": "insurance",
+  "tags": [
+    "submit"
+  ],
+  "golden": false
+}

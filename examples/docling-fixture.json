@@ -1,0 +1,21 @@
+{
+  "name": "docling-synthetic-notice",
+  "pages": [
+    {
+      "page_no": 1,
+      "text": "Office hours will be held on October 8, 2026. Please bring your own laptop."
+    }
+  ],
+  "texts": [
+    {
+      "text": "Office hours will be held on October 8, 2026.",
+      "page_no": 1,
+      "self_ref": "#/texts/0"
+    },
+    {
+      "text": "Please bring your own laptop.",
+      "page_no": 1,
+      "self_ref": "#/texts/1"
+    }
+  ]
+}

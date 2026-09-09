@@ -1,0 +1,21 @@
+{
+  "name": "@actionmanifest/exporters",
+  "version": "0.1.0",
+  "description": "JSON and iCalendar exporters. Core never writes to Google Calendar or other apps.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@actionmanifest/core": "workspace:*"
+  }
+}

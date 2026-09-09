@@ -1,0 +1,9 @@
+{
+  "id": "housing-contract-jp",
+  "language": "ja",
+  "category": "housing",
+  "tags": [
+    "sign"
+  ],
+  "golden": false
+}

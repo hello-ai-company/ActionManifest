@@ -27,8 +27,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Ensure esbuild binary
-        run: node node_modules/esbuild/install.js
+      # pnpm 11: allowBuilds (pnpm-workspace.yaml) runs esbuild's postinstall
+      # during install — the manual binary step from the pnpm 10 era is gone.
       # Phase 2.1 governance: frozen v0.1/v0.2 schema paths MUST NOT change
       # (cannot be bypassed by editing checksums.json), and normative
       # conformance changes require a suite_version bump.

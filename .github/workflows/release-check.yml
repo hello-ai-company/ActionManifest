@@ -57,8 +57,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Ensure esbuild binary
-        run: node node_modules/esbuild/install.js
+      # pnpm 11: allowBuilds (pnpm-workspace.yaml) runs esbuild's postinstall
+      # during install — the manual binary step from the pnpm 10 era is gone.
       # PR quick path: packaging proof + dry-run artifacts only. Governance,
       # lint, typecheck, schema, unit, integration, conformance, reference
       # serialization, and benchmarks are covered by the CI workflow on the

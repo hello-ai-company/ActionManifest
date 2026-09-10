@@ -27,7 +27,8 @@
  * be completed, e.g. network failure).
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -98,17 +99,19 @@ function gitState(): { head: string; branch: string; dirty: boolean; originMain:
  * Uses the maintainer's local `gh` authentication — never a stored token.
  * Any inability to verify (gh missing, unauthenticated, API error) is
  * BLOCKED, never assumed green.
+ * Returns the Release Check run id on success (for the canonical artifact).
  */
-function checkExactHeadGates(head: string): string | undefined {
+function checkExactHeadGates(head: string): { error?: string; releaseCheckRunId?: string } {
   const repoProbe = spawnSync("gh", ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"], {
     cwd: root,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
   if (repoProbe.status !== 0) {
-    return "cannot resolve the GitHub repository via `gh` (missing or unauthenticated) — CI gates UNKNOWN";
+    return { error: "cannot resolve the GitHub repository via `gh` (missing or unauthenticated) — CI gates UNKNOWN" };
   }
   const repo = repoProbe.stdout.trim();
+  let releaseCheckRunId: string | undefined;
   for (const workflow of ["CI", "Release Check"]) {
     const r = spawnSync(
       "gh",
@@ -116,19 +119,57 @@ function checkExactHeadGates(head: string): string | undefined {
         "api",
         `repos/${repo}/actions/runs?head_sha=${head}&per_page=100`,
         "--jq",
-        `[.workflow_runs[] | select(.name == "${workflow}")] | if length == 0 then "missing" else .[0].conclusion end`,
+        `[.workflow_runs[] | select(.name == "${workflow}")] | if length == 0 then "missing" else (.[0] | .conclusion + " " + (.id | tostring)) end`,
       ],
       { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );
     if (r.status !== 0) {
-      return `cannot read workflow runs for ${workflow} on ${head} — CI gates UNKNOWN`;
+      return { error: `cannot read workflow runs for ${workflow} on ${head} — CI gates UNKNOWN` };
     }
-    const conclusion = r.stdout.trim();
+    const [conclusion, runId] = r.stdout.trim().split(" ");
     if (conclusion !== "success") {
-      return `${workflow} on exact HEAD ${head.slice(0, 12)}… is "${conclusion}", not success`;
+      return { error: `${workflow} on exact HEAD ${head.slice(0, 12)}… is "${conclusion}", not success` };
     }
+    if (workflow === "Release Check") releaseCheckRunId = runId;
   }
-  return undefined;
+  return { releaseCheckRunId };
+}
+
+/**
+ * Canonical artifact identity (publish-ready only): the local tarball set
+ * must be byte-identical to the exact-head Release Check artifact —
+ * 10/10 SHA-256 must match. Never publish a locally rebuilt artifact that
+ * differs from the reviewed CI artifact.
+ */
+function verifyAgainstCanonicalCiArtifact(releaseCheckRunId: string, head: string): string | undefined {
+  const tmp = mkdtempSync(join(tmpdir(), "actionmanifest-canonical-"));
+  try {
+    const artifactName = `release-check-${head}`;
+    const dl = spawnSync(
+      "gh",
+      ["run", "download", releaseCheckRunId, "-n", artifactName, "-D", tmp],
+      { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+    if (dl.status !== 0) {
+      return `cannot download canonical Release Check artifact ${artifactName} from run ${releaseCheckRunId} — canonical artifact UNAVAILABLE`;
+    }
+    const ciSumsPath = join(tmp, "SHA256SUMS");
+    const localSumsPath = join(outDir, "SHA256SUMS");
+    if (!existsSync(ciSumsPath)) return `canonical artifact has no SHA256SUMS`;
+    if (!existsSync(localSumsPath)) return `local SHA256SUMS missing — run the dry-run first`;
+    const ciSums = readFileSync(ciSumsPath, "utf8").trim();
+    const localSums = readFileSync(localSumsPath, "utf8").trim();
+    if (ciSums !== localSums) {
+      return (
+        `local artifacts differ from reviewed CI artifacts (run ${releaseCheckRunId}).\n` +
+        `  --- CI SHA256SUMS ---\n  ${ciSums.split("\n").join("\n  ")}\n` +
+        `  --- local SHA256SUMS ---\n  ${localSums.split("\n").join("\n  ")}`
+      );
+    }
+    return undefined;
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 }
 
 function main(): void {
@@ -209,11 +250,22 @@ function main(): void {
       fail(`publish-readiness gate failed:\n  - ${issues.join("\n  - ")}`);
     }
     console.log("  ✓ publish-readiness: clean tree, on main, HEAD == freshly fetched origin/main");
-    const gateIssue = checkExactHeadGates(git.head);
-    if (gateIssue) {
-      fail(`exact-head CI gate failed: ${gateIssue}`, 2);
+    const gates = checkExactHeadGates(git.head);
+    if (gates.error) {
+      fail(`exact-head CI gate failed: ${gates.error}`, 2);
     }
     console.log("  ✓ exact-head gates: CI + Release Check SUCCESS on the exact commit to publish");
+    // Canonical artifact identity: local tarballs must be byte-identical to
+    // the reviewed CI artifact set. Never publish a local rebuild that
+    // differs from what CI verified.
+    if (!gates.releaseCheckRunId) {
+      fail("Release Check run id unavailable — canonical artifact UNAVAILABLE", 2);
+    }
+    const artifactIssue = verifyAgainstCanonicalCiArtifact(gates.releaseCheckRunId, git.head);
+    if (artifactIssue) {
+      fail(`canonical artifact mismatch:\n${artifactIssue}`);
+    }
+    console.log("  ✓ canonical artifact identity: local SHA256SUMS == exact-head Release Check artifact (10/10)");
   } else {
     console.log(
       `  i prepare mode: git state recorded but not enforced (branch=${git.branch}, dirty=${git.dirty})`,

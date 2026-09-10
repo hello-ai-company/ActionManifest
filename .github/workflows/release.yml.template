@@ -21,6 +21,10 @@
 #   - Prerelease tags (v*-rc.*) publish with --tag next; never latest.
 #   - Provenance is automatic under Trusted Publishing for a public repo +
 #     public packages (no --provenance flag needed; harmless if present).
+#   - BUILD ONCE, PUBLISH THAT ARTIFACT: the verify job builds and uploads
+#     the canonical release artifact; the publish job downloads THAT exact
+#     artifact and re-verifies SHA256SUMS. The publish job never re-packs
+#     (no `pnpm release:dry-run` / `pnpm pack` / `npm pack` there).
 
 name: Release
 
@@ -110,6 +114,19 @@ jobs:
         run: pnpm release:check
         env:
           GOVERNANCE_BASE_SHA: ${{ github.event.before }}
+      # BUILD ONCE: the verify job's verified artifacts are the ONLY
+      # publishable artifacts. The publish job downloads and re-verifies
+      # them; it never re-packs.
+      - name: Upload canonical release artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: canonical-release-${{ github.sha }}
+          path: |
+            release-artifacts/tarballs/*.tgz
+            release-artifacts/SHA256SUMS
+            release-artifacts/release-manifest.json
+            release-artifacts/sbom.cdx.json
+          retention-days: 90
 
   publish-npm:
     needs: verify
@@ -120,22 +137,22 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005071372651a0412 # v4
         with:
-          fetch-depth: 0
+          name: canonical-release-${{ github.sha }}
+          path: release-artifacts
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Ensure esbuild binary
-        run: node node_modules/esbuild/install.js
       - name: Pin npm CLI (Trusted Publishing minimum)
         run: npm install --global npm@11.15.0
-      - name: Build exact release artifacts
-        run: pnpm release:dry-run
-      - name: Publish in manifest order (OIDC Trusted Publishing)
+      - name: Re-verify canonical artifact integrity (SHA256SUMS)
+        run: |
+          cd release-artifacts
+          sha256sum --check SHA256SUMS
+          test "$(ls tarballs/*.tgz | wc -l)" = "10"
+      - name: Publish the exact verified artifacts (OIDC Trusted Publishing)
         run: |
           TAG="${GITHUB_REF_NAME#v}"
           DIST_TAG="latest"
@@ -145,7 +162,7 @@ jobs:
             for (const name of m.publish_order) console.log(name);
           ' | while read -r pkg; do
               short="${pkg#@actionmanifest/}"
-              tgz=$(ls "release-artifacts/tarballs/actionmanifest-${short}-${TAG}.tgz")
+              tgz="release-artifacts/tarballs/actionmanifest-${short}-${TAG}.tgz"
               echo "publishing $pkg from $tgz (dist-tag $DIST_TAG)"
               npm publish "$tgz" --access public --tag "$DIST_TAG" --registry https://registry.npmjs.org/
             done

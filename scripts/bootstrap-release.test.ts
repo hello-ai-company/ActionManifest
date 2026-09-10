@@ -1,13 +1,23 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   EXPECTED_BOOTSTRAP_VERSION,
   buildBootstrapPlan,
-} from "./bootstrap-release.js";
+  publishReadinessIssues,
+} from "./bootstrap-plan.js";
 
 /**
  * Bootstrap plan invariants (Phase 2.4A): the manual publish commands must
  * never target `latest` and must always publish the exact reviewed tarballs
  * with public access.
+ *
+ * These tests import ONLY the pure module `bootstrap-plan.ts` — importing it
+ * must cause no network access, no pnpm execution, no artifact writes, and
+ * no process.exit. (Regression: the CLI entrypoint previously ran the whole
+ * release dry-run + registry preflight at import time, making `pnpm test`
+ * depend on npm registry state.)
  */
 
 const manifest = {
@@ -20,6 +30,31 @@ const manifest = {
 };
 
 const git = { head: "deadbeef", branch: "main", dirty: false };
+
+describe("bootstrap-plan module purity", () => {
+  it("the pure module imports with zero side effects (this import already proves it)", () => {
+    // If bootstrap-plan.ts performed I/O at import time (dry-run, npm view,
+    // artifact writes, process.exit), this test file would hang, hit the
+    // network, or kill the test runner. It does none of those.
+    expect(typeof buildBootstrapPlan).toBe("function");
+    expect(typeof publishReadinessIssues).toBe("function");
+  });
+
+  it("contains no I/O / process control primitives (static source audit)", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(join(here, "bootstrap-plan.ts"), "utf8");
+    expect(source).not.toMatch(/execFileSync|spawnSync|process\.exit|process\.argv/);
+    expect(source).not.toMatch(/readFileSync|writeFileSync|rmSync|mkdirSync/);
+    expect(source).not.toMatch(/npm\s+view|pnpm\s+release/);
+  });
+
+  it("the CLI entrypoint has a main-module guard", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(join(here, "bootstrap-release.ts"), "utf8");
+    expect(source).toMatch(/if \(process\.argv\[1\].*import\.meta\.url/s);
+    expect(source).toContain('from "./bootstrap-plan.js"');
+  });
+});
 
 describe("buildBootstrapPlan", () => {
   it("emits exact-tarball publish commands in the manifest's computed order", () => {
@@ -73,5 +108,30 @@ describe("buildBootstrapPlan", () => {
         git,
       ),
     ).toThrowError(/unknown package/);
+  });
+});
+
+describe("publishReadinessIssues", () => {
+  const clean = { head: "aaa", branch: "main", dirty: false, originMain: "aaa" };
+
+  it("passes on clean reviewed main", () => {
+    expect(publishReadinessIssues(clean)).toEqual([]);
+  });
+
+  it("rejects a dirty tree", () => {
+    expect(publishReadinessIssues({ ...clean, dirty: true }).join()).toMatch(/dirty/);
+  });
+
+  it("rejects a feature branch", () => {
+    expect(publishReadinessIssues({ ...clean, branch: "feat/x" }).join()).toMatch(/not main/);
+  });
+
+  it("rejects HEAD ahead of origin/main (unpushed local commits)", () => {
+    expect(publishReadinessIssues({ ...clean, head: "bbb" }).join()).toMatch(/origin\/main/);
+  });
+
+  it("reports all violations together", () => {
+    const issues = publishReadinessIssues({ head: "bbb", branch: "feat/x", dirty: true, originMain: "aaa" });
+    expect(issues).toHaveLength(3);
   });
 });

@@ -5,9 +5,8 @@ Status legend: **PASS** = verified by an automated gate or inspected artifact;
 **NOT READY** = open work.
 
 Last verified: Phase 2.4A / PR [#8](https://github.com/hello-ai-company/ActionManifest/pull/8)
-(head `9e823f01975e8cf28ce150a6c78544311d53983c`; CI 34436091372 + Release
-Check 34436091323 SUCCESS on that head). Re-run `pnpm release:check` before
-trusting this table.
+(head `afa8bd9`; CI 34440592699 + Release Check 34440592702 SUCCESS on that
+head). Re-run `pnpm release:check` before trusting this table.
 
 ## Installability
 
@@ -106,6 +105,6 @@ Current cycle: **Phase 2.4A / PR #8**.
 
 | # | Item | Status |
 | --- | --- | --- |
-| ⑤ | Evidence/completion gate — in-repo public-safe pack for the current phase | **Phase 2.4A evidence current** — gates re-verified on PR #8 head `9e823f0` (CI 34436091372 / Release Check 34436091323 SUCCESS); detailed internal reviews remain in the org Eng WS by design (agents never write evidence content) |
+| ⑤ | Evidence/completion gate — in-repo public-safe pack for the current phase | **Phase 2.4A evidence current** — gates re-verified on PR #8 head `afa8bd9` (CI 34440592699 / Release Check 34440592702 SUCCESS); detailed internal reviews remain in the org Eng WS by design (agents never write evidence content) |
 | ⑤a | All other gates (①–④ boundary gates + this scorecard's PASS rows) green | PASS for Phase 2.4A scope (incl. bootstrap plan purity, publish-ready gate, registry pinning) |
 | ⑤b | Technical review of the open DRAFT PR + President merge/publish approval | OPEN — PR [#8](https://github.com/hello-ai-company/ActionManifest/pull/8) stays DRAFT; no merge recommendation until both are GREEN. President merge approval: OPEN until explicit approval |

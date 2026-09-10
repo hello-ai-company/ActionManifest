@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## Phase 2.4A.1 — Reproducible Release Artifact Gate (NOT YET PUBLISHED)
+
+A release-blocking defect was found by independent artifact comparison: the same git tree produced tarballs with different SHA-256 values (upstream pnpm/pnpm#10167 — unstable dependency key ordering in packed workspace manifests). Reproduced locally: 5 packs of `@actionmanifest/cli` from one clean tree → 5 distinct hashes. No artifact from before this fix may be published.
+
+### Changed
+
+- **Package manager pinned to `pnpm@11.23.0`** (first release with the deterministic packed-manifest fix). pnpm 11 notes: CI/release lanes move to Node 22+ (pnpm 11 itself requires it; consumer `engines.node >= 20` unchanged); build allowlist moved to `allowBuilds` in `pnpm-workspace.yaml`; the reviewed exact-pinned `@xberg-io/xberg@1.1.3` set is excluded from pnpm 11's default 24h `minimumReleaseAge` protection (the protection itself stays enabled).
+- **Release workflow template is build-once**: the verify job builds + uploads `canonical-release-<sha>`; the publish job downloads it, re-verifies `SHA256SUMS`, and publishes exactly those files — no re-pack in the publish job.
+
+### Added
+
+- **`pnpm release:reproducibility`**: 10 independent packs × 10 public packages, byte-identical per package or FAIL (with packed-manifest diff as a diagnostic); refuses pnpm < 11.23.0 and warns off the pinned version. Wired into `release:check` (10×10 full / 2×10 PR quick).
+- **`bootstrap:check --publish-ready` canonical-artifact gate**: downloads the exact-head Release Check artifact and requires the local tarball set to be byte-identical (10/10 SHA-256) — local rebuilds differing from the reviewed CI artifact are BLOCKED.
+- **Regression test**: repeated packs of the multi-workspace-dependency packages (`extractor`, `cli`) must produce identical dependency key order.
+- **Docs**: ADR 0009 + `docs/evidence/REPRODUCIBLE_RELEASE_ARTIFACTS.md` (incident, isolated reproduction, post-fix evidence).
+
 ## 0.9.0-rc.0 — Phase 2.4A (bootstrap candidate, NOT YET PUBLISHED)
 
 First public bootstrap prerelease. **No npm publish, no tag, no GitHub Release has been performed** — this entry documents the prepared candidate.

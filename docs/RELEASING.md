@@ -198,6 +198,14 @@ release preparation (this repo, PR-reviewed)
 
 Hard rules for the bootstrap:
 
+- **Build once, verify once, publish exactly that artifact** (ADR 0009). The
+  canonical artifact set is the exact-head Release Check CI artifact. The
+  strict gate (`--publish-ready`) downloads it and requires the local
+  tarballs to be byte-identical (10/10 SHA-256) — a local rebuild that
+  differs from the reviewed CI artifact is BLOCKED from publication.
+- **Reproducibility is gated**: `pnpm release:reproducibility` (10 packs ×
+  10 packages, byte-identical, pnpm 11.23.0 only) runs inside
+  `release:check`. Same tree → same bytes → same SHA-256.
 - **Publish the exact reviewed tarballs.** Do not re-run `npm publish` from a
   package directory — an approved artifact must never be replaced by a
   locally rebuilt one. `release-artifacts/bootstrap-plan.json` carries the

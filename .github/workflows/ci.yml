@@ -18,14 +18,17 @@ jobs:
         # Version comes from package.json "packageManager" (do not also set `version` here).
       - uses: actions/setup-node@v4
         with:
-          # Default CI lane is Node 20 (the supported floor for all packages
-          # except the optional Xberg bridge). The native Xberg runtime is
-          # covered by opt-in `pnpm xberg:integration` on Node 22+ only.
-          node-version: 20
+          # CI/release lane runs pnpm 11 (deterministic pack, upstream
+          # pnpm/pnpm#10167) which requires Node >= 22 to EXECUTE. The
+          # consumer-facing runtime floor is unchanged: every public package
+          # still declares engines.node >= 20 (adapter-xberg >= 22).
+          # The native Xberg runtime is covered by opt-in
+          # `pnpm xberg:integration` on Node 22+ only.
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Ensure esbuild binary
-        run: node node_modules/esbuild/install.js
+      # pnpm 11: allowBuilds (pnpm-workspace.yaml) runs esbuild's postinstall
+      # during install — the manual binary step from the pnpm 10 era is gone.
       # Phase 2.1 governance: frozen v0.1/v0.2 schema paths MUST NOT change
       # (cannot be bypassed by editing checksums.json), and normative
       # conformance changes require a suite_version bump.

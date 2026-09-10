@@ -1,0 +1,133 @@
+# release.yml.template — the future OIDC release workflow (Phase 2.4B).
+#
+# THIS IS A TEMPLATE, NOT AN ACTIVE WORKFLOW. It is intentionally named
+# `.template` so GitHub Actions never runs it. It becomes
+# `.github/workflows/release.yml` in Phase 2.4B, ONLY AFTER:
+#   1. the 0.9.0-rc.0 manual bootstrap publish created all 10 packages, and
+#   2. a maintainer configured Trusted Publishers for every package
+#      (org hello-ai-company, repo ActionManifest, workflow release.yml,
+#      environment release).
+#
+# Security invariants (do not weaken when enabling):
+#   - OIDC only: no NPM_TOKEN / NODE_AUTH_TOKEN write credentials anywhere.
+#   - GitHub-hosted runner (Trusted Publishing requirement).
+#   - id-token: write ONLY on the publish job.
+#   - Node 24 + pinned npm CLI (>= 11.5.1, Trusted Publishing minimum).
+#   - Fail closed on: tag/version mismatch, dirty tree, ungated CI,
+#     wrong registry, repository.url mismatch.
+#   - Prerelease tags (v*-rc.*) publish with --tag next; never latest.
+#   - Provenance is automatic under Trusted Publishing for a public repo +
+#     public packages (no --provenance flag needed; harmless if present).
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NPM_TOKEN: ""
+  NODE_AUTH_TOKEN: ""
+  NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Ensure esbuild binary
+        run: node node_modules/esbuild/install.js
+      - name: Pin npm CLI (Trusted Publishing minimum)
+        run: npm install --global npm@11.15.0
+      - name: Fail closed on registry credentials
+        run: |
+          if [ -n "$NPM_TOKEN" ] || [ -n "$NODE_AUTH_TOKEN" ]; then
+            echo "registry write credentials must never be present"; exit 1;
+          fi
+      - name: Tag/version lockstep guard
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          for p in packages/*/package.json apps/cli/package.json; do
+            V=$(node -p "require('./$p').version")
+            if [ "$V" != "$TAG" ]; then
+              echo "tag $TAG != $p version $V"; exit 1;
+            fi
+          done
+      - name: Clean tree guard
+        run: test -z "$(git status --porcelain)"
+      - name: Repository URL guard (Trusted Publishing match)
+        run: |
+          for p in packages/*/package.json apps/cli/package.json; do
+            node -e "const r=require('./$p').repository.url; if(r!=='git+https://github.com/hello-ai-company/ActionManifest.git'){console.error(r);process.exit(1)}"
+          done
+      - name: Full release verification
+        run: pnpm release:check
+        env:
+          GOVERNANCE_BASE_SHA: ${{ github.event.before }}
+
+  publish-npm:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: release
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Ensure esbuild binary
+        run: node node_modules/esbuild/install.js
+      - name: Pin npm CLI (Trusted Publishing minimum)
+        run: npm install --global npm@11.15.0
+      - name: Build exact release artifacts
+        run: pnpm release:dry-run
+      - name: Publish in manifest order (OIDC Trusted Publishing)
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          DIST_TAG="latest"
+          case "$TAG" in *-*) DIST_TAG="next";; esac
+          node -e '
+            const m = require("./release-artifacts/release-manifest.json");
+            for (const name of m.publish_order) console.log(name);
+          ' | while read -r pkg; do
+              short="${pkg#@actionmanifest/}"
+              tgz=$(ls "release-artifacts/tarballs/actionmanifest-${short}-${TAG}.tgz")
+              echo "publishing $pkg from $tgz (dist-tag $DIST_TAG)"
+              npm publish "$tgz" --access public --tag "$DIST_TAG"
+            done
+
+  post-publish-verify:
+    needs: publish-npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify registry state (read-only)
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          for pkg in schema core temporal adapters extractor verifier exporters consumer adapter-xberg cli; do
+            npm view "@actionmanifest/$pkg@$TAG" version || exit 1
+          done

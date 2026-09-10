@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## 0.9.0-rc.0 — Phase 2.4A (bootstrap candidate, NOT YET PUBLISHED)
+
+First public bootstrap prerelease. **No npm publish, no tag, no GitHub Release has been performed** — this entry documents the prepared candidate.
+
+Purpose:
+
+- establish npm package identities (all 10 `@actionmanifest/*` names are currently 404),
+- permit Trusted Publisher configuration (npm requires the package to already exist),
+- validate real-registry installability of the exact reviewed tarballs.
+
+This bootstrap release is not the final OIDC-controlled release. `0.9.0-rc.1` is planned as the first Trusted-Publishing release (GitHub Actions OIDC, `release.yml`, environment `release`).
+
+### Changed
+
+- **All 10 public packages bumped lockstep `0.1.0` → `0.9.0-rc.0`** (schema / core / temporal / adapters / extractor / verifier / exporters / consumer / adapter-xberg / cli). Internal `workspace:*` ranges rewrite to the exact version at pack time. Root private package and `integration/reference-consumer` intentionally unchanged; schema versions (0.1.0/0.2.0 frozen) and conformance suite (0.2.0) unchanged.
+
+### Added
+
+- **`pnpm bootstrap:check`** (`scripts/bootstrap-release.ts`): DRY-RUN-ONLY bootstrap preparation — runs the release dry-run (exact tarballs + SBOM + manifest), enforces the version gate (all 10 packages == `0.9.0-rc.0`), performs a read-only registry preflight (every package MUST be 404; network failure = BLOCKED/UNKNOWN, never assumed), and writes `release-artifacts/bootstrap-plan.json` with exact per-tarball publish commands (`--access public --tag next`, manifest-computed publish order). Unit-tested invariants: exact tarball paths, public access, `next` dist-tag (never `latest`), sha256 per package, no credentials.
+- **Lockstep version gate in `release:dry-run`**: any version mismatch across the 10 public packages aborts before artifacts are trusted.
+- **`.github/workflows/release.yml.template`**: the future OIDC release workflow (verify → publish-npm → post-publish-verify), deliberately NOT an active workflow — enabled in Phase 2.4B only after the bootstrap created the packages and Trusted Publishers are configured. GitHub-hosted runner, Node 24 + pinned npm ≥ 11.5.1, `id-token: write` on the publish job only, fail-closed guards (tag/version lockstep, clean tree, repository.url match, no registry credentials, prerelease → `--tag next`).
+- **Docs**: `docs/BOOTSTRAP-RELEASE-CHECKLIST.md` (manual bootstrap runbook + Trusted Publisher checklist), ADR 0008 (first-release bootstrap & OIDC transition, current npm requirements recorded from official docs). RELEASING.md rewritten around the two-stage bootstrap; README release status corrected to "bootstrap candidate, not yet published".
+
 ## Phase 2.3 — 2026-09-10
 
 Release Readiness & Developer Experience. No schema change (v0.1/v0.2 frozen); conformance suite unchanged (0.2.0); **no publish** — release-candidate preparation only. Package versions remain `0.1.0`; the first public version (`0.9.0-rc.1`) is selected in the release phase per `docs/RELEASING.md`.

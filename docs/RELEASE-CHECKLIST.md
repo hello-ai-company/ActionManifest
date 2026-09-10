@@ -1,4 +1,4 @@
-# Release Checklist — 0.9.0-rc.1 readiness scorecard
+# Release Checklist — 0.9.0-rc.0 bootstrap / 0.9.0-rc.1 OIDC readiness scorecard
 
 Status legend: **PASS** = verified by an automated gate or inspected artifact;
 **READY** = prepared and documented, awaiting the gated publish phase;
@@ -93,11 +93,11 @@ Last verified: Phase 2.3 (against `main` tip
 
 | # | Item | Status |
 | --- | --- | --- |
-| 42 | Version bump to `0.9.0-rc.1` across all 10 packages | NOT READY (deferred to the release phase per plan) |
-| 43 | npm Trusted Publishing configured on npmjs.com | NOT READY (requires npm org admin) |
-| 44 | Live OIDC publish workflow (`.github/workflows/release.yml`) | NOT READY (intentionally not enabled) |
-| 45 | Tag `v0.9.0-rc.1` + GitHub Release | NOT READY (post-publish step) |
-| 46 | Post-publish registry verification | NOT READY (after first publish) |
+| 42 | Version bump to `0.9.0-rc.0` across all 10 packages | READY (Phase 2.4A: lockstep bump + version gate in `bootstrap:check`) |
+| 43 | npm Trusted Publishing configured on npmjs.com | NOT READY (requires the packages to exist first — post-bootstrap, maintainer step) |
+| 44 | Live OIDC publish workflow (`.github/workflows/release.yml`) | NOT READY (template only — enabled in Phase 2.4B) |
+| 45 | Tag `v0.9.0-rc.1` + GitHub Release | NOT READY (post-bootstrap step; the rc.0 bootstrap creates no tag) |
+| 46 | Post-publish registry verification | NOT READY (after the manual bootstrap publish) |
 
 ## Merge-recommendation preconditions (Meeting Round-2, locked)
 

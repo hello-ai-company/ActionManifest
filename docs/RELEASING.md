@@ -15,7 +15,7 @@ Three independent version axes (details: [COMPATIBILITY.md](COMPATIBILITY.md)):
 
 | Axis | Current | Bumps when |
 | --- | --- | --- |
-| npm **package version** (all 10 packages, lockstep) | `0.1.0` → next: **`0.9.0-rc.1`** | any code/packaging change |
+| npm **package version** (all 10 packages, lockstep) | `0.1.0` → bootstrap: **`0.9.0-rc.0`**, first OIDC RC: **`0.9.0-rc.1`** | any code/packaging change |
 | Manifest **schema version** | `0.1.0`, `0.2.0` (frozen) | never in a release — new schema = new versioned directory, separate governance |
 | **Conformance suite version** | `0.2.0` | normative vector/meta-schema changes (governance-enforced) |
 
@@ -23,14 +23,24 @@ A release NEVER changes a frozen schema or normative conformance contents.
 If a release seems to require one, **STOP** — that is a schema/suite phase,
 not a release.
 
-### Recommended first public version: `0.9.0-rc.1`
+### First public versions: `0.9.0-rc.0` (bootstrap) then `0.9.0-rc.1` (OIDC)
 
-Rationale (ADR 0007): the contract is conformance-gated and stable enough to
-publish, but pre-1.0 signals "no stability promise beyond the conformance
-suite". `0.9.0-rc.1` leaves room for further RCs (`0.9.0-rc.2`, …) and a
-`0.9.0` / `1.0.0` graduation without rewriting history. All 10 packages
-share one version (**lockstep / fixed versioning**) — one coherent
-`@actionmanifest/*` line, one changelog entry, one tag. Trade-off:
+Rationale (ADR 0007 + ADR 0008): the contract is conformance-gated and
+stable enough to publish, but pre-1.0 signals "no stability promise beyond
+the conformance suite". **npm reality (verified against docs.npmjs.com,
+2026-09): a Trusted Publisher can only be attached to a package that ALREADY
+exists on the registry.** Therefore the first-ever publish cannot use OIDC:
+
+```
+0.9.0-rc.0  — bootstrap release (manual, maintainer 2FA, exact reviewed
+              tarballs, dist-tag `next`): creates the package identities
+              so Trusted Publishing can be attached. NOT latest.
+0.9.0-rc.1+ — OIDC-only releases via GitHub Actions Trusted Publishing
+              (provenance automatic for public repo + public packages).
+```
+
+All 10 packages share one version (**lockstep / fixed versioning**) — one
+coherent `@actionmanifest/*` line, one changelog entry, one tag. Trade-off:
 `adapter-xberg` re-publishes even when unchanged; in exchange consumers get
 a single version to reason about, and the pack/install proofs cover the
 exact matrix that ships. If the Xberg pin ever needs an out-of-band fix,
@@ -136,7 +146,7 @@ recommendation — not after; the PR stays DRAFT until all gates pass.**
 
 ## 4. Version selection & inventory
 
-1. Choose the release version (first release: `0.9.0-rc.1`).
+1. Choose the release version (bootstrap: `0.9.0-rc.0`; first OIDC RC: `0.9.0-rc.1`).
 2. Set `version` in all 10 public package.json files to the same value
    (lockstep). Internal `workspace:*` ranges are rewritten to that exact
    version at pack time by pnpm — no manual dependency edits.
@@ -161,36 +171,82 @@ If the graph ever gains a cycle, the dry-run **stops** — do not publish
 until the cycle is removed. Publish strictly in order so that every
 package's dependencies are already on the registry when it is published.
 
-## 6. Trusted Publishing (OIDC) — design-only, the only intended path
+## 6. First-ever publish (bootstrap) — manual, then OIDC-only
 
-> **Status: intended design, currently unimplemented and unverified.**
-> GitHub Actions OIDC + npm Trusted Publishing are the *intended* mechanism.
-> As of 2026-09-10 nothing is configured or enabled: no npm org Trusted
-> Publisher exists, no `release.yml` workflow exists, and no CI job holds
-> `id-token: write`. No long-lived npm tokens or PATs exist in CI — and none
-> may be introduced (the Release Check workflow pins `NPM_TOKEN` /
-> `NODE_AUTH_TOKEN` empty and the dry-run fails closed if they carry a
-> value). Never paste tokens into issues, docs, or workflows.
+> **npm reality (docs.npmjs.com, verified 2026-09): a Trusted Publisher can
+> only be configured for a package that ALREADY exists on the registry.** The
+> first-ever publish therefore CANNOT use OIDC — it is a one-time,
+> maintainer-controlled, 2FA-protected manual bootstrap.
 
-Before the first publish, the design calls for:
+### 6.1 Bootstrap sequence (`0.9.0-rc.0`)
 
-1. npm: create the `actionmanifest` org (or confirm access) with 2FA
-   enforced.
-2. Configure **Trusted Publishing** for each package on npmjs.com:
-   repository `hello-ai-company/ActionManifest`, workflow
-   `release.yml`, environment `release`.
-3. The future `.github/workflows/release.yml` (design-only, NOT enabled)
-   will:
-   - trigger on the version tag only,
-   - hold `permissions: { id-token: write, contents: read }` — OIDC, no
-     `NODE_AUTH_TOKEN`,
-   - run `pnpm release:check` first,
-   - publish with `pnpm publish --provenance --access public` (npm CLI
-     11.5.1+ for trusted publishing),
-   - never run lifecycle scripts from the registry during verification
-     (`--ignore-scripts` on consumer-side checks).
-4. `.npmrc` in the repo must never contain tokens (the dry-run fails if it
-   does).
+```
+release preparation (this repo, PR-reviewed)
+  → pnpm bootstrap:check            # version gate + registry preflight + plan
+  → maintainer reviews the EXACT tarballs (release-artifacts/tarballs/*.tgz)
+  → manual authenticated bootstrap publish with maintainer 2FA
+      npm publish ./release-artifacts/tarballs/<pkg>.tgz --access public --tag next
+      (in bootstrap-plan.json publish_order — never re-pack from a package dir)
+  → all 10 packages now exist on npm (dist-tag: next; latest untouched)
+  → configure Trusted Publisher per package (§6.2)
+  → restrict direct token publishing
+  → 0.9.0-rc.1+ ships via GitHub Actions OIDC only
+```
+
+Hard rules for the bootstrap:
+
+- **Publish the exact reviewed tarballs.** Do not re-run `npm publish` from a
+  package directory — an approved artifact must never be replaced by a
+  locally rebuilt one. `release-artifacts/bootstrap-plan.json` carries the
+  exact commands (computed publish order, sha256 per tarball).
+- **`--access public`** on every command (scoped first publish).
+- **`--tag next`** on every command — the bootstrap MUST NOT touch `latest`.
+- **No long-lived token enters CI** — not for the bootstrap, not after. The
+  bootstrap is a local, interactively authenticated maintainer operation.
+- **Partial failure policy (§10 applies):** do NOT unpublish/overwrite
+  published rc.0 packages; fix the cause and publish the remaining rc.0
+  packages, or escalate to a human decision (deprecate partial set → next
+  RC). Never bump a single package silently.
+
+### 6.2 Trusted Publisher configuration (after bootstrap only)
+
+Once — and only once — all 10 packages exist on npm, configure each package
+on npmjs.com (or via `npm trust github`, npm CLI ≥ 11.15):
+
+| Field | Value |
+| --- | --- |
+| Organization/user | `hello-ai-company` |
+| Repository | `ActionManifest` |
+| Workflow filename | `release.yml` (must exist under `.github/workflows/`) |
+| Environment | `release` |
+| Allowed actions | `npm publish` |
+
+All fields are case-sensitive and must match exactly. `npm trust` requires
+write access to the package and account-level 2FA. Agents never run it.
+
+### 6.3 OIDC release workflow (Phase 2.4B — NOT enabled yet)
+
+`.github/workflows/release.yml.template` documents the future workflow. It is
+deliberately **not** an active workflow in this phase: enabling a
+tag-triggered publish workflow before Trusted Publishers exist would only
+fail. Requirements (current npm/GitHub docs):
+
+- GitHub-hosted runner (self-hosted unsupported),
+- `permissions: { contents: read, id-token: write }`,
+- Node 24 lane with npm CLI ≥ 11.5.1 pinned (Trusted Publishing minimum;
+  the release lane is separate from the Node 20 support floor),
+- OIDC only — no `NPM_TOKEN` / `NODE_AUTH_TOKEN` write credentials anywhere
+  (the job fails closed if present),
+- provenance is automatic for public repo + public package under Trusted
+  Publishing (no `--provenance` flag required; adding it is harmless),
+- tag == all 10 package versions, clean tree, green CI + Release Check on
+  the exact tagged commit, registry == registry.npmjs.org.
+
+### 6.4 Status
+
+As of Phase 2.4A: **no npm package exists yet, no Trusted Publisher is
+configured, no tag or GitHub Release exists.** The bootstrap is prepared and
+verified; the publish itself is a maintainer operation.
 
 ## 7. Tag & publish ordering (unified, tag-triggered)
 
@@ -201,7 +257,8 @@ publish workflow:
 1. **Version PR merge** — the lockstep version bump lands on `main`.
 2. **Exact-commit CI GREEN** — CI and Release Check must both be green on
    the exact `main` commit to be released (ungated CI aborts).
-3. **Create + push the version tag** — `v0.9.0-rc.1` on that exact commit.
+3. **Create + push the version tag** — e.g. `v0.9.0-rc.1` on that exact commit
+   (never for the rc.0 bootstrap: the bootstrap creates no tag).
    Lockstep versions mean one tag covers all packages.
 4. **Tag-triggered release workflow starts** (design-only, §6) — the
    Release Check workflow also runs on the tag push

@@ -59,8 +59,13 @@ The bootstrap publishes to dist-tag `next` only — `latest` does not exist
 yet. Bare `npm view <pkg>` / `npm install <pkg>` default to `latest`, so
 every verification MUST pin the exact version.
 
-Every command pins the registry — never rely on local npm config
-(`R=https://registry.npmjs.org/` below).
+Every command pins the registry — never rely on local npm config. Set the
+variables first:
+
+```bash
+V=0.9.0-rc.0
+R=https://registry.npmjs.org/
+```
 
 For each of the 10 packages:
 

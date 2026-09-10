@@ -30,6 +30,11 @@
  *     `--registry https://registry.npmjs.org/`, so a custom local registry
  *     config can never receive the reviewed tarballs.
  *
+ * Rule `bootstrap-registry-var` (Phase 2.4A final review): a document that
+ * uses `--registry $R` must actually assign `R=https://registry.npmjs.org/`
+ * somewhere in the same file — an undefined variable makes every pinned
+ * command fail or fall back to local config at copy-paste time.
+ *
  * This file (and its test) are exempt from the scan — the pattern has to be
  * defined somewhere.
  */
@@ -150,9 +155,28 @@ function findBootstrapSafetyViolations(
   return violations;
 }
 
+const REGISTRY_VAR_USE = /--registry\s+\$"?R"?/;
+// An actual assignment line (optionally `export`-prefixed, optional trailing
+// comment), not a prose mention like "(`R=https://…` below)".
+const REGISTRY_VAR_ASSIGNMENT_LINE =
+  /^(?:export\s+)?R=https:\/\/registry\.npmjs\.org\/(?:\s+#.*)?$/;
+
 export function findForbiddenPatterns(content: string, file: string): DocsCheckViolation[] {
   const violations: DocsCheckViolation[] = [];
   const lines = content.split("\n");
+
+  // File-scope rule: using the $R registry variable requires an actual
+  // assignment line in the same document (a prose mention is not one).
+  const hasAssignment = lines.some((l) => REGISTRY_VAR_ASSIGNMENT_LINE.test(l.trim()));
+  if (REGISTRY_VAR_USE.test(content) && !hasAssignment) {
+    const firstUse = lines.findIndex((l) => REGISTRY_VAR_USE.test(l));
+    violations.push({
+      file,
+      line: firstUse + 1,
+      text: (lines[firstUse] ?? "").trim(),
+      rule: "bootstrap-registry-var",
+    });
+  }
 
   // Shell line-continuation: a trailing `\` joins the next line into one
   // logical command. Bootstrap-safety rules evaluate logical lines so a

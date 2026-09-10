@@ -1,5 +1,10 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { findForbiddenPatterns } from "./docs-check.js";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
  * The forbidden/safe forms are built by concatenation so this test file
@@ -126,5 +131,38 @@ describe("docs:check bootstrap-publish-safety", () => {
   it("does not flag prose mentions of publishing (not command lines)", () => {
     const prose = `The step never runs \`${PUB}\` itself; see the runbook.\n`;
     expect(findForbiddenPatterns(prose, "a.md")).toHaveLength(0);
+  });
+
+  it("flags --registry $R usage without an actual R assignment in the file", () => {
+    const content = "# Runbook\n\n- `npm view pkg@1.0.0 version --registry $R`\n";
+    const v = findForbiddenPatterns(content, "docs/x.md");
+    expect(v).toHaveLength(1);
+    expect(v[0]!.rule).toBe("bootstrap-registry-var");
+  });
+
+  it("accepts --registry $R when R is actually assigned", () => {
+    const content =
+      "R=https://registry.npmjs.org/\n\n- `npm view pkg@1.0.0 version --registry $R`\n";
+    expect(findForbiddenPatterns(content, "docs/x.md")).toHaveLength(0);
+  });
+
+  it("a prose mention of the assignment is NOT an assignment", () => {
+    // Regression: "(`R=https://registry.npmjs.org/` below)" describes the
+    // assignment but never performs it.
+    const content =
+      "Every command pins the registry (`R=https://registry.npmjs.org/` below).\n\n- `npm view pkg@1.0.0 version --registry $R`\n";
+    const v = findForbiddenPatterns(content, "docs/x.md");
+    expect(v).toHaveLength(1);
+    expect(v[0]!.rule).toBe("bootstrap-registry-var");
+  });
+
+  it("the real bootstrap checklist assigns R before using $R", () => {
+    const content = readFileSync(
+      join(root, "docs/BOOTSTRAP-RELEASE-CHECKLIST.md"),
+      "utf8",
+    );
+    if (content.includes("--registry $R")) {
+      expect(content).toContain("R=https://registry.npmjs.org/");
+    }
   });
 });

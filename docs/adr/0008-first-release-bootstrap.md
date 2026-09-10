@@ -69,6 +69,47 @@ Recorded from docs.npmjs.com / docs.github.com (not blog posts):
 - `npm trust github` CLI exists (npm ≥ 11.15.0) but still requires the
   package to exist, write access, and account 2FA.
 
+## Post-review hardening (PR #8 review)
+
+Four blockers were fixed after review:
+
+### 6. Import-time side effects removed
+
+The first cut's `bootstrap-release.ts` executed the release dry-run and the
+registry preflight **at module import time** (no main guard), and the unit
+test imported it — so `pnpm test` hit the npm registry and would have turned
+RED the moment rc.0 exists. Now `scripts/bootstrap-plan.ts` is a pure module
+(constants, types, `buildBootstrapPlan`, `publishReadinessIssues` — no I/O,
+no network, no process control, statically audited by test), and
+`bootstrap-release.ts` runs `main()` only under a main-module guard. The
+unit suite imports only the pure module.
+
+### 7. Prepare vs publish-ready modes
+
+`bootstrap:check` previously printed `READY FOR MANUAL BOOTSTRAP` even from
+a dirty feature branch — the exact tarballs could have come from
+unreviewed, uncommitted changes. Now the default/`--prepare` mode prints
+`PREPARE OK` and records git state, while `--publish-ready` additionally
+requires clean tree + `branch == main` + `HEAD == origin/main` and is the
+only mode allowed to say READY.
+
+### 8. Post-publish verification matches the `next` strategy
+
+Bare `npm view`/`npm install` resolve `latest`, which the bootstrap never
+sets — so the documented verification would have verified nothing. All
+verification commands now pin the exact version (`<pkg>@0.9.0-rc.0`).
+`dist.integrity` comparison was also wrong (npm stores SHA-512 SRI, not our
+SHA-256); the runbook now downloads the registry tarball and compares its
+SHA-256 against the plan — proving reviewed local bytes == published
+registry bytes.
+
+### 9. Release workflow template hardened (for Phase 2.4B)
+
+`release.yml.template` gained the reviewed-ancestry guard (tagged commit
+must be an ancestor of `origin/main`) and the exact-commit gate check (CI +
+Release Check must be SUCCESS on the tagged SHA, verified via GitHub with
+the per-workflow `GITHUB_TOKEN`).
+
 ## Consequences
 
 - The registry identity is created exactly once, by a human, from reviewed

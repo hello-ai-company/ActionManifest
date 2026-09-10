@@ -199,6 +199,13 @@ Hard rules for the bootstrap:
   package directory — an approved artifact must never be replaced by a
   locally rebuilt one. `release-artifacts/bootstrap-plan.json` carries the
   exact commands (computed publish order, sha256 per tarball).
+- **Prepare vs publish-ready are different gates.** `pnpm bootstrap:check`
+  (aka `--prepare`) packs and verifies artifacts and may run on a feature
+  branch; it prints `PREPARE OK`. Only `pnpm bootstrap:check
+  --publish-ready` — which additionally requires a clean tree,
+  `branch == main`, and `HEAD == origin/main` — may print
+  `READY FOR MANUAL BOOTSTRAP`. The exact tarball must come from the
+  reviewed commit, not from uncommitted changes.
 - **`--access public`** on every command (scoped first publish).
 - **`--tag next`** on every command — the bootstrap MUST NOT touch `latest`.
 - **No long-lived token enters CI** — not for the bootstrap, not after. The
@@ -304,23 +311,35 @@ pnpm -r --filter "./packages/*" --filter "./apps/*" publish --provenance --acces
 
 ## 9. Post-publish verification (mandatory)
 
-Within minutes of publish:
+Within minutes of publish. **Always pin the exact version** — bare
+`npm view <pkg>` / `npm install <pkg>` resolve the `latest` dist-tag, which
+prerelease publishes (`--tag next`) intentionally never touch. Verifying
+`latest` after an RC publish verifies nothing.
 
 ```bash
-npm view @actionmanifest/cli version        # the new version
-npm view @actionmanifest/core dist.tarball  # resolves
+V=0.9.0-rc.1   # the version just published (0.9.0-rc.0 for the bootstrap)
+npm view @actionmanifest/cli@$V version        # the new version
+npm view @actionmanifest/core@$V dist.tarball  # resolves
+# Registry bytes == reviewed bytes: npm stores SHA-512 SRI in
+# dist.integrity, so do NOT compare it to our SHA-256 plan. Download the
+# registry tarball and compare sha256 against release-manifest.json /
+# bootstrap-plan.json instead:
+curl -sSL "$(npm view @actionmanifest/core@$V dist.tarball)" -o /tmp/core.tgz
+sha256sum /tmp/core.tgz   # must equal the manifest/plan sha256
 # Fresh project, real registry. After a LOCAL npm install, PATH does not
 # include node_modules/.bin — invoke the bin by path (or via npm exec).
 # And ALWAYS name the package explicitly with npx (the unscoped npm name
 # "actionman" is an unrelated package):
 mkdir /tmp/verify && cd /tmp/verify && npm init -y
-npm install @actionmanifest/cli
-./node_modules/.bin/actionman --version     # new version
+npm install @actionmanifest/cli@$V
+./node_modules/.bin/actionman --version     # the new version
 ./node_modules/.bin/actionman conformance   # CONFORMANT 65/65
-# Equivalent: npm exec -- actionman --version
-# One-shot form (no install): npx --package=@actionmanifest/cli -- actionman conformance
-npm install @actionmanifest/core @actionmanifest/adapters @actionmanifest/extractor \
-  @actionmanifest/verifier @actionmanifest/exporters @actionmanifest/consumer
+# Equivalent: npm exec --package=@actionmanifest/cli@$V -- actionman --version
+# One-shot form (no install), version pinned because `latest` does not exist
+# for RC publishes:
+#   npm exec --package=@actionmanifest/cli@$V -- actionman conformance
+npm install @actionmanifest/core@$V @actionmanifest/adapters@$V @actionmanifest/extractor@$V \
+  @actionmanifest/verifier@$V @actionmanifest/exporters@$V @actionmanifest/consumer@$V
 node -e "import('@actionmanifest/core').then(m => console.log('core OK', m.SCHEMA_VERSION))"
 ```
 

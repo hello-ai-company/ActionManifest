@@ -47,13 +47,24 @@ npm publish ./release-artifacts/tarballs/<file>.tgz --access public --tag next
 
 ## Post-publish verification (maintainer)
 
+The bootstrap publishes to dist-tag `next` only — `latest` does not exist
+yet. Bare `npm view <pkg>` / `npm install <pkg>` default to `latest`, so
+every verification MUST pin the exact version.
+
 For each of the 10 packages:
 
-- [ ] `npm view <pkg> version` → `0.9.0-rc.0`
-- [ ] `npm view <pkg> dist.tarball` resolves
-- [ ] `npm view <pkg> dist.integrity` matches the plan's sha256 lineage
-- [ ] Fresh directory `npm install <pkg>` works
-- [ ] `npm install @actionmanifest/cli` → `actionman --version` → `0.9.0-rc.0`, `actionman conformance` → CONFORMANT
+- [ ] `npm view <pkg>@0.9.0-rc.0 version` → `0.9.0-rc.0`
+- [ ] `npm view <pkg>@0.9.0-rc.0 dist.tarball` resolves
+- [ ] **Registry bytes == reviewed bytes**: download the registry tarball and
+      compare sha256 against `bootstrap-plan.json` (do NOT compare against
+      `dist.integrity` — npm stores SHA-512 SRI there, not our SHA-256):
+      ```bash
+      curl -sSL "$(npm view <pkg>@0.9.0-rc.0 dist.tarball)" -o /tmp/<pkg>.tgz
+      sha256sum /tmp/<pkg>.tgz   # must equal the plan's sha256
+      ```
+- [ ] Fresh directory `npm install <pkg>@0.9.0-rc.0` works
+- [ ] `npm install @actionmanifest/cli@0.9.0-rc.0` → `actionman --version` → `0.9.0-rc.0`, `actionman conformance` → CONFORMANT
+- [ ] `npm view <pkg> dist-tags` shows `next` only (no `latest`)
 
 ## Trusted Publisher configuration (after ALL 10 exist)
 

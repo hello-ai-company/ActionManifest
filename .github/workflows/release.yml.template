@@ -15,6 +15,9 @@
 #   - Node 24 + pinned npm CLI (>= 11.5.1, Trusted Publishing minimum).
 #   - Fail closed on: tag/version mismatch, dirty tree, ungated CI,
 #     wrong registry, repository.url mismatch.
+#   - The tagged commit MUST be an ancestor of origin/main (reviewed code
+#     only) AND have green CI + Release Check on that exact SHA — verified
+#     from GitHub, not assumed.
 #   - Prerelease tags (v*-rc.*) publish with --tag next; never latest.
 #   - Provenance is automatic under Trusted Publishing for a public repo +
 #     public packages (no --provenance flag needed; harmless if present).
@@ -71,6 +74,27 @@ jobs:
           done
       - name: Clean tree guard
         run: test -z "$(git status --porcelain)"
+      - name: Tagged commit is on origin/main (reviewed ancestry guard)
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+            echo "tagged commit $GITHUB_SHA is not on origin/main — only reviewed main commits may publish";
+            exit 1;
+          }
+      - name: Exact-commit gates green (CI + Release Check on the tagged SHA)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # GITHUB_TOKEN here is the short-lived per-workflow token
+          # (contents: read), not a PAT. We verify the exact tagged commit
+          # passed BOTH required workflows before any publish.
+          for WORKFLOW in "CI" "Release Check"; do
+            STATUS=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=$GITHUB_SHA" \
+              --jq ".workflow_runs[] | select(.name == \"$WORKFLOW\") | .conclusion" | head -1)
+            if [ "$STATUS" != "success" ]; then
+              echo "$WORKFLOW is not SUCCESS on $GITHUB_SHA (got: ${STATUS:-missing})"; exit 1;
+            fi
+          done
       - name: Repository URL guard (Trusted Publishing match)
         run: |
           for p in packages/*/package.json apps/cli/package.json; do

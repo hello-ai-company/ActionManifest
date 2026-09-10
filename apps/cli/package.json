@@ -1,7 +1,7 @@
 {
   "name": "@actionmanifest/cli",
-  "version": "0.1.0",
-  "description": "actionman CLI — extract, validate, benchmark, and check conformance of Action Manifests.",
+  "version": "0.9.0-rc.0",
+  "description": "actionman CLI \u2014 extract, validate, benchmark, and check conformance of Action Manifests.",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {

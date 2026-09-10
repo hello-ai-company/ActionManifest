@@ -20,6 +20,21 @@
  *
  *   actionman …                                               (SAFE)
  *
+ * Rule `bootstrap-publish-safety` (Phase 2.4A review): the official runbooks
+ * must not bypass the strict pre-publish gate or drop the registry pin —
+ *
+ *   - any `pnpm bootstrap:check` mention must name its mode
+ *     (`--prepare` or `--publish-ready`), so the manual publish path can
+ *     never be documented as the permissive default;
+ *   - any command line starting with `npm publish ` must pin
+ *     `--registry https://registry.npmjs.org/`, so a custom local registry
+ *     config can never receive the reviewed tarballs.
+ *
+ * Rule `bootstrap-registry-var` (Phase 2.4A final review): a document that
+ * uses `--registry $R` must actually assign `R=https://registry.npmjs.org/`
+ * somewhere in the same file — an undefined variable makes every pinned
+ * command fail or fall back to local config at copy-paste time.
+ *
  * This file (and its test) are exempt from the scan — the pattern has to be
  * defined somewhere.
  */
@@ -103,9 +118,87 @@ function unquote(token: string): string {
  * Exported for tests: scan one file's content, return violations.
  * A line may contain prose plus code; every `npx` token is analyzed.
  */
+const BOOTSTRAP_CMD = "pnpm bootstrap:check";
+const REGISTRY_PIN = "--registry https://registry.npmjs.org/";
+
+/** Phase 2.4A review: runbook safety invariants for the manual bootstrap. */
+function findBootstrapSafetyViolations(
+  line: string,
+  file: string,
+  lineNo: number,
+): DocsCheckViolation[] {
+  const violations: DocsCheckViolation[] = [];
+  // Any bootstrap:check mention must name its mode — the permissive prepare
+  // mode must never be the documented pre-publish gate.
+  if (
+    line.includes(BOOTSTRAP_CMD) &&
+    !line.includes("--publish-ready") &&
+    !line.includes("--prepare")
+  ) {
+    violations.push({
+      file,
+      line: lineNo,
+      text: line.trim(),
+      rule: "bootstrap-publish-safety",
+    });
+  }
+  // A real publish command line must pin the npmjs registry.
+  const trimmed = line.trim();
+  if (trimmed.startsWith("npm publish ") && !trimmed.includes(REGISTRY_PIN)) {
+    violations.push({
+      file,
+      line: lineNo,
+      text: trimmed,
+      rule: "bootstrap-publish-safety",
+    });
+  }
+  return violations;
+}
+
+const REGISTRY_VAR_USE = /--registry\s+\$"?R"?/;
+// An actual assignment line (optionally `export`-prefixed, optional trailing
+// comment), not a prose mention like "(`R=https://…` below)".
+const REGISTRY_VAR_ASSIGNMENT_LINE =
+  /^(?:export\s+)?R=https:\/\/registry\.npmjs\.org\/(?:\s+#.*)?$/;
+
 export function findForbiddenPatterns(content: string, file: string): DocsCheckViolation[] {
   const violations: DocsCheckViolation[] = [];
   const lines = content.split("\n");
+
+  // File-scope rule: using the $R registry variable requires an actual
+  // assignment line in the same document (a prose mention is not one).
+  const hasAssignment = lines.some((l) => REGISTRY_VAR_ASSIGNMENT_LINE.test(l.trim()));
+  if (REGISTRY_VAR_USE.test(content) && !hasAssignment) {
+    const firstUse = lines.findIndex((l) => REGISTRY_VAR_USE.test(l));
+    violations.push({
+      file,
+      line: firstUse + 1,
+      text: (lines[firstUse] ?? "").trim(),
+      rule: "bootstrap-registry-var",
+    });
+  }
+
+  // Shell line-continuation: a trailing `\` joins the next line into one
+  // logical command. Bootstrap-safety rules evaluate logical lines so a
+  // multi-line command is judged as a whole.
+  const logicalLines: { text: string; lineNo: number }[] = [];
+  let buffer = "";
+  let bufferStart = 1;
+  lines.forEach((line, idx) => {
+    if (buffer === "") bufferStart = idx + 1;
+    if (line.endsWith("\\")) {
+      buffer += `${line.slice(0, -1)} `;
+      return;
+    }
+    buffer += line;
+    logicalLines.push({ text: buffer, lineNo: bufferStart });
+    buffer = "";
+  });
+  if (buffer !== "") logicalLines.push({ text: buffer, lineNo: bufferStart });
+  for (const { text, lineNo } of logicalLines) {
+    violations.push(...findBootstrapSafetyViolations(text, file, lineNo));
+  }
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     const tokens = line.split(/\s+/).filter(Boolean);
@@ -171,7 +264,9 @@ function main(): void {
     );
     process.exit(1);
   }
-  console.log("docs:check PASS (no forbidden npx/bin package-identity patterns)");
+  console.log(
+    "docs:check PASS (no forbidden npx/bin package-identity patterns; bootstrap runbook safety rules hold)",
+  );
 }
 
 const invokedAs = process.argv[1];

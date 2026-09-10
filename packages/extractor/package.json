@@ -1,7 +1,7 @@
 {
   "name": "@actionmanifest/extractor",
-  "version": "0.1.0",
-  "description": "CanonicalDocument → ActionExtractor → provider → schema-validated candidate manifest.",
+  "version": "0.9.0-rc.0",
+  "description": "CanonicalDocument \u2192 ActionExtractor \u2192 provider \u2192 schema-validated candidate manifest.",
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,

@@ -2,6 +2,51 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## 0.9.0-rc.0 — Phase 2.4A (bootstrap candidate, NOT YET PUBLISHED)
+
+First public bootstrap prerelease. **No npm publish, no tag, no GitHub Release has been performed** — this entry documents the prepared candidate.
+
+Purpose:
+
+- establish npm package identities (all 10 `@actionmanifest/*` names are currently 404),
+- permit Trusted Publisher configuration (npm requires the package to already exist),
+- validate real-registry installability of the exact reviewed tarballs.
+
+This bootstrap release is not the final OIDC-controlled release. `0.9.0-rc.1` is planned as the first Trusted-Publishing release (GitHub Actions OIDC, `release.yml`, environment `release`).
+
+### Changed
+
+- **All 10 public packages bumped lockstep `0.1.0` → `0.9.0-rc.0`** (schema / core / temporal / adapters / extractor / verifier / exporters / consumer / adapter-xberg / cli). Internal `workspace:*` ranges rewrite to the exact version at pack time. Root private package and `integration/reference-consumer` intentionally unchanged; schema versions (0.1.0/0.2.0 frozen) and conformance suite (0.2.0) unchanged.
+
+### Added
+
+- **`pnpm bootstrap:check`** (`scripts/bootstrap-release.ts`): DRY-RUN-ONLY bootstrap preparation — runs the release dry-run (exact tarballs + SBOM + manifest), enforces the version gate (all 10 packages == `0.9.0-rc.0`), performs a read-only registry preflight (every package MUST be 404; network failure = BLOCKED/UNKNOWN, never assumed), and writes `release-artifacts/bootstrap-plan.json` with exact per-tarball publish commands (`--access public --tag next --registry https://registry.npmjs.org/`, manifest-computed publish order). Modes: `--prepare` (default; any branch) vs `--publish-ready` (clean reviewed main + exact-head CI/Release Check). Unit-tested invariants: exact tarball paths, public access, `next` dist-tag (never `latest`), registry pinned, sha256 per package, no credentials.
+- **Lockstep version gate in `release:dry-run`**: any version mismatch across the 10 public packages aborts before artifacts are trusted.
+- **`.github/workflows/release.yml.template`**: the future OIDC release workflow (verify → publish-npm → post-publish-verify), deliberately NOT an active workflow — enabled in Phase 2.4B only after the bootstrap created the packages and Trusted Publishers are configured. GitHub-hosted runner, Node 24 + pinned npm ≥ 11.5.1, `id-token: write` on the publish job only, fail-closed guards (tag/version lockstep, clean tree, **tagged commit is an ancestor of origin/main**, **CI + Release Check SUCCESS on the exact tagged SHA**, repository.url match, no registry credentials, prerelease → `--tag next`).
+
+### Hardened (PR #8 review)
+
+- **Import-time side effects removed**: `scripts/bootstrap-plan.ts` is now a pure module (constants/types/`buildBootstrapPlan`/`publishReadinessIssues` — no I/O, no network, no process control; statically audited by test), and `bootstrap-release.ts` runs `main()` only under a main-module guard. Previously the unit test imported the CLI and triggered the full dry-run + registry preflight, making `pnpm test` depend on npm registry state (it would have gone RED once rc.0 exists).
+- **Prepare vs publish-ready modes**: `pnpm bootstrap:check` (default/`--prepare`) packs and verifies artifacts and prints `PREPARE OK` on any branch; only `--publish-ready` — requiring clean tree, `branch == main`, `HEAD == origin/main` — may print `READY FOR MANUAL BOOTSTRAP`. Exact tarballs must come from the reviewed commit.
+- **Post-publish verification fixed for the `next` strategy**: all verification commands pin the exact version (`<pkg>@0.9.0-rc.0`); registry bytes are proven by downloading the registry tarball and comparing its SHA-256 against the plan (npm's `dist.integrity` is SHA-512 SRI — never directly comparable).
+
+### Hardened (PR #8 second review)
+
+- **Publish destination pinned**: every generated bootstrap command now includes `--registry https://registry.npmjs.org/` — a maintainer environment with a custom default/scope registry can never receive the reviewed tarballs by accident. Asserted by test; post-publish verification pins the same registry.
+- **Publish-ready gate uses fresh remote truth + exact-head CI**: `--publish-ready` now fetches `origin/main` before comparing (never a stale tracking ref), and verifies via GitHub (local `gh` auth, no stored token) that CI AND Release Check are SUCCESS on the exact commit to be published. Inability to verify is BLOCKED, never assumed green.
+- **Release checklist resynced** to Phase 2.4A / PR #8 (was Phase 2.3 / PR #7); provenance row corrected to the current automatic-under-Trusted-Publishing design.
+- **Release template**: verify job gains `actions: read` (required for the exact-commit gate check; declaring any permission sets others to none); portable sha256 commands documented (Linux/macOS/Node).
+
+### Hardened (PR #8 third review)
+
+- **Official runbooks can no longer bypass the strict gate**: the bootstrap checklist and RELEASING.md now require `pnpm bootstrap:check --publish-ready` immediately before the manual publish (previously they documented the permissive prepare mode), and every documented publish/verification command pins `--registry https://registry.npmjs.org/` (including `npm view` / `npm install` / `dist-tags` checks).
+- **Runbook safety is machine-enforced**: `pnpm docs:check` gained the `bootstrap-publish-safety` rule — mode-less `bootstrap:check` mentions and unpinned `npm publish` command lines fail CI; multi-line commands are judged as one logical line.
+
+### Hardened (PR #8 fourth review)
+
+- **The registry variable is actually assigned**: the bootstrap checklist used the registry variable throughout but only described the assignment in prose — the executable assignment line did not exist. The checklist now sets `V`/`R` as real assignment lines before use, and `docs:check` gained the `bootstrap-registry-var` rule (a prose mention of the assignment does not count — verified by regression test).
+- **Docs**: `docs/BOOTSTRAP-RELEASE-CHECKLIST.md` (manual bootstrap runbook + Trusted Publisher checklist), ADR 0008 (first-release bootstrap & OIDC transition, current npm requirements recorded from official docs). RELEASING.md rewritten around the two-stage bootstrap; README release status corrected to "bootstrap candidate, not yet published".
+
 ## Phase 2.3 — 2026-09-10
 
 Release Readiness & Developer Experience. No schema change (v0.1/v0.2 frozen); conformance suite unchanged (0.2.0); **no publish** — release-candidate preparation only. Package versions remain `0.1.0`; the first public version (`0.9.0-rc.1`) is selected in the release phase per `docs/RELEASING.md`.

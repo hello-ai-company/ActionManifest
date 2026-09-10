@@ -1,0 +1,186 @@
+# ADR 0008 — First-release bootstrap & OIDC transition
+
+Status: Accepted
+Date: 2026-09-10
+Builds on: ADR 0007 (release versioning & supply chain)
+
+## Context
+
+Phase 2.3 designed the first public release as `0.9.0-rc.1` via GitHub
+Actions OIDC + npm Trusted Publishing. A current npm reality blocks that
+plan for the first publish:
+
+> **A Trusted Publisher can only be configured for a package that already
+> exists on the npm registry.** (docs.npmjs.com/trusted-publishers and
+> docs.npmjs.com/cli — verified 2026-09-10.)
+
+All 10 `@actionmanifest/*` names return 404. Therefore the first-ever
+publish cannot use OIDC, and the release plan needs a bootstrap step.
+
+## Decision
+
+### 1. Two-stage first release
+
+- **`0.9.0-rc.0` — bootstrap release.** Manual, maintainer-controlled,
+  2FA-protected publish of the exact PR-reviewed tarballs, dist-tag `next`
+  (never `latest`). Purpose: create the registry package identities so
+  Trusted Publishing can be attached. This is a real public prerelease, not
+  a throwaway.
+- **`0.9.0-rc.1+` — OIDC-only releases** via GitHub Actions Trusted
+  Publishing, using `release.yml` (templated now, enabled in Phase 2.4B).
+
+### 2. The agent prepares; the maintainer publishes
+
+Phase 2.4A adds `pnpm bootstrap:check --prepare` (version gate + read-only
+registry preflight + `bootstrap-plan.json` with exact per-tarball publish
+commands in the manifest's computed order) and the strict
+`pnpm bootstrap:check --publish-ready` gate for the pre-publish moment. The
+agent never runs `npm publish`, never creates tags/Releases, never touches
+npm auth, and never creates the npm org. The bootstrap publish is a
+maintainer operation from `docs/BOOTSTRAP-RELEASE-CHECKLIST.md`.
+
+### 3. Exact-artifact publish
+
+The approved tarball is the published tarball. Publishing re-packs nothing:
+commands reference `./release-artifacts/tarballs/<file>.tgz` directly. A
+locally rebuilt artifact is a different artifact and is never substituted.
+
+### 4. No long-lived publish token ever enters CI
+
+The bootstrap does not justify one. Release Check pins `NPM_TOKEN` /
+`NODE_AUTH_TOKEN` empty; the dry-run and bootstrap:check fail closed if they
+carry a value; the future `release.yml` holds `id-token: write` only on the
+publish job and fails closed on any registry credential.
+
+### 5. Current npm/GitHub requirements (verified 2026-09-10)
+
+Recorded from docs.npmjs.com / docs.github.com (not blog posts):
+
+- Trusted Publishing: npm CLI **≥ 11.5.1**, Node **≥ 22.14.0**; release lane
+  uses Node 24 + pinned npm (the Node 20 support floor for consumers is
+  unchanged).
+- GitHub-hosted runners only (self-hosted unsupported).
+- `id-token: write` required on the publish job.
+- Package must already exist; repository / workflow filename / environment
+  must match exactly (case-sensitive).
+- Trusted Publisher configs created after 2026-05-20 must explicitly select
+  allowed actions (`npm publish`).
+- Provenance is automatic under Trusted Publishing for public repo + public
+  packages — no `--provenance` flag is required (harmless if present).
+- `npm trust github` CLI exists (npm ≥ 11.15.0) but still requires the
+  package to exist, write access, and account 2FA.
+
+## Post-review hardening (PR #8 review)
+
+Four blockers were fixed after review:
+
+### 6. Import-time side effects removed
+
+The first cut's `bootstrap-release.ts` executed the release dry-run and the
+registry preflight **at module import time** (no main guard), and the unit
+test imported it — so `pnpm test` hit the npm registry and would have turned
+RED the moment rc.0 exists. Now `scripts/bootstrap-plan.ts` is a pure module
+(constants, types, `buildBootstrapPlan`, `publishReadinessIssues` — no I/O,
+no network, no process control, statically audited by test), and
+`bootstrap-release.ts` runs `main()` only under a main-module guard. The
+unit suite imports only the pure module.
+
+### 7. Prepare vs publish-ready modes
+
+`bootstrap:check` previously printed `READY FOR MANUAL BOOTSTRAP` even from
+a dirty feature branch — the exact tarballs could have come from
+unreviewed, uncommitted changes. Now the default/`--prepare` mode prints
+`PREPARE OK` and records git state, while `--publish-ready` additionally
+requires clean tree + `branch == main` + `HEAD == origin/main` and is the
+only mode allowed to say READY.
+
+### 8. Post-publish verification matches the `next` strategy
+
+Bare `npm view`/`npm install` resolve `latest`, which the bootstrap never
+sets — so the documented verification would have verified nothing. All
+verification commands now pin the exact version (`<pkg>@0.9.0-rc.0`).
+`dist.integrity` comparison was also wrong (npm stores SHA-512 SRI, not our
+SHA-256); the runbook now downloads the registry tarball and compares its
+SHA-256 against the plan — proving reviewed local bytes == published
+registry bytes.
+
+### 9. Release workflow template hardened (for Phase 2.4B)
+
+`release.yml.template` gained the reviewed-ancestry guard (tagged commit
+must be an ancestor of `origin/main`) and the exact-commit gate check (CI +
+Release Check must be SUCCESS on the tagged SHA, verified via GitHub with
+the per-workflow `GITHUB_TOKEN`).
+
+## Post-review hardening (PR #8 second review)
+
+### 10. Publish destination pinned in every command
+
+The plan carried `registry: https://registry.npmjs.org/` as data but the
+generated commands lacked `--registry` — a maintainer environment with a
+custom default or scope registry could have received the reviewed tarballs.
+Every generated publish command now includes
+`--registry https://registry.npmjs.org/`, asserted by test. Post-publish
+verification commands pin the same registry.
+
+### 11. Publish-ready gate uses fresh remote truth and exact-head CI
+
+`--publish-ready` previously compared HEAD against the *local* tracking ref
+for `origin/main` (possibly stale) and never looked at CI. It now
+`git fetch origin main --prune` first, requires clean tree + `main` +
+HEAD == freshly fetched origin/main, and then verifies via GitHub (local
+`gh` auth — never a stored token) that BOTH the CI and Release Check
+workflows are SUCCESS on the exact commit to be published. Any inability to
+verify is BLOCKED, never assumed green.
+
+### 12. Release checklist resynced
+
+`docs/RELEASE-CHECKLIST.md` still described Phase 2.3 / PR #7. It now tracks
+Phase 2.4A / PR #8 with the current head and evidence references, and the
+provenance row matches the current design (automatic under Trusted
+Publishing; no `--provenance` flag).
+
+## Post-review hardening (PR #8 third review)
+
+### 13. Official runbooks can no longer bypass the strict gate
+
+The code had the strict `--publish-ready` gate, but the official bootstrap
+runbook still told the maintainer to run plain `bootstrap:check`
+(prepare-mode) right before publishing — a documented bypass of the safety
+mechanism. The checklist and RELEASING.md now require
+`pnpm bootstrap:check --publish-ready` immediately before the manual
+publish, and every documented publish/verification command pins
+`--registry https://registry.npmjs.org/` (including `npm view` /
+`npm install` / `dist-tags` checks — never local npm config).
+
+### 14. Runbook safety is machine-enforced
+
+`pnpm docs:check` gained the `bootstrap-publish-safety` rule: any
+`pnpm bootstrap:check` mention must name its mode (`--prepare` or
+`--publish-ready`), and any command line starting with `npm publish` must
+carry the registry pin. Multi-line commands (trailing `\`) are judged as one
+logical line. A documented bypass is now a CI failure.
+
+## Post-review hardening (PR #8 fourth review)
+
+### 15. The registry variable must actually be assigned
+
+The checklist used the `$R` registry variable throughout but only
+*described* the assignment in prose ("(`R=…` below)") — the executable
+assignment line did not exist, so copy-pasting the runbook would have failed
+or fallen back to local npm config. The checklist now sets `V` and `R` as
+real assignment lines before use, and `docs:check` gained the
+`bootstrap-registry-var` rule: a file using the registry variable must
+contain an actual assignment line (a prose mention does not count — the
+first implementation of the rule made exactly that mistake and was itself
+caught by a regression test).
+
+## Consequences
+
+- The registry identity is created exactly once, by a human, from reviewed
+  artifacts — then publishing becomes OIDC-only with no token surface.
+- `latest` is never touched by prereleases (`--tag next` enforced in the
+  generated plan and asserted by tests).
+- A partial bootstrap failure has an explicit non-destructive policy
+  (RELEASING.md §10): no unpublish, no overwrite, no silent solo bump.
+- Phase 2.4B enables `release.yml` only after all 10 packages exist and
+  Trusted Publishers are configured — verified by a preflight step.

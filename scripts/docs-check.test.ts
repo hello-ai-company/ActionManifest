@@ -1,5 +1,10 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { findForbiddenPatterns } from "./docs-check.js";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
  * The forbidden/safe forms are built by concatenation so this test file
@@ -9,6 +14,9 @@ import { findForbiddenPatterns } from "./docs-check.js";
 const NPX = "np" + "x";
 const BIN = "action" + "man";
 const PKG = "--package=@actionmanifest/cli";
+const BOOT = "pnpm bootstrap:" + "check";
+const PUB = "npm pub" + "lish";
+const REG = "--registry https://registry.npmjs.org/";
 
 describe("docs:check no-bare-npx-actionman", () => {
   it("flags the bare one-shot form", () => {
@@ -79,5 +87,82 @@ describe("docs:check no-bare-npx-actionman", () => {
     // The second command is a separate, safe installed-bin invocation.
     const line = `${NPX} ${PKG} -- ${BIN} conformance && ${BIN} --version\n`;
     expect(findForbiddenPatterns(line, "a.md")).toHaveLength(0);
+  });
+});
+
+describe("docs:check bootstrap-publish-safety", () => {
+  it("flags a mode-less bootstrap:check (the permissive default must not be documented)", () => {
+    const v = findForbiddenPatterns(`${BOOT}   # regenerate the plan\n`, "docs/x.md");
+    expect(v).toHaveLength(1);
+    expect(v[0]!.rule).toBe("bootstrap-publish-safety");
+  });
+
+  it("accepts --prepare and --publish-ready modes", () => {
+    expect(findForbiddenPatterns(`${BOOT} --prepare\n`, "a.md")).toHaveLength(0);
+    expect(findForbiddenPatterns(`${BOOT} --publish-ready\n`, "a.md")).toHaveLength(0);
+  });
+
+  it("flags a publish command line without the registry pin", () => {
+    const v = findForbiddenPatterns(
+      `${PUB} ./release-artifacts/tarballs/x.tgz --access public --tag next\n`,
+      "docs/x.md",
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]!.rule).toBe("bootstrap-publish-safety");
+  });
+
+  it("accepts a publish command line with the registry pin", () => {
+    const v = findForbiddenPatterns(
+      `${PUB} ./release-artifacts/tarballs/x.tgz --access public --tag next ${REG}\n`,
+      "docs/x.md",
+    );
+    expect(v).toHaveLength(0);
+  });
+
+  it("judges multi-line commands (trailing backslash) as one logical line", () => {
+    const good = `${PUB} ./x.tgz \\\n  --access public \\\n  --tag next \\\n  ${REG}\n`;
+    expect(findForbiddenPatterns(good, "docs/x.md")).toHaveLength(0);
+    const bad = `${PUB} ./x.tgz \\\n  --access public \\\n  --tag next\n`;
+    const v = findForbiddenPatterns(bad, "docs/x.md");
+    expect(v).toHaveLength(1);
+    expect(v[0]!.line).toBe(1);
+  });
+
+  it("does not flag prose mentions of publishing (not command lines)", () => {
+    const prose = `The step never runs \`${PUB}\` itself; see the runbook.\n`;
+    expect(findForbiddenPatterns(prose, "a.md")).toHaveLength(0);
+  });
+
+  it("flags --registry $R usage without an actual R assignment in the file", () => {
+    const content = "# Runbook\n\n- `npm view pkg@1.0.0 version --registry $R`\n";
+    const v = findForbiddenPatterns(content, "docs/x.md");
+    expect(v).toHaveLength(1);
+    expect(v[0]!.rule).toBe("bootstrap-registry-var");
+  });
+
+  it("accepts --registry $R when R is actually assigned", () => {
+    const content =
+      "R=https://registry.npmjs.org/\n\n- `npm view pkg@1.0.0 version --registry $R`\n";
+    expect(findForbiddenPatterns(content, "docs/x.md")).toHaveLength(0);
+  });
+
+  it("a prose mention of the assignment is NOT an assignment", () => {
+    // Regression: "(`R=https://registry.npmjs.org/` below)" describes the
+    // assignment but never performs it.
+    const content =
+      "Every command pins the registry (`R=https://registry.npmjs.org/` below).\n\n- `npm view pkg@1.0.0 version --registry $R`\n";
+    const v = findForbiddenPatterns(content, "docs/x.md");
+    expect(v).toHaveLength(1);
+    expect(v[0]!.rule).toBe("bootstrap-registry-var");
+  });
+
+  it("the real bootstrap checklist assigns R before using $R", () => {
+    const content = readFileSync(
+      join(root, "docs/BOOTSTRAP-RELEASE-CHECKLIST.md"),
+      "utf8",
+    );
+    if (content.includes("--registry $R")) {
+      expect(content).toContain("R=https://registry.npmjs.org/");
+    }
   });
 });

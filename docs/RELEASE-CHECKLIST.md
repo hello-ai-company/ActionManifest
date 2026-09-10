@@ -1,12 +1,12 @@
-# Release Checklist — 0.9.0-rc.1 readiness scorecard
+# Release Checklist — 0.9.0-rc.0 bootstrap / 0.9.0-rc.1 OIDC readiness scorecard
 
 Status legend: **PASS** = verified by an automated gate or inspected artifact;
 **READY** = prepared and documented, awaiting the gated publish phase;
 **NOT READY** = open work.
 
-Last verified: Phase 2.3 (against `main` tip
-`4ad9af13e1c606a38e7da5ab4295aad8daaaf1fb` + Phase 2.3 branch). Re-run
-`pnpm release:check` before trusting this table.
+Last verified: Phase 2.4A / PR [#8](https://github.com/hello-ai-company/ActionManifest/pull/8)
+(head `afa8bd9`; CI 34440592699 + Release Check 34440592702 SUCCESS on that
+head). Re-run `pnpm release:check` before trusting this table.
 
 ## Installability
 
@@ -60,7 +60,7 @@ Last verified: Phase 2.3 (against `main` tip
 | 29 | No registry credentials in repo `.npmrc` | PASS (dry-run guard) |
 | 30 | Release Check workflow: `contents: read` only, SHA-pinned actions | PASS |
 | 31 | No long-lived npm tokens/PATs in CI; OIDC Trusted Publishing is design-only — intended, currently unimplemented and unverified | READY (design documented in RELEASING.md §6; never claimed as enabled) |
-| 32 | Provenance attestations (`--provenance`) | READY (part of the future publish command; unverified until first publish) |
+| 32 | Provenance attestations | READY (automatic under Trusted Publishing for public repo + public packages — no `--provenance` flag required; unverified until first OIDC publish) |
 
 ## Ops constraints (Round-1, PA-20260910-001)
 
@@ -93,16 +93,18 @@ Last verified: Phase 2.3 (against `main` tip
 
 | # | Item | Status |
 | --- | --- | --- |
-| 42 | Version bump to `0.9.0-rc.1` across all 10 packages | NOT READY (deferred to the release phase per plan) |
-| 43 | npm Trusted Publishing configured on npmjs.com | NOT READY (requires npm org admin) |
-| 44 | Live OIDC publish workflow (`.github/workflows/release.yml`) | NOT READY (intentionally not enabled) |
-| 45 | Tag `v0.9.0-rc.1` + GitHub Release | NOT READY (post-publish step) |
-| 46 | Post-publish registry verification | NOT READY (after first publish) |
+| 42 | Version bump to `0.9.0-rc.0` across all 10 packages | READY (Phase 2.4A: lockstep bump + version gate in `bootstrap:check`) |
+| 43 | npm Trusted Publishing configured on npmjs.com | NOT READY (requires the packages to exist first — post-bootstrap, maintainer step) |
+| 44 | Live OIDC publish workflow (`.github/workflows/release.yml`) | NOT READY (template only — enabled in Phase 2.4B) |
+| 45 | Tag `v0.9.0-rc.1` + GitHub Release | NOT READY (post-bootstrap step; the rc.0 bootstrap creates no tag) |
+| 46 | Post-publish registry verification | NOT READY (after the manual bootstrap publish) |
 
 ## Merge-recommendation preconditions (Meeting Round-2, locked)
 
+Current cycle: **Phase 2.4A / PR #8**.
+
 | # | Item | Status |
 | --- | --- | --- |
-| ⑤ | Evidence/completion gate — in-repo public-safe pack at `evidence/ENG-20260910-001/` | **PASS (evidence dimension)** — index + public gate checklist + captured gate log, citing CI 34418631229 / Release Check 34418631224. Detailed internal reviews remain in the org Eng WS by design |
-| ⑤a | All other gates (①–④ boundary gates + this scorecard's PASS rows) green | PASS for Phase 2.3 scope |
-| ⑤b | PA-03E review of the open DRAFT PR + President merge/publish approval | OPEN — PR [#7](https://github.com/hello-ai-company/ActionManifest/pull/7) stays DRAFT; no merge recommendation until both are GREEN |
+| ⑤ | Evidence/completion gate — in-repo public-safe pack for the current phase | **Phase 2.4A evidence current** — gates re-verified on PR #8 head `afa8bd9` (CI 34440592699 / Release Check 34440592702 SUCCESS); detailed internal reviews remain in the org Eng WS by design (agents never write evidence content) |
+| ⑤a | All other gates (①–④ boundary gates + this scorecard's PASS rows) green | PASS for Phase 2.4A scope (incl. bootstrap plan purity, publish-ready gate, registry pinning) |
+| ⑤b | Technical review of the open DRAFT PR + President merge/publish approval | OPEN — PR [#8](https://github.com/hello-ai-company/ActionManifest/pull/8) stays DRAFT; no merge recommendation until both are GREEN. President merge approval: OPEN until explicit approval |

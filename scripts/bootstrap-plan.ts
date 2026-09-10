@@ -10,6 +10,12 @@
 export const EXPECTED_BOOTSTRAP_VERSION = "0.9.0-rc.0";
 export const BOOTSTRAP_DIST_TAG = "next";
 export const BOOTSTRAP_ACCESS = "public";
+/**
+ * The ONLY publish destination. Pinned into every generated command so a
+ * maintainer environment with a custom default/scope registry can never
+ * receive the reviewed tarballs by accident.
+ */
+export const BOOTSTRAP_REGISTRY = "https://registry.npmjs.org/";
 
 export interface ReleaseManifestLike {
   publish_order: string[];
@@ -54,7 +60,7 @@ export function buildBootstrapPlan(
     version: EXPECTED_BOOTSTRAP_VERSION,
     dist_tag: BOOTSTRAP_DIST_TAG,
     access: BOOTSTRAP_ACCESS,
-    registry: "https://registry.npmjs.org/",
+    registry: BOOTSTRAP_REGISTRY,
     generated_by: "scripts/bootstrap-release.ts",
     git,
     publish_order: manifest.publish_order,
@@ -67,7 +73,7 @@ export function buildBootstrapPlan(
         tarball: `release-artifacts/${entry.tarball}`,
         sha256: entry.sha256,
         publish_command:
-          `npm publish ./release-artifacts/${entry.tarball} --access ${BOOTSTRAP_ACCESS} --tag ${BOOTSTRAP_DIST_TAG}`,
+          `npm publish ./release-artifacts/${entry.tarball} --access ${BOOTSTRAP_ACCESS} --tag ${BOOTSTRAP_DIST_TAG} --registry ${BOOTSTRAP_REGISTRY}`,
       };
     }),
     notes: [

@@ -26,7 +26,7 @@
  * artifact / git-state mismatch), 2 = BLOCKED/UNKNOWN (preflight could not
  * be completed, e.g. network failure).
  */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -92,6 +92,45 @@ function gitState(): { head: string; branch: string; dirty: boolean; originMain:
   };
 }
 
+/**
+ * Exact-head CI gates (publish-ready only). Verifies via GitHub that the
+ * exact commit to be published has SUCCESS on BOTH required workflows.
+ * Uses the maintainer's local `gh` authentication — never a stored token.
+ * Any inability to verify (gh missing, unauthenticated, API error) is
+ * BLOCKED, never assumed green.
+ */
+function checkExactHeadGates(head: string): string | undefined {
+  const repoProbe = spawnSync("gh", ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (repoProbe.status !== 0) {
+    return "cannot resolve the GitHub repository via `gh` (missing or unauthenticated) — CI gates UNKNOWN";
+  }
+  const repo = repoProbe.stdout.trim();
+  for (const workflow of ["CI", "Release Check"]) {
+    const r = spawnSync(
+      "gh",
+      [
+        "api",
+        `repos/${repo}/actions/runs?head_sha=${head}&per_page=100`,
+        "--jq",
+        `[.workflow_runs[] | select(.name == "${workflow}")] | if length == 0 then "missing" else .[0].conclusion end`,
+      ],
+      { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+    if (r.status !== 0) {
+      return `cannot read workflow runs for ${workflow} on ${head} — CI gates UNKNOWN`;
+    }
+    const conclusion = r.stdout.trim();
+    if (conclusion !== "success") {
+      return `${workflow} on exact HEAD ${head.slice(0, 12)}… is "${conclusion}", not success`;
+    }
+  }
+  return undefined;
+}
+
 function main(): void {
   const args = process.argv.slice(2);
   const publishReadyMode = args.includes("--publish-ready");
@@ -154,13 +193,27 @@ function main(): void {
   }
 
   // ---------- 4. publish-readiness gate (mode-dependent) ----------
+  if (publishReadyMode) {
+    // Fresh remote truth: never compare against a stale local tracking ref.
+    console.log("bootstrap:check — fetching fresh origin/main before comparison…");
+    try {
+      run("git", ["fetch", "origin", "main", "--prune"], root);
+    } catch {
+      fail("git fetch origin main failed — remote state UNKNOWN, refusing to proceed", 2);
+    }
+  }
   const git = gitState();
   if (publishReadyMode) {
     const issues = publishReadinessIssues(git);
     if (issues.length > 0) {
       fail(`publish-readiness gate failed:\n  - ${issues.join("\n  - ")}`);
     }
-    console.log("  ✓ publish-readiness: clean tree, on main, HEAD == origin/main");
+    console.log("  ✓ publish-readiness: clean tree, on main, HEAD == freshly fetched origin/main");
+    const gateIssue = checkExactHeadGates(git.head);
+    if (gateIssue) {
+      fail(`exact-head CI gate failed: ${gateIssue}`, 2);
+    }
+    console.log("  ✓ exact-head gates: CI + Release Check SUCCESS on the exact commit to publish");
   } else {
     console.log(
       `  i prepare mode: git state recorded but not enforced (branch=${git.branch}, dirty=${git.dirty})`,

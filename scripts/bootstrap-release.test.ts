@@ -86,6 +86,16 @@ describe("buildBootstrapPlan", () => {
     }
   });
 
+  it("every command pins the publish destination registry (npmjs.org)", () => {
+    const plan = buildBootstrapPlan(manifest, git);
+    expect(plan.registry).toBe("https://registry.npmjs.org/");
+    for (const p of plan.packages) {
+      // A maintainer environment with a custom default/scope registry must
+      // never receive the reviewed tarballs by accident.
+      expect(p.publish_command).toContain("--registry https://registry.npmjs.org/");
+    }
+  });
+
   it("carries sha256 per package and no secrets", () => {
     const plan = buildBootstrapPlan(manifest, git);
     for (const p of plan.packages) {

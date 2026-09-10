@@ -1,0 +1,89 @@
+name: Release Check
+
+# Verification-only release gate (ops constraints ①–⑧). This workflow NEVER
+# publishes: it holds no registry credentials (NPM_TOKEN/NODE_AUTH_TOKEN are
+# explicitly empty — the dry-run fails closed if they are ever set), has no
+# id-token permission, pushes no tags, and creates no GitHub Releases. The
+# future publish path is a separate, gated workflow (docs/RELEASING.md).
+#
+# Path split (ops constraint ③):
+#   - pull_request: quick path — `pnpm release:check:quick` (pack:check +
+#     docs examples + dry-run artifacts). The full gate chain already runs in
+#     the CI workflow on the same ref; we do not duplicate it per PR.
+#   - push to main, tags (v* = tag / pre-publish verification: the release is
+#     tag-triggered, so this run happens after the tag push and before the
+#     publish workflow), workflow_dispatch:
+#     the full single entry `pnpm release:check`.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Ops constraint ②: one run per ref; PR runs cancel superseded ones, while
+# main/tag/RC runs always complete (release evidence must not be cancelled).
+concurrency:
+  group: release-check-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+env:
+  # Ops constraint ④: never present, never used. The dry-run fails closed if
+  # these ever carry a value.
+  NPM_TOKEN: ""
+  NODE_AUTH_TOKEN: ""
+
+jobs:
+  release-dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # Full history so governance guards can diff against the PR base.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        # Version comes from package.json "packageManager" (do not also set `version` here).
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          # Default lane is Node 20 (supported floor; CTO Round-1). The
+          # adapter-xberg native bridge stays Node >= 22 and is exercised by
+          # opt-in `pnpm xberg:integration`, not by this workflow.
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Ensure esbuild binary
+        run: node node_modules/esbuild/install.js
+      # PR quick path: packaging proof + dry-run artifacts only. Governance,
+      # lint, typecheck, schema, unit, integration, conformance, reference
+      # serialization, and benchmarks are covered by the CI workflow on the
+      # same ref — no duplicated gates per PR.
+      - name: Release quick check (PR path)
+        if: github.event_name == 'pull_request'
+        run: pnpm release:check:quick
+        env:
+          GOVERNANCE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      # Full path (single entry): main pushes, tag / pre-publish verification
+      # (tag-triggered releases run this after the tag push), and manual
+      # dispatch run the complete gate chain.
+      - name: Release full check (main / tag / dispatch path)
+        if: github.event_name != 'pull_request'
+        run: pnpm release:check
+        env:
+          GOVERNANCE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      # Ops constraint ⑤: artifacts are named by commit and never committed
+      # to the repo; retention 14d for PRs, 90d for main/tag/dispatch runs.
+      - name: Upload dry-run release artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-check-${{ github.sha }}
+          path: |
+            release-artifacts/tarballs/*.tgz
+            release-artifacts/SHA256SUMS
+            release-artifacts/release-manifest.json
+            release-artifacts/sbom.cdx.json
+          retention-days: ${{ github.event_name == 'pull_request' && 14 || 90 }}

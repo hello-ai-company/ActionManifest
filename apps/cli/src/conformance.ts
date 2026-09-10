@@ -81,7 +81,12 @@ const FIXED_NOW = new Date("2026-01-01T00:00:00.000Z");
 export async function defaultConformanceRoot(): Promise<string> {
   const here = dirname(fileURLToPath(import.meta.url));
   const candidates = [
+    // Bundled suite inside the installed @actionmanifest/cli package
+    // (dist/../conformance) — works from any cwd, no repo checkout needed.
+    join(here, "../conformance"),
+    // Repository checkout: running from the repo root.
     join(process.cwd(), "conformance"),
+    // Repository checkout: running from source (apps/cli/src) or built dist.
     join(here, "../../../conformance"),
     join(here, "../../../../conformance"),
   ];
@@ -115,7 +120,7 @@ async function loadVectors(root: string): Promise<Vector[]> {
       // Normative test data is code: validate before execution. A malformed
       // vector is a runner/config error (exit 2), never a silent pass.
       try {
-        validateVector(parsed, profile.name);
+        validateVector(parsed, profile.name, root);
       } catch (e) {
         throw new ConformanceConfigError(`${profile.name}/${file}: ${(e as Error).message}`);
       }
@@ -408,7 +413,7 @@ export async function runConformance(
       `cannot read suite manifest: ${e instanceof Error ? e.message : String(e)}`,
     );
   }
-  const suite = validateSuiteManifest(suiteRaw);
+  const suite = validateSuiteManifest(suiteRaw, root);
   const referenceProfiles = suite.reference_profiles ?? [];
   let vectors = await loadVectors(root);
 

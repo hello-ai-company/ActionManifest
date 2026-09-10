@@ -29,8 +29,27 @@ export class ConformanceConfigError extends Error {
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-function conformanceSchemaDir(): string {
+/**
+ * Locate the meta-schema directory. When the runner was given an explicit
+ * suite root (`--root`), the meta-schemas MUST come from that same suite —
+ * validating one suite's vectors against another suite's schemas is a config
+ * error. Without an explicit root, prefer the suite bundled inside the
+ * installed @actionmanifest/cli package, then repo-checkout locations.
+ */
+function conformanceSchemaDir(suiteRoot?: string): string {
+  if (suiteRoot) {
+    const dir = join(suiteRoot, "schema");
+    try {
+      readFileSync(join(dir, "suite-manifest.schema.json"), "utf8");
+      return dir;
+    } catch {
+      throw new ConformanceConfigError(
+        `suite root ${suiteRoot} has no readable schema/suite-manifest.schema.json`,
+      );
+    }
+  }
   const candidates = [
+    join(here, "../conformance/schema"),
     join(process.cwd(), "conformance", "schema"),
     join(here, "../../../conformance/schema"),
     join(here, "../../../../conformance/schema"),
@@ -56,8 +75,18 @@ function loadJson(path: string): Record<string, unknown> {
   }
 }
 
-const ajv = new Ajv({ allErrors: true, strict: false, allowUnionTypes: true });
-addFormats(ajv);
+// One Ajv instance per meta-schema directory: compiling the same $id twice on
+// a single instance throws, and distinct suite roots must never share state.
+const ajvByDir = new Map<string, InstanceType<typeof Ajv>>();
+function ajvForDir(dir: string): InstanceType<typeof Ajv> {
+  let instance = ajvByDir.get(dir);
+  if (!instance) {
+    instance = new Ajv({ allErrors: true, strict: false, allowUnionTypes: true });
+    addFormats(instance);
+    ajvByDir.set(dir, instance);
+  }
+  return instance;
+}
 
 const KNOWN_PROFILES = [
   "schema",
@@ -70,26 +99,36 @@ const KNOWN_PROFILES = [
 ] as const;
 type KnownProfile = (typeof KNOWN_PROFILES)[number];
 
-let validators: Map<KnownProfile, import("ajv").ValidateFunction> | undefined;
-let manifestValidator: import("ajv").ValidateFunction | undefined;
+// Validators are cached per meta-schema directory so an explicit --root
+// suite and the default suite never share compiled schemas.
+const manifestValidators = new Map<string, import("ajv").ValidateFunction>();
+const vectorValidators = new Map<string, Map<KnownProfile, import("ajv").ValidateFunction>>();
 
-function getManifestValidator(): import("ajv").ValidateFunction {
-  if (!manifestValidator) {
-    manifestValidator = ajv.compile(
-      loadJson(join(conformanceSchemaDir(), "suite-manifest.schema.json")),
-    );
+function getManifestValidator(suiteRoot?: string): import("ajv").ValidateFunction {
+  const dir = conformanceSchemaDir(suiteRoot);
+  let validator = manifestValidators.get(dir);
+  if (!validator) {
+    validator = ajvForDir(dir).compile(loadJson(join(dir, "suite-manifest.schema.json")));
+    manifestValidators.set(dir, validator);
   }
-  return manifestValidator;
+  return validator;
 }
 
-function getVectorValidator(profile: KnownProfile): import("ajv").ValidateFunction {
+function getVectorValidator(
+  profile: KnownProfile,
+  suiteRoot?: string,
+): import("ajv").ValidateFunction {
+  const dir = conformanceSchemaDir(suiteRoot);
+  let validators = vectorValidators.get(dir);
   if (!validators) {
+    const ajv = ajvForDir(dir);
     validators = new Map(
       KNOWN_PROFILES.map((p) => [
         p,
-        ajv.compile(loadJson(join(conformanceSchemaDir(), "profiles", `${p}.schema.json`))),
+        ajv.compile(loadJson(join(dir, "profiles", `${p}.schema.json`))),
       ]),
     );
+    vectorValidators.set(dir, validators);
   }
   return validators.get(profile)!;
 }
@@ -104,8 +143,8 @@ function formatAjvErrors(errors: unknown): string {
 }
 
 /** Validate the suite manifest (structure + subset/uniqueness invariants). */
-export function validateSuiteManifest(data: unknown): SuiteManifest {
-  const validate = getManifestValidator();
+export function validateSuiteManifest(data: unknown, suiteRoot?: string): SuiteManifest {
+  const validate = getManifestValidator(suiteRoot);
   if (!validate(data)) {
     throw new ConformanceConfigError(
       `suite manifest failed validation: ${formatAjvErrors(validate.errors)}`,
@@ -134,7 +173,7 @@ export function validateSuiteManifest(data: unknown): SuiteManifest {
  * Validate one vector against its profile schema. `profileFromDir` is the
  * vectors/ subdirectory it was loaded from; a mismatch is a config error.
  */
-export function validateVector(data: unknown, profileFromDir: string): void {
+export function validateVector(data: unknown, profileFromDir: string, suiteRoot?: string): void {
   if (typeof data !== "object" || data === null || Array.isArray(data)) {
     throw new ConformanceConfigError("vector must be a JSON object");
   }
@@ -149,7 +188,7 @@ export function validateVector(data: unknown, profileFromDir: string): void {
       `vector profile "${profile}" does not match its directory "${profileFromDir}"`,
     );
   }
-  const validate = getVectorValidator(profile as KnownProfile);
+  const validate = getVectorValidator(profile as KnownProfile, suiteRoot);
   if (!validate(data)) {
     throw new ConformanceConfigError(
       `vector ${(data as { id?: unknown }).id ?? "?"} failed ${profile} schema validation: ${formatAjvErrors(validate.errors)}`,

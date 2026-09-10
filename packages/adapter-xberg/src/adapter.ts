@@ -23,6 +23,8 @@ interface XbergRuntimeInput {
  * Runtime bridge (Layer B) — the only place that touches the Xberg runtime.
  * The import is dynamic so consumers who only need the pure mapper
  * (Layer A) never load the native binding.
+ *
+ * @experimental Native (NAPI) runtime path — see XbergAdapter.
  */
 async function runXberg(input: XbergRuntimeInput): Promise<unknown> {
   const { extract, ExtractInputKind } = await import("@xberg-io/xberg");
@@ -42,12 +44,23 @@ async function runXberg(input: XbergRuntimeInput): Promise<unknown> {
 }
 
 /**
- * Xberg reference adapter.
+ * Xberg reference adapter (Layer B — native runtime bridge).
  *
  * Boundary: Xberg (native/Rust engine) runs upstream or inside Layer B; the
  * adapter emits only CanonicalDocument. It never extracts Actions, never
  * fetches remote URLs unless the caller explicitly set `allowRemote: true`,
  * and never invents pages/bboxes the upstream result does not carry.
+ *
+ * Stability note: the pure structural mapper `mapXbergResultToCanonical`
+ * (Layer A) is NOT experimental — it validates and maps serialized results
+ * with no native code and no network.
+ *
+ * @experimental The native runtime bridge (`xberg-uri` / `xberg-bytes`
+ * inputs, which dynamically import the NAPI binding) is experimental in the
+ * 0.x line: verified against `@xberg-io/xberg` exactly 1.1.3 (pinned), Node
+ * >= 22, covered by opt-in live integration tests (`pnpm xberg:integration`)
+ * rather than the default CI matrix. The bridge API may change between 0.x
+ * minors; the Layer A mapper follows the normal 0.x policy.
  */
 export class XbergAdapter implements DocumentAdapter<XbergAdapterInput> {
   readonly id = "xberg";

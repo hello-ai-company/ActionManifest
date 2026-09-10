@@ -1,0 +1,33 @@
+# Phase 2.3 quality gates — captured 2026-09-10T00:02:43Z on Node v20.20.2, pnpm 10.14.0
+# command: GOVERNANCE_BASE_SHA=origin/main pnpm release:check
+
+governance: PASS (base origin/main; 66 changed path(s); frozen schemas intact; suite_version 0.2.0)
+docs:check PASS (no forbidden npx/bin package-identity patterns)
+schema: PASS (v0.1 + v0.2 action-manifest + canonical-document, immutability + identity + dialect + 2 frozen checksums)
+ Test Files  31 passed (31)
+      Tests  273 passed (273)
+ Test Files  5 passed (5)
+      Tests  20 passed (20)
+TOTAL                 65/65 PASS
+CONFORMANT
+TOTAL                 65/65 PASS
+CONFORMANT
+Reference Serialization (TypeScript regression only — NOT universal conformance): 4/4 PASS
+  ✓ @actionmanifest/schema standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/core standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/temporal standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/adapters standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/extractor standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/verifier standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/exporters standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/consumer standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/adapter-xberg standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/cli installed from tarball (offline, foreign cwd): bin shim, extract/validate/conformance/benchmark, exit codes, no Xberg — OK
+pack:check PASS (10 packages packed, verified, runtime-smoked, type-deps declared, standalone matrix + CLI install smoke OK)
+library-quick-start OK: 2 ready actions, ICS 394 bytes
+per-action-verification OK: 1 verified + exported, 1 failed + withheld
+  ✓ sbom.cdx.json validates against the official CycloneDX 1.5 JSON Schema (offline)
+  ✓ @actionmanifest/cli installed from tarball (offline, foreign cwd): bin shim, extract/validate/conformance/benchmark, exit codes, no Xberg — OK
+release:dry-run PASS — 10 tarballs, SHA256SUMS, release-manifest.json, sbom.cdx.json (14 external components), publish order: @actionmanifest/schema → @actionmanifest/core → @actionmanifest/adapters → @actionmanifest/consumer → @actionmanifest/exporters → @actionmanifest/temporal → @actionmanifest/adapter-xberg → @actionmanifest/extractor → @actionmanifest/verifier → @actionmanifest/cli
+
+exit_code=0

@@ -32,6 +32,12 @@ export interface XbergMapOptions {
  * structurally. This function never extracts Actions (adapter responsibility
  * ends at parse/normalize) and never invents provenance:
  *
+ * Stability: Layer A is the **stable structural mapper** of this package —
+ * it is NOT experimental (unlike the Layer B native runtime bridge,
+ * `XbergAdapter`, which is `@experimental` for the 0.x line) and follows the
+ * normal 0.x compatibility policy. The mapper itself loads no native code;
+ * the package-level Node >= 22 requirement exists for the optional bridge.
+ *
  * - pages are mapped only when Xberg produced per-page content;
  * - chunk page numbers come only from element metadata;
  * - bboxes are OMITTED: Xberg coordinates are in an unspecified document

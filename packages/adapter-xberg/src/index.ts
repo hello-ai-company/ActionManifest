@@ -1,3 +1,13 @@
+/**
+ * @actionmanifest/adapter-xberg — Xberg reference adapter (optional package).
+ *
+ * Stability split (0.x line):
+ * - Layer A `mapXbergResultToCanonical` — stable structural mapper (pure;
+ *   no native binding, no network). Normal 0.x policy.
+ * - Layer B `XbergAdapter` runtime bridge — `@experimental` (dynamic import
+ *   of the NAPI binding; verified against @xberg-io/xberg exactly 1.1.3;
+ *   Node >= 22; live tests are opt-in via `pnpm xberg:integration`).
+ */
 export { XbergAdapter } from "./adapter.js";
 export {
   XBERG_ADAPTER_VERSION,

@@ -23,6 +23,52 @@ pnpm benchmark:smoke
 
 Node 20+. pnpm workspaces. Default extractor is deterministic (no network).
 
+## CI gates (all must be green)
+
+`pnpm release:check` runs the full chain locally. Individually:
+
+| Command | What it proves |
+| --- | --- |
+| `pnpm governance:validate` | Frozen v0.1/v0.2 schemas untouched; normative conformance changes carry a `suite_version` bump |
+| `pnpm lint` / `pnpm typecheck` | Style / types (packages + external reference consumer against built d.ts) |
+| `pnpm schema:validate` | Schema identity, dialect, frozen sha256 checksums |
+| `pnpm test` | Unit tests (253+) |
+| `pnpm integration:test` | External-consumer integration (public entry points only, built dist) |
+| `pnpm conformance` | Universal suite 65/65, critical false exported = 0 |
+| `pnpm conformance:reference` | TypeScript byte-exact ICS regression (4/4) |
+| `pnpm benchmark:smoke` / `pnpm benchmark` | Golden + adversarial (74 fixtures, 40 adversarial), critical false-verified = 0 |
+| `pnpm pack:check` | Every public package packs; tarballs contain dist/LICENSE/NOTICE and no tests; standalone consumers typecheck + run with declared deps only; CLI installs and runs from a foreign cwd |
+| `pnpm docs:examples` | README examples are executable and typechecked |
+| `pnpm release:dry-run` | Release artifacts (tarballs, SHA256SUMS, manifest, SBOM) without any registry write |
+| `pnpm release:check:quick` | PR quick path: pack:check + docs examples + dry-run (the Release Check workflow runs this on PRs; the full chain runs on main/tags/dispatch) |
+
+`pnpm release:check` is verification-only: it never publishes, never tags,
+never creates GitHub Releases, and fails closed if registry credentials are
+present in the environment. See [docs/RELEASING.md](docs/RELEASING.md).
+
+## Packaging rules (Phase 2.2/2.3)
+
+- Public entry points only: each package's `exports` map is the contract;
+  deep imports are blocked and not covered by semver.
+- Declare every dependency your public `.d.ts` references — `pnpm pack:check`
+  scans shipped declarations and fails on undeclared references.
+- Never add a dependency on `@xberg-io/*` outside `@actionmanifest/adapter-xberg`
+  (enforced by `pack:check`), and never make the CLI depend on the native
+  adapter (the CLI stays Node 20 capable).
+- `@xberg-io/xberg` is pinned exactly (ADR 0007). Do not widen the range
+  without re-verifying the adapter against the new version's installed types.
+- Keep `sideEffects: false` accurate: libraries are pure export modules; the
+  CLI entry point executes on import and must not declare it.
+
+## Release process
+
+Releases are prepared, never improvised: see [docs/RELEASING.md](docs/RELEASING.md)
+for preconditions, version selection (package ≠ schema ≠ suite version),
+publish order, dry-run, Trusted Publishing prerequisites, and rollback policy.
+The scorecard lives in [docs/RELEASE-CHECKLIST.md](docs/RELEASE-CHECKLIST.md).
+Only maintainers with the release role run the real publish; everyone else
+stops at `pnpm release:dry-run`.
+
 ## Schema changes
 
 Versioned schemas are **immutable**: never edit a shipped `schemas/vX.Y/action-manifest.schema.json`. Instead:

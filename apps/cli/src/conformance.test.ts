@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,6 +8,16 @@ import { ConformanceConfigError } from "./conformance-validate.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const suiteRoot = join(here, "../../../conformance");
+
+/**
+ * A custom suite root must be self-contained (manifest.json + schema/ +
+ * vectors/): the runner validates vectors against the suite's OWN
+ * meta-schemas, never against another suite's. Tests stage the official
+ * meta-schemas into their temp suite to satisfy that contract.
+ */
+function stageMetaSchemas(root: string): void {
+  cpSync(join(suiteRoot, "schema"), join(root, "schema"), { recursive: true });
+}
 
 describe("conformance suite", () => {
   it("locates the suite root", async () => {
@@ -48,6 +58,7 @@ describe("conformance suite", () => {
 
   it("a malformed vector is a runner/config error (never silently ignored)", async () => {
     const root = mkdtempSync(join(tmpdir(), "conformance-bad-"));
+    stageMetaSchemas(root);
     mkdirSync(join(root, "vectors", "trust"), { recursive: true });
     writeFileSync(
       join(root, "manifest.json"),
@@ -80,6 +91,7 @@ describe("conformance suite", () => {
 
   it("runner detects a deliberately failing vector (vectors are normative)", async () => {
     const root = mkdtempSync(join(tmpdir(), "conformance-neg-"));
+    stageMetaSchemas(root);
     mkdirSync(join(root, "vectors", "trust"), { recursive: true });
     writeFileSync(
       join(root, "manifest.json"),

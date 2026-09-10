@@ -2,6 +2,12 @@
 
 **This repository is public. Every commit is public.**
 
+> **Terminology (CTO Round-1, PA-20260910-001):** "Publishable" below means
+> *allowed to be committed to this public GitHub repository*. It is **not**
+> permission to publish to npm, cut tags, or create GitHub Releases — release
+> execution is a separate, gated phase ([RELEASING.md](RELEASING.md)). This
+> boundary is HARD and must not be weakened.
+
 PA-dev-meeting HARD gates (ENG-20260909-001 / closed PA-20260909-001):
 
 1. Only OSS core code, **synthetic** Golden fixtures, and architecture/spec docs.
@@ -33,4 +39,10 @@ All files under `benchmark/fixtures/` and `examples/` are synthetic templates au
 
 ## Evidence path
 
-`evidence/ENG-20260909-001/` — Eng ops fills this **after** PA-03E review. Agents must not treat it as a place to dump internal memos.
+`evidence/ENG-20260909-001/` (and per-ticket siblings such as
+`evidence/ENG-20260910-001/`) — filled by **Eng ops**. Agents must not treat
+these directories as a place to dump internal memos.
+
+> **Meeting Round-2 (locked, 2026-09-10):** the evidence/completion gate ⑤
+> must be satisfied **BEFORE any merge recommendation** — not after. The PR
+> stays **DRAFT** until all gates, including evidence completion, are GREEN.

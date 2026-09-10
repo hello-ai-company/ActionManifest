@@ -2,7 +2,9 @@
   "name": "@actionmanifest/schema",
   "version": "0.1.0",
   "description": "Language-neutral Action Manifest JSON Schemas (immutable, versioned: v0.1, v0.2) and TypeScript types.",
+  "license": "Apache-2.0",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -14,8 +16,28 @@
     "./schemas/v0.2/action-manifest.schema.json": "./schemas/v0.2/action-manifest.schema.json",
     "./schemas/canonical-document.schema.json": "./schemas/canonical-document.schema.json"
   },
-  "files": ["dist", "schemas"],
+  "files": [
+    "dist",
+    "schemas",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hello-ai-company/ActionManifest.git",
+    "directory": "packages/schema"
+  },
+  "homepage": "https://github.com/hello-ai-company/ActionManifest/tree/main/packages/schema#readme",
+  "bugs": "https://github.com/hello-ai-company/ActionManifest/issues",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsc -b"
+    "build": "tsc -b",
+    "prepack": "node ../../scripts/pack-assets.mjs copy",
+    "postpack": "node ../../scripts/pack-assets.mjs clean"
   }
 }

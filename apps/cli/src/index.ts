@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { Command } from "commander";
 import { resolveAdapter } from "@actionmanifest/adapters";
@@ -44,8 +45,18 @@ function providerFromFlags(name: string | undefined, doc: CanonicalDocument): Ll
   return new DeterministicProvider(doc);
 }
 
+// Version comes from the package manifest so --version can never drift from
+// the published artifact. dist/index.js → ../package.json resolves both in
+// the repo (apps/cli/package.json) and in an installed node_modules layout.
+const packageVersion = (
+  createRequire(import.meta.url)("../package.json") as { version: string }
+).version;
+
 const program = new Command();
-program.name("actionman").description("Turn documents into actions you can verify.").version("0.1.0");
+program
+  .name("actionman")
+  .description("Turn documents into actions you can verify.")
+  .version(packageVersion);
 
 program
   .command("extract")
@@ -108,6 +119,9 @@ program
         // Non-zero exit signals the manifest did not fully verify; per-action
         // results (verified vs failed) are still available in the output.
         if (!ok) process.exitCode = 2;
+      } else if (opts.json) {
+        // --json must be pure JSON on stdout even for schema-only validation.
+        process.stdout.write(JSON.stringify({ ok: true, schema_valid: true }, null, 2) + "\n");
       } else {
         process.stdout.write("schema: PASS\n");
       }

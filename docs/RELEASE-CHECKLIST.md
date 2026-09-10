@@ -4,9 +4,10 @@ Status legend: **PASS** = verified by an automated gate or inspected artifact;
 **READY** = prepared and documented, awaiting the gated publish phase;
 **NOT READY** = open work.
 
-Last verified: Phase 2.3 (against `main` tip
-`4ad9af13e1c606a38e7da5ab4295aad8daaaf1fb` + Phase 2.3 branch). Re-run
-`pnpm release:check` before trusting this table.
+Last verified: Phase 2.4A / PR [#8](https://github.com/hello-ai-company/ActionManifest/pull/8)
+(head `9e823f01975e8cf28ce150a6c78544311d53983c`; CI 34436091372 + Release
+Check 34436091323 SUCCESS on that head). Re-run `pnpm release:check` before
+trusting this table.
 
 ## Installability
 
@@ -60,7 +61,7 @@ Last verified: Phase 2.3 (against `main` tip
 | 29 | No registry credentials in repo `.npmrc` | PASS (dry-run guard) |
 | 30 | Release Check workflow: `contents: read` only, SHA-pinned actions | PASS |
 | 31 | No long-lived npm tokens/PATs in CI; OIDC Trusted Publishing is design-only — intended, currently unimplemented and unverified | READY (design documented in RELEASING.md §6; never claimed as enabled) |
-| 32 | Provenance attestations (`--provenance`) | READY (part of the future publish command; unverified until first publish) |
+| 32 | Provenance attestations | READY (automatic under Trusted Publishing for public repo + public packages — no `--provenance` flag required; unverified until first OIDC publish) |
 
 ## Ops constraints (Round-1, PA-20260910-001)
 
@@ -101,8 +102,10 @@ Last verified: Phase 2.3 (against `main` tip
 
 ## Merge-recommendation preconditions (Meeting Round-2, locked)
 
+Current cycle: **Phase 2.4A / PR #8**.
+
 | # | Item | Status |
 | --- | --- | --- |
-| ⑤ | Evidence/completion gate — in-repo public-safe pack at `evidence/ENG-20260910-001/` | **PASS (evidence dimension)** — index + public gate checklist + captured gate log, citing CI 34418631229 / Release Check 34418631224. Detailed internal reviews remain in the org Eng WS by design |
-| ⑤a | All other gates (①–④ boundary gates + this scorecard's PASS rows) green | PASS for Phase 2.3 scope |
-| ⑤b | PA-03E review of the open DRAFT PR + President merge/publish approval | OPEN — PR [#7](https://github.com/hello-ai-company/ActionManifest/pull/7) stays DRAFT; no merge recommendation until both are GREEN |
+| ⑤ | Evidence/completion gate — in-repo public-safe pack for the current phase | **Phase 2.4A evidence current** — gates re-verified on PR #8 head `9e823f0` (CI 34436091372 / Release Check 34436091323 SUCCESS); detailed internal reviews remain in the org Eng WS by design (agents never write evidence content) |
+| ⑤a | All other gates (①–④ boundary gates + this scorecard's PASS rows) green | PASS for Phase 2.4A scope (incl. bootstrap plan purity, publish-ready gate, registry pinning) |
+| ⑤b | Technical review of the open DRAFT PR + President merge/publish approval | OPEN — PR [#8](https://github.com/hello-ai-company/ActionManifest/pull/8) stays DRAFT; no merge recommendation until both are GREEN. President merge approval: OPEN until explicit approval |

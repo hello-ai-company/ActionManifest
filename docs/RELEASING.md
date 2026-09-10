@@ -318,14 +318,17 @@ prerelease publishes (`--tag next`) intentionally never touch. Verifying
 
 ```bash
 V=0.9.0-rc.1   # the version just published (0.9.0-rc.0 for the bootstrap)
-npm view @actionmanifest/cli@$V version        # the new version
-npm view @actionmanifest/core@$V dist.tarball  # resolves
+R=https://registry.npmjs.org/   # pin the registry — never rely on local npm config
+npm view @actionmanifest/cli@$V version --registry $R        # the new version
+npm view @actionmanifest/core@$V dist.tarball --registry $R  # resolves
 # Registry bytes == reviewed bytes: npm stores SHA-512 SRI in
 # dist.integrity, so do NOT compare it to our SHA-256 plan. Download the
 # registry tarball and compare sha256 against release-manifest.json /
 # bootstrap-plan.json instead:
-curl -sSL "$(npm view @actionmanifest/core@$V dist.tarball)" -o /tmp/core.tgz
-sha256sum /tmp/core.tgz   # must equal the manifest/plan sha256
+curl -sSL "$(npm view @actionmanifest/core@$V dist.tarball --registry $R)" -o /tmp/core.tgz
+sha256sum /tmp/core.tgz        # Linux — must equal the manifest/plan sha256
+# macOS: shasum -a 256 /tmp/core.tgz
+# Portable: node -e "console.log(require('crypto').createHash('sha256').update(require('fs').readFileSync('/tmp/core.tgz')).digest('hex'))"
 # Fresh project, real registry. After a LOCAL npm install, PATH does not
 # include node_modules/.bin — invoke the bin by path (or via npm exec).
 # And ALWAYS name the package explicitly with npx (the unscoped npm name

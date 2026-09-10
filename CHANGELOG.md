@@ -29,6 +29,13 @@ This bootstrap release is not the final OIDC-controlled release. `0.9.0-rc.1` is
 - **Import-time side effects removed**: `scripts/bootstrap-plan.ts` is now a pure module (constants/types/`buildBootstrapPlan`/`publishReadinessIssues` — no I/O, no network, no process control; statically audited by test), and `bootstrap-release.ts` runs `main()` only under a main-module guard. Previously the unit test imported the CLI and triggered the full dry-run + registry preflight, making `pnpm test` depend on npm registry state (it would have gone RED once rc.0 exists).
 - **Prepare vs publish-ready modes**: `pnpm bootstrap:check` (default/`--prepare`) packs and verifies artifacts and prints `PREPARE OK` on any branch; only `--publish-ready` — requiring clean tree, `branch == main`, `HEAD == origin/main` — may print `READY FOR MANUAL BOOTSTRAP`. Exact tarballs must come from the reviewed commit.
 - **Post-publish verification fixed for the `next` strategy**: all verification commands pin the exact version (`<pkg>@0.9.0-rc.0`); registry bytes are proven by downloading the registry tarball and comparing its SHA-256 against the plan (npm's `dist.integrity` is SHA-512 SRI — never directly comparable).
+
+### Hardened (PR #8 second review)
+
+- **Publish destination pinned**: every generated bootstrap command now includes `--registry https://registry.npmjs.org/` — a maintainer environment with a custom default/scope registry can never receive the reviewed tarballs by accident. Asserted by test; post-publish verification pins the same registry.
+- **Publish-ready gate uses fresh remote truth + exact-head CI**: `--publish-ready` now fetches `origin/main` before comparing (never a stale tracking ref), and verifies via GitHub (local `gh` auth, no stored token) that CI AND Release Check are SUCCESS on the exact commit to be published. Inability to verify is BLOCKED, never assumed green.
+- **Release checklist resynced** to Phase 2.4A / PR #8 (was Phase 2.3 / PR #7); provenance row corrected to the current automatic-under-Trusted-Publishing design.
+- **Release template**: verify job gains `actions: read` (required for the exact-commit gate check; declaring any permission sets others to none); portable sha256 commands documented (Linux/macOS/Node).
 - **Docs**: `docs/BOOTSTRAP-RELEASE-CHECKLIST.md` (manual bootstrap runbook + Trusted Publisher checklist), ADR 0008 (first-release bootstrap & OIDC transition, current npm requirements recorded from official docs). RELEASING.md rewritten around the two-stage bootstrap; README release status corrected to "bootstrap candidate, not yet published".
 
 ## Phase 2.3 — 2026-09-10

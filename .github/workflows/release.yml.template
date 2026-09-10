@@ -44,6 +44,12 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      # actions: read is required for the exact-commit gate check (reading
+      # workflow runs for the tagged SHA). Declaring any permission sets all
+      # others to none — keep this list complete.
+      actions: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

@@ -110,6 +110,34 @@ must be an ancestor of `origin/main`) and the exact-commit gate check (CI +
 Release Check must be SUCCESS on the tagged SHA, verified via GitHub with
 the per-workflow `GITHUB_TOKEN`).
 
+## Post-review hardening (PR #8 second review)
+
+### 10. Publish destination pinned in every command
+
+The plan carried `registry: https://registry.npmjs.org/` as data but the
+generated commands lacked `--registry` — a maintainer environment with a
+custom default or scope registry could have received the reviewed tarballs.
+Every generated publish command now includes
+`--registry https://registry.npmjs.org/`, asserted by test. Post-publish
+verification commands pin the same registry.
+
+### 11. Publish-ready gate uses fresh remote truth and exact-head CI
+
+`--publish-ready` previously compared HEAD against the *local* tracking ref
+for `origin/main` (possibly stale) and never looked at CI. It now
+`git fetch origin main --prune` first, requires clean tree + `main` +
+HEAD == freshly fetched origin/main, and then verifies via GitHub (local
+`gh` auth — never a stored token) that BOTH the CI and Release Check
+workflows are SUCCESS on the exact commit to be published. Any inability to
+verify is BLOCKED, never assumed green.
+
+### 12. Release checklist resynced
+
+`docs/RELEASE-CHECKLIST.md` still described Phase 2.3 / PR #7. It now tracks
+Phase 2.4A / PR #8 with the current head and evidence references, and the
+provenance row matches the current design (automatic under Trusted
+Publishing; no `--provenance` flag).
+
 ## Consequences
 
 - The registry identity is created exactly once, by a human, from reviewed

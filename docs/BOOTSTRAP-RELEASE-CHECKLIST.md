@@ -59,8 +59,11 @@ For each of the 10 packages:
       compare sha256 against `bootstrap-plan.json` (do NOT compare against
       `dist.integrity` — npm stores SHA-512 SRI there, not our SHA-256):
       ```bash
-      curl -sSL "$(npm view <pkg>@0.9.0-rc.0 dist.tarball)" -o /tmp/<pkg>.tgz
-      sha256sum /tmp/<pkg>.tgz   # must equal the plan's sha256
+      curl -sSL "$(npm view <pkg>@0.9.0-rc.0 dist.tarball --registry https://registry.npmjs.org/)" -o /tmp/<pkg>.tgz
+      # Linux: sha256sum /tmp/<pkg>.tgz
+      # macOS: shasum -a 256 /tmp/<pkg>.tgz
+      # Portable: node -e "console.log(require('crypto').createHash('sha256').update(require('fs').readFileSync('/tmp/<pkg>.tgz')).digest('hex'))"
+      # → must equal the plan's sha256
       ```
 - [ ] Fresh directory `npm install <pkg>@0.9.0-rc.0` works
 - [ ] `npm install @actionmanifest/cli@0.9.0-rc.0` → `actionman --version` → `0.9.0-rc.0`, `actionman conformance` → CONFORMANT

@@ -31,12 +31,13 @@ publish cannot use OIDC, and the release plan needs a bootstrap step.
 
 ### 2. The agent prepares; the maintainer publishes
 
-Phase 2.4A adds `pnpm bootstrap:check` (version gate + read-only registry
-preflight + `bootstrap-plan.json` with exact per-tarball publish commands in
-the manifest's computed order). The agent never runs `npm publish`, never
-creates tags/Releases, never touches npm auth, and never creates the npm
-org. The bootstrap publish is a maintainer operation from
-`docs/BOOTSTRAP-RELEASE-CHECKLIST.md`.
+Phase 2.4A adds `pnpm bootstrap:check --prepare` (version gate + read-only
+registry preflight + `bootstrap-plan.json` with exact per-tarball publish
+commands in the manifest's computed order) and the strict
+`pnpm bootstrap:check --publish-ready` gate for the pre-publish moment. The
+agent never runs `npm publish`, never creates tags/Releases, never touches
+npm auth, and never creates the npm org. The bootstrap publish is a
+maintainer operation from `docs/BOOTSTRAP-RELEASE-CHECKLIST.md`.
 
 ### 3. Exact-artifact publish
 
@@ -137,6 +138,27 @@ verify is BLOCKED, never assumed green.
 Phase 2.4A / PR #8 with the current head and evidence references, and the
 provenance row matches the current design (automatic under Trusted
 Publishing; no `--provenance` flag).
+
+## Post-review hardening (PR #8 third review)
+
+### 13. Official runbooks can no longer bypass the strict gate
+
+The code had the strict `--publish-ready` gate, but the official bootstrap
+runbook still told the maintainer to run plain `bootstrap:check`
+(prepare-mode) right before publishing — a documented bypass of the safety
+mechanism. The checklist and RELEASING.md now require
+`pnpm bootstrap:check --publish-ready` immediately before the manual
+publish, and every documented publish/verification command pins
+`--registry https://registry.npmjs.org/` (including `npm view` /
+`npm install` / `dist-tags` checks — never local npm config).
+
+### 14. Runbook safety is machine-enforced
+
+`pnpm docs:check` gained the `bootstrap-publish-safety` rule: any
+`pnpm bootstrap:check` mention must name its mode (`--prepare` or
+`--publish-ready`), and any command line starting with `npm publish` must
+carry the registry pin. Multi-line commands (trailing `\`) are judged as one
+logical line. A documented bypass is now a CI failure.
 
 ## Consequences
 

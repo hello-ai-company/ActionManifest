@@ -182,10 +182,13 @@ package's dependencies are already on the registry when it is published.
 
 ```
 release preparation (this repo, PR-reviewed)
-  → pnpm bootstrap:check            # version gate + registry preflight + plan
+  → pnpm bootstrap:check --publish-ready
+      # version gate + registry preflight + plan + clean/main/exact-head
+      # + CI & Release Check SUCCESS on the exact commit
   → maintainer reviews the EXACT tarballs (release-artifacts/tarballs/*.tgz)
   → manual authenticated bootstrap publish with maintainer 2FA
-      npm publish ./release-artifacts/tarballs/<pkg>.tgz --access public --tag next
+      npm publish ./release-artifacts/tarballs/<pkg>.tgz \
+        --access public --tag next --registry https://registry.npmjs.org/
       (in bootstrap-plan.json publish_order — never re-pack from a package dir)
   → all 10 packages now exist on npm (dist-tag: next; latest untouched)
   → configure Trusted Publisher per package (§6.2)
@@ -199,13 +202,13 @@ Hard rules for the bootstrap:
   package directory — an approved artifact must never be replaced by a
   locally rebuilt one. `release-artifacts/bootstrap-plan.json` carries the
   exact commands (computed publish order, sha256 per tarball).
-- **Prepare vs publish-ready are different gates.** `pnpm bootstrap:check`
-  (aka `--prepare`) packs and verifies artifacts and may run on a feature
-  branch; it prints `PREPARE OK`. Only `pnpm bootstrap:check
-  --publish-ready` — which additionally requires a clean tree,
-  `branch == main`, and `HEAD == origin/main` — may print
-  `READY FOR MANUAL BOOTSTRAP`. The exact tarball must come from the
-  reviewed commit, not from uncommitted changes.
+- **Prepare vs publish-ready are different gates.** `pnpm bootstrap:check --prepare`
+  packs and verifies artifacts and may run on a feature branch; it prints
+  `PREPARE OK`. Only `pnpm bootstrap:check --publish-ready` — which
+  additionally requires a clean tree, `branch == main`, and
+  `HEAD == origin/main` (freshly fetched), plus CI + Release Check SUCCESS
+  on the exact commit — may print `READY FOR MANUAL BOOTSTRAP`. The exact
+  tarball must come from the reviewed commit, not from uncommitted changes.
 - **`--access public`** on every command (scoped first publish).
 - **`--tag next`** on every command — the bootstrap MUST NOT touch `latest`.
 - **No long-lived token enters CI** — not for the bootstrap, not after. The
@@ -303,11 +306,16 @@ constraint ④):
 
 ```bash
 # In the OIDC release workflow — never from a laptop with a long-lived token.
-pnpm -r --filter "./packages/*" --filter "./apps/*" publish --provenance --access public --no-git-checks
+# Exact tarballs built by `pnpm release:dry-run`, published in manifest order,
+# registry pinned (provenance is automatic under Trusted Publishing):
+npm publish ./release-artifacts/tarballs/<file>.tgz \
+  --access public --tag <next|latest per prerelease> --registry https://registry.npmjs.org/
 ```
 
-(publish in the §5 order; with lockstep versions a topological
-`pnpm -r publish` satisfies it, but verify against the manifest.)
+(publish in the §5 order from `release-manifest.json → publish_order`; the
+workflow publishes the exact tarballs produced by the verified dry-run, and
+provenance attestations are generated automatically by Trusted Publishing —
+no `--provenance` flag is required.)
 
 ## 9. Post-publish verification (mandatory)
 

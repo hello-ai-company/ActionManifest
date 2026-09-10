@@ -147,7 +147,7 @@ jobs:
               short="${pkg#@actionmanifest/}"
               tgz=$(ls "release-artifacts/tarballs/actionmanifest-${short}-${TAG}.tgz")
               echo "publishing $pkg from $tgz (dist-tag $DIST_TAG)"
-              npm publish "$tgz" --access public --tag "$DIST_TAG"
+              npm publish "$tgz" --access public --tag "$DIST_TAG" --registry https://registry.npmjs.org/
             done
 
   post-publish-verify:

@@ -33,17 +33,25 @@ identities safely; `0.9.0-rc.1+` ships via OIDC only.
 ## Manual bootstrap publish (maintainer ONLY)
 
 Run from the repo root, in the plan's computed order, using the EXACT
-tarballs (never re-pack):
+tarballs (never re-pack). The pre-publish gate MUST be the strict mode —
+plain `bootstrap:check` (prepare) is not sufficient for an irreversible
+registry write:
 
 ```bash
-pnpm bootstrap:check   # regenerate + verify the plan (read-only registry preflight)
-# then, per package, in order:
-npm publish ./release-artifacts/tarballs/<file>.tgz --access public --tag next
+pnpm bootstrap:check --publish-ready
+# ↑ fetches fresh origin/main, requires clean tree + main + HEAD == origin/main,
+#   and verifies CI + Release Check are SUCCESS on the exact HEAD.
+# then, per package, in order (commands copied from bootstrap-plan.json):
+npm publish ./release-artifacts/tarballs/<file>.tgz \
+  --access public \
+  --tag next \
+  --registry https://registry.npmjs.org/
 ```
 
+- [ ] `pnpm bootstrap:check --publish-ready` printed `READY FOR MANUAL BOOTSTRAP`
 - [ ] All 10 commands executed in `publish_order`
-- [ ] Every command used `--access public` and `--tag next`
-- [ ] `latest` dist-tag untouched (`npm view <pkg> dist-tags` shows only `next`)
+- [ ] Every command used `--access public`, `--tag next`, AND `--registry https://registry.npmjs.org/`
+- [ ] `latest` dist-tag untouched (`npm view <pkg> dist-tags --registry https://registry.npmjs.org/` shows only `next`)
 
 ## Post-publish verification (maintainer)
 
@@ -51,23 +59,26 @@ The bootstrap publishes to dist-tag `next` only — `latest` does not exist
 yet. Bare `npm view <pkg>` / `npm install <pkg>` default to `latest`, so
 every verification MUST pin the exact version.
 
+Every command pins the registry — never rely on local npm config
+(`R=https://registry.npmjs.org/` below).
+
 For each of the 10 packages:
 
-- [ ] `npm view <pkg>@0.9.0-rc.0 version` → `0.9.0-rc.0`
-- [ ] `npm view <pkg>@0.9.0-rc.0 dist.tarball` resolves
+- [ ] `npm view <pkg>@0.9.0-rc.0 version --registry $R` → `0.9.0-rc.0`
+- [ ] `npm view <pkg>@0.9.0-rc.0 dist.tarball --registry $R` resolves
 - [ ] **Registry bytes == reviewed bytes**: download the registry tarball and
       compare sha256 against `bootstrap-plan.json` (do NOT compare against
       `dist.integrity` — npm stores SHA-512 SRI there, not our SHA-256):
       ```bash
-      curl -sSL "$(npm view <pkg>@0.9.0-rc.0 dist.tarball --registry https://registry.npmjs.org/)" -o /tmp/<pkg>.tgz
+      curl -sSL "$(npm view <pkg>@0.9.0-rc.0 dist.tarball --registry $R)" -o /tmp/<pkg>.tgz
       # Linux: sha256sum /tmp/<pkg>.tgz
       # macOS: shasum -a 256 /tmp/<pkg>.tgz
       # Portable: node -e "console.log(require('crypto').createHash('sha256').update(require('fs').readFileSync('/tmp/<pkg>.tgz')).digest('hex'))"
       # → must equal the plan's sha256
       ```
-- [ ] Fresh directory `npm install <pkg>@0.9.0-rc.0` works
-- [ ] `npm install @actionmanifest/cli@0.9.0-rc.0` → `actionman --version` → `0.9.0-rc.0`, `actionman conformance` → CONFORMANT
-- [ ] `npm view <pkg> dist-tags` shows `next` only (no `latest`)
+- [ ] Fresh directory `npm install <pkg>@0.9.0-rc.0 --registry $R` works
+- [ ] `npm install @actionmanifest/cli@0.9.0-rc.0 --registry $R` → `actionman --version` → `0.9.0-rc.0`, `actionman conformance` → CONFORMANT
+- [ ] `npm view <pkg> dist-tags --registry $R` shows `next` only (no `latest`)
 
 ## Trusted Publisher configuration (after ALL 10 exist)
 

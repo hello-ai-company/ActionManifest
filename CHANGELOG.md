@@ -20,7 +20,7 @@ This bootstrap release is not the final OIDC-controlled release. `0.9.0-rc.1` is
 
 ### Added
 
-- **`pnpm bootstrap:check`** (`scripts/bootstrap-release.ts`): DRY-RUN-ONLY bootstrap preparation — runs the release dry-run (exact tarballs + SBOM + manifest), enforces the version gate (all 10 packages == `0.9.0-rc.0`), performs a read-only registry preflight (every package MUST be 404; network failure = BLOCKED/UNKNOWN, never assumed), and writes `release-artifacts/bootstrap-plan.json` with exact per-tarball publish commands (`--access public --tag next`, manifest-computed publish order). Unit-tested invariants: exact tarball paths, public access, `next` dist-tag (never `latest`), sha256 per package, no credentials.
+- **`pnpm bootstrap:check`** (`scripts/bootstrap-release.ts`): DRY-RUN-ONLY bootstrap preparation — runs the release dry-run (exact tarballs + SBOM + manifest), enforces the version gate (all 10 packages == `0.9.0-rc.0`), performs a read-only registry preflight (every package MUST be 404; network failure = BLOCKED/UNKNOWN, never assumed), and writes `release-artifacts/bootstrap-plan.json` with exact per-tarball publish commands (`--access public --tag next --registry https://registry.npmjs.org/`, manifest-computed publish order). Modes: `--prepare` (default; any branch) vs `--publish-ready` (clean reviewed main + exact-head CI/Release Check). Unit-tested invariants: exact tarball paths, public access, `next` dist-tag (never `latest`), registry pinned, sha256 per package, no credentials.
 - **Lockstep version gate in `release:dry-run`**: any version mismatch across the 10 public packages aborts before artifacts are trusted.
 - **`.github/workflows/release.yml.template`**: the future OIDC release workflow (verify → publish-npm → post-publish-verify), deliberately NOT an active workflow — enabled in Phase 2.4B only after the bootstrap created the packages and Trusted Publishers are configured. GitHub-hosted runner, Node 24 + pinned npm ≥ 11.5.1, `id-token: write` on the publish job only, fail-closed guards (tag/version lockstep, clean tree, **tagged commit is an ancestor of origin/main**, **CI + Release Check SUCCESS on the exact tagged SHA**, repository.url match, no registry credentials, prerelease → `--tag next`).
 
@@ -36,6 +36,11 @@ This bootstrap release is not the final OIDC-controlled release. `0.9.0-rc.1` is
 - **Publish-ready gate uses fresh remote truth + exact-head CI**: `--publish-ready` now fetches `origin/main` before comparing (never a stale tracking ref), and verifies via GitHub (local `gh` auth, no stored token) that CI AND Release Check are SUCCESS on the exact commit to be published. Inability to verify is BLOCKED, never assumed green.
 - **Release checklist resynced** to Phase 2.4A / PR #8 (was Phase 2.3 / PR #7); provenance row corrected to the current automatic-under-Trusted-Publishing design.
 - **Release template**: verify job gains `actions: read` (required for the exact-commit gate check; declaring any permission sets others to none); portable sha256 commands documented (Linux/macOS/Node).
+
+### Hardened (PR #8 third review)
+
+- **Official runbooks can no longer bypass the strict gate**: the bootstrap checklist and RELEASING.md now require `pnpm bootstrap:check --publish-ready` immediately before the manual publish (previously they documented the permissive prepare mode), and every documented publish/verification command pins `--registry https://registry.npmjs.org/` (including `npm view` / `npm install` / `dist-tags` checks).
+- **Runbook safety is machine-enforced**: `pnpm docs:check` gained the `bootstrap-publish-safety` rule — mode-less `bootstrap:check` mentions and unpinned `npm publish` command lines fail CI; multi-line commands are judged as one logical line.
 - **Docs**: `docs/BOOTSTRAP-RELEASE-CHECKLIST.md` (manual bootstrap runbook + Trusted Publisher checklist), ADR 0008 (first-release bootstrap & OIDC transition, current npm requirements recorded from official docs). RELEASING.md rewritten around the two-stage bootstrap; README release status corrected to "bootstrap candidate, not yet published".
 
 ## Phase 2.3 — 2026-09-10

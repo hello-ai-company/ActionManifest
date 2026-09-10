@@ -9,6 +9,9 @@ import { findForbiddenPatterns } from "./docs-check.js";
 const NPX = "np" + "x";
 const BIN = "action" + "man";
 const PKG = "--package=@actionmanifest/cli";
+const BOOT = "pnpm bootstrap:" + "check";
+const PUB = "npm pub" + "lish";
+const REG = "--registry https://registry.npmjs.org/";
 
 describe("docs:check no-bare-npx-actionman", () => {
   it("flags the bare one-shot form", () => {
@@ -79,5 +82,49 @@ describe("docs:check no-bare-npx-actionman", () => {
     // The second command is a separate, safe installed-bin invocation.
     const line = `${NPX} ${PKG} -- ${BIN} conformance && ${BIN} --version\n`;
     expect(findForbiddenPatterns(line, "a.md")).toHaveLength(0);
+  });
+});
+
+describe("docs:check bootstrap-publish-safety", () => {
+  it("flags a mode-less bootstrap:check (the permissive default must not be documented)", () => {
+    const v = findForbiddenPatterns(`${BOOT}   # regenerate the plan\n`, "docs/x.md");
+    expect(v).toHaveLength(1);
+    expect(v[0]!.rule).toBe("bootstrap-publish-safety");
+  });
+
+  it("accepts --prepare and --publish-ready modes", () => {
+    expect(findForbiddenPatterns(`${BOOT} --prepare\n`, "a.md")).toHaveLength(0);
+    expect(findForbiddenPatterns(`${BOOT} --publish-ready\n`, "a.md")).toHaveLength(0);
+  });
+
+  it("flags a publish command line without the registry pin", () => {
+    const v = findForbiddenPatterns(
+      `${PUB} ./release-artifacts/tarballs/x.tgz --access public --tag next\n`,
+      "docs/x.md",
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]!.rule).toBe("bootstrap-publish-safety");
+  });
+
+  it("accepts a publish command line with the registry pin", () => {
+    const v = findForbiddenPatterns(
+      `${PUB} ./release-artifacts/tarballs/x.tgz --access public --tag next ${REG}\n`,
+      "docs/x.md",
+    );
+    expect(v).toHaveLength(0);
+  });
+
+  it("judges multi-line commands (trailing backslash) as one logical line", () => {
+    const good = `${PUB} ./x.tgz \\\n  --access public \\\n  --tag next \\\n  ${REG}\n`;
+    expect(findForbiddenPatterns(good, "docs/x.md")).toHaveLength(0);
+    const bad = `${PUB} ./x.tgz \\\n  --access public \\\n  --tag next\n`;
+    const v = findForbiddenPatterns(bad, "docs/x.md");
+    expect(v).toHaveLength(1);
+    expect(v[0]!.line).toBe(1);
+  });
+
+  it("does not flag prose mentions of publishing (not command lines)", () => {
+    const prose = `The step never runs \`${PUB}\` itself; see the runbook.\n`;
+    expect(findForbiddenPatterns(prose, "a.md")).toHaveLength(0);
   });
 });

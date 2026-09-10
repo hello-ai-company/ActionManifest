@@ -162,17 +162,17 @@ logical line. A documented bypass is now a CI failure.
 
 ## Post-review hardening (PR #8 fourth review)
 
-### 15. The `$R` variable must actually be assigned
+### 15. The registry variable must actually be assigned
 
-The checklist used `--registry $R` throughout but only *described* the
-assignment in prose ("(`R=…` below)") — the executable assignment line did
-not exist, so copy-pasting the runbook would have failed or fallen back to
-local npm config. The checklist now sets `V=0.9.0-rc.0` and
-`R=https://registry.npmjs.org/` as real assignment lines before use, and
-`docs:check` gained the `bootstrap-registry-var` rule: a file using
-`--registry $R` must contain an actual assignment line (a prose mention does
-not count — the first implementation of the rule made exactly that mistake
-and was itself caught by a regression test).
+The checklist used the `$R` registry variable throughout but only
+*described* the assignment in prose ("(`R=…` below)") — the executable
+assignment line did not exist, so copy-pasting the runbook would have failed
+or fallen back to local npm config. The checklist now sets `V` and `R` as
+real assignment lines before use, and `docs:check` gained the
+`bootstrap-registry-var` rule: a file using the registry variable must
+contain an actual assignment line (a prose mention does not count — the
+first implementation of the rule made exactly that mistake and was itself
+caught by a regression test).
 
 ## Consequences
 

@@ -44,7 +44,7 @@ This bootstrap release is not the final OIDC-controlled release. `0.9.0-rc.1` is
 
 ### Hardened (PR #8 fourth review)
 
-- **The `$R` registry variable is actually assigned**: the bootstrap checklist used `--registry $R` throughout but only described the assignment in prose — the executable `R=https://registry.npmjs.org/` line did not exist. The checklist now sets `V`/`R` as real assignment lines before use, and `docs:check` gained the `bootstrap-registry-var` rule (a prose mention of the assignment does not count — verified by regression test).
+- **The registry variable is actually assigned**: the bootstrap checklist used the registry variable throughout but only described the assignment in prose — the executable assignment line did not exist. The checklist now sets `V`/`R` as real assignment lines before use, and `docs:check` gained the `bootstrap-registry-var` rule (a prose mention of the assignment does not count — verified by regression test).
 - **Docs**: `docs/BOOTSTRAP-RELEASE-CHECKLIST.md` (manual bootstrap runbook + Trusted Publisher checklist), ADR 0008 (first-release bootstrap & OIDC transition, current npm requirements recorded from official docs). RELEASING.md rewritten around the two-stage bootstrap; README release status corrected to "bootstrap candidate, not yet published".
 
 ## Phase 2.3 — 2026-09-10

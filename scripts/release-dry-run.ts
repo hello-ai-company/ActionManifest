@@ -148,6 +148,18 @@ if (entries.length !== PUBLIC_PACKAGE_DIRS.length) {
   fail(`expected ${PUBLIC_PACKAGE_DIRS.length} tarballs, got ${entries.length}`);
 }
 
+// ---------- lockstep version gate ----------
+// All 10 public packages share ONE version per release (ADR 0007). A version
+// mismatch aborts the dry-run before any artifact is trusted.
+const distinctVersions = [...new Set(entries.map((e) => e.pkg.version))];
+if (distinctVersions.length !== 1) {
+  fail(`lockstep violation: package versions differ (${distinctVersions.join(", ")})`);
+}
+const releaseVersion = distinctVersions[0]!;
+if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(releaseVersion)) {
+  fail(`version ${releaseVersion} is not a valid semver (prerelease allowed)`);
+}
+
 // ---------- SHA256SUMS ----------
 const sums = entries.map((e) => `${e.sha256}  ${e.tarball.replace(/^tarballs\//, "")}`).join("\n") + "\n";
 writeFileSync(join(outDir, "SHA256SUMS"), sums, "utf8");

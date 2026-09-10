@@ -15,10 +15,16 @@ secrets, no PII, no internal-only chatter; see
 | Pull request | [#7 — Phase 2.3 (DRAFT)](https://github.com/hello-ai-company/ActionManifest/pull/7) |
 | Branch | `cursor/phase-2-3-release-readiness-dx-018b` |
 | Base (main tip at branch) | `4ad9af13e1c606a38e7da5ab4295aad8daaaf1fb` |
-| Fix tip (this pack) | `17c9b8583e012f462bc5604fc7153a56d561fdcd` |
-| CI run (fix tip) | `34418631229` — SUCCESS |
-| Release Check run (fix tip) | `34418631224` — SUCCESS (PR quick path; SBOM schema-validated) |
+| Fix tip (re-review fixes) | `17c9b8583e012f462bc5604fc7153a56d561fdcd` — CI `34418631229` SUCCESS, Release Check `34418631224` SUCCESS |
+| Current tip (this pack refresh) | `b477caec6bd1edd340c1997bc517e532c0c97300` |
+| CI run (current tip) | `34419705544` — SUCCESS |
+| Release Check run (current tip) | `34419705523` — SUCCESS (PR quick path; SBOM schema-validated) |
 | Status | DRAFT — gates GREEN; awaiting PA-03E review + President OK |
+
+> This pack was refreshed once after the re-review fixes landed (see
+> [GATES.md](GATES.md) note). The pack-refresh commit's own follow-up CI
+> runs are cited in the PR #7 body / final report — the PR checks on the
+> latest tip are always the live source of truth.
 
 ## Bans in force (unchanged)
 

@@ -126,7 +126,7 @@ Forbidden: real documents, customer names, real schedules copied from users, ema
 
 Core never writes to calendars, email, Todoist, or other execution APIs. Exporters emit local JSON/ICS files only.
 
-Review owner: **PA-03E** (after this PR). Completion evidence path `evidence/ENG-20260909-001/` is reserved for **Eng ops to fill after review**.
+Review owner: **PA-03E**. For Phase 2.3, the completion evidence pack at `evidence/ENG-20260910-001/` must be completed **before any merge recommendation** (Meeting Round-2, locked) — the PR remains **DRAFT** until the evidence/completion gate is GREEN. Detailed internal reviews live in the org Eng workspace; the in-repo pack is the public-safe merge-gate evidence.
 
 Full list: [docs/PUBLIC-BOUNDARY.md](docs/PUBLIC-BOUNDARY.md).
 

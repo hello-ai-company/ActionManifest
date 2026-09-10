@@ -252,12 +252,15 @@ Within minutes of publish:
 ```bash
 npm view @actionmanifest/cli version        # the new version
 npm view @actionmanifest/core dist.tarball  # resolves
-# Fresh project, real registry — ALWAYS name the package explicitly with npx
-# (the unscoped npm name "actionman" is an unrelated package):
+# Fresh project, real registry. After a LOCAL npm install, PATH does not
+# include node_modules/.bin — invoke the bin by path (or via npm exec).
+# And ALWAYS name the package explicitly with npx (the unscoped npm name
+# "actionman" is an unrelated package):
 mkdir /tmp/verify && cd /tmp/verify && npm init -y
 npm install @actionmanifest/cli
-actionman --version                         # new version (bin from the local install)
+./node_modules/.bin/actionman --version     # new version
 ./node_modules/.bin/actionman conformance   # CONFORMANT 65/65
+# Equivalent: npm exec -- actionman --version
 # One-shot form (no install): npx --package=@actionmanifest/cli -- actionman conformance
 npm install @actionmanifest/core @actionmanifest/adapters @actionmanifest/extractor \
   @actionmanifest/verifier @actionmanifest/exporters @actionmanifest/consumer

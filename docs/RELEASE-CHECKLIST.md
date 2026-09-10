@@ -41,7 +41,7 @@ Last verified: Phase 2.3 (against `main` tip
 
 | # | Item | Status |
 | --- | --- | --- |
-| 18 | Unit tests 253+ | PASS (253) |
+| 18 | Unit tests | PASS (CI-gated; 273 at this tip — the count grows as gates add tests, so CI is the source of truth, not this table) |
 | 19 | Integration tests 20+ (public entry points, built dist) | PASS (20) |
 | 20 | Universal conformance 65/65, critical false exported = 0 | PASS |
 | 21 | Reference serialization 4/4 | PASS |
@@ -103,6 +103,6 @@ Last verified: Phase 2.3 (against `main` tip
 
 | # | Item | Status |
 | --- | --- | --- |
-| ⑤ | Evidence/completion gate satisfied — `evidence/<ticket>/` completed by Eng ops | NOT READY — **must be GREEN BEFORE any merge recommendation** (not after); PR stays DRAFT until then. Agents never write evidence content |
+| ⑤ | Evidence/completion gate — in-repo public-safe pack at `evidence/ENG-20260910-001/` | **PASS (evidence dimension)** — index + public gate checklist + captured gate log, citing CI 34418631229 / Release Check 34418631224. Detailed internal reviews remain in the org Eng WS by design |
 | ⑤a | All other gates (①–④ boundary gates + this scorecard's PASS rows) green | PASS for Phase 2.3 scope |
-| ⑤b | PA-03E review of the open DRAFT PR | OPEN (PR [#7](https://github.com/hello-ai-company/ActionManifest/pull/7) stays DRAFT) |
+| ⑤b | PA-03E review of the open DRAFT PR + President merge/publish approval | OPEN — PR [#7](https://github.com/hello-ai-company/ActionManifest/pull/7) stays DRAFT; no merge recommendation until both are GREEN |

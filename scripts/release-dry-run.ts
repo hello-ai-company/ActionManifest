@@ -26,6 +26,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { createRequire } from "node:module";
 import {
   existsSync,
   mkdirSync,
@@ -239,29 +240,61 @@ interface ExternalComponent {
 function purl(name: string, version: string): string {
   return `pkg:npm/${name.replace("@", "%40")}@${version}`;
 }
-function readInstalled(name: string): (PackageJson & { version: string }) | undefined {
-  const path = join(root, "node_modules", name, "package.json");
-  if (!existsSync(path)) return undefined;
-  return JSON.parse(readFileSync(path, "utf8")) as PackageJson & { version: string };
+/**
+ * Resolve an installed package's directory from the workspace package that
+ * DECLARES it. pnpm 11 no longer hoists transitive deps to the root
+ * node_modules, so resolving from the repo root misses them (e.g.
+ * @xberg-io/xberg lives under packages/adapter-xberg). createRequire from
+ * the declaring package resolves through pnpm's symlink graph; packages
+ * whose exports map hides package.json are found by walking up from their
+ * entry point.
+ */
+function resolvePackageDir(name: string, fromDir: string): string | undefined {
+  const req = createRequire(join(fromDir, "package.json"));
+  try {
+    return dirname(req.resolve(`${name}/package.json`));
+  } catch {
+    try {
+      let dir = dirname(req.resolve(name));
+      while (dir !== dirname(dir)) {
+        if (existsSync(join(dir, "package.json"))) return dir;
+        dir = dirname(dir);
+      }
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+function readInstalled(
+  name: string,
+  fromDir: string,
+): (PackageJson & { version: string }) | undefined {
+  const dir = resolvePackageDir(name, fromDir);
+  if (!dir) return undefined;
+  return JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as PackageJson & {
+    version: string;
+  };
 }
 
 const external = new Map<string, ExternalComponent>();
-const queue: { name: string; range: string; scope: "required" | "optional" }[] = [];
+const queue: { name: string; range: string; scope: "required" | "optional"; fromDir: string }[] = [];
 for (const e of entries) {
   for (const [dep, range] of Object.entries(e.pkg.dependencies ?? {})) {
-    if (!INTERNAL.has(dep)) queue.push({ name: dep, range, scope: "required" });
+    if (!INTERNAL.has(dep)) queue.push({ name: dep, range, scope: "required", fromDir: join(root, e.dir) });
   }
 }
 const declaredRanges = new Map<string, string>();
 while (queue.length > 0) {
-  const { name, range, scope } = queue.shift()!;
+  const { name, range, scope, fromDir } = queue.shift()!;
   const existing = external.get(name);
   if (existing) {
     if (scope === "required") existing.scope = "required";
     continue;
   }
   declaredRanges.set(name, range);
-  const installed = readInstalled(name);
+  const installed = readInstalled(name, fromDir);
   if (!installed) {
     // Optional platform-specific binaries (e.g. Xberg darwin/win32) are not
     // installed on this OS — record them unresolved instead of failing.
@@ -278,11 +311,13 @@ while (queue.length > 0) {
     scope,
     dependencies: installed.dependencies ?? {},
   });
+  // Transitive deps resolve from the installed package's own directory.
+  const installedDir = resolvePackageDir(name, fromDir) ?? fromDir;
   for (const [dep, depRange] of Object.entries(installed.dependencies ?? {})) {
-    queue.push({ name: dep, range: depRange, scope });
+    queue.push({ name: dep, range: depRange, scope, fromDir: installedDir });
   }
   for (const [dep, depRange] of Object.entries(installed.optionalDependencies ?? {})) {
-    queue.push({ name: dep, range: depRange, scope: "optional" });
+    queue.push({ name: dep, range: depRange, scope: "optional", fromDir: installedDir });
   }
 }
 

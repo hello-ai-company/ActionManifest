@@ -1,6 +1,8 @@
-import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { sha256File, writeSha256Sums } from "./sha256sums.js";
 import { verifyCanonicalArtifactLayout } from "./canonical-artifact.js";
@@ -71,6 +73,21 @@ describe("verifyCanonicalArtifactLayout", () => {
       expect(artifact.manifest.publish_order).toHaveLength(10);
     } finally {
       rmSync(dl, { recursive: true, force: true });
+    }
+  });
+
+  it("normalize-canonical-artifact copies a flattened download into release-artifacts/", () => {
+    const dl = fixture();
+    const dest = mkdtempSync(join(tmpdir(), "norm-out-"));
+    try {
+      const script = join(dirname(fileURLToPath(import.meta.url)), "normalize-canonical-artifact.mjs");
+      const r = spawnSync("node", [script, dl, dest], { encoding: "utf8" });
+      expect(r.status, r.stderr || r.stdout).toBe(0);
+      expect(existsSync(join(dest, "SHA256SUMS"))).toBe(true);
+      expect(existsSync(join(dest, "release-manifest.json"))).toBe(true);
+    } finally {
+      rmSync(dl, { recursive: true, force: true });
+      rmSync(dest, { recursive: true, force: true });
     }
   });
 

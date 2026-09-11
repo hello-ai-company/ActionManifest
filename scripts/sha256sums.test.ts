@@ -122,6 +122,18 @@ describe("locateArtifactRoot", () => {
     }
   });
 
+  it("finds a flattened download (SHA256SUMS + tarballs/ at the download root)", () => {
+    const dl = tempDir();
+    try {
+      mkdirSync(join(dl, "tarballs"), { recursive: true });
+      writeFileSync(join(dl, "SHA256SUMS"), "x\n");
+      writeFileSync(join(dl, "release-manifest.json"), "{}\n");
+      expect(locateArtifactRoot(dl)).toBe(dl);
+    } finally {
+      rmSync(dl, { recursive: true, force: true });
+    }
+  });
+
   it("finds gh run download nesting (release-check-<sha>/release-artifacts)", () => {
     const dl = tempDir();
     try {

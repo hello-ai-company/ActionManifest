@@ -113,6 +113,7 @@ describe("release-check.yml static asserts", () => {
     expect(job).not.toMatch(/cache:\s*pnpm/);
     expect(job).toMatch(/node-version: 20/);
     expect(job).toContain(DOWNLOAD);
+    expect(job).toContain("normalize-canonical-artifact.mjs");
     expect(job).toContain("consumer-artifact-smoke.mjs");
     expect(job).toContain("verify-sha256sums.mjs");
   });
@@ -120,6 +121,7 @@ describe("release-check.yml static asserts", () => {
   it("Xberg Node22 job is a real Release Check gate on the same artifact", () => {
     const job = jobBlock(yml, "xberg-node22");
     expect(job).toMatch(/node-version: 22/);
+    expect(job).toContain("normalize-canonical-artifact.mjs");
     expect(job).toContain("xberg-artifact-smoke.mjs");
     expect(job).toContain("release-check-${{ github.sha }}");
   });

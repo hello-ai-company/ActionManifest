@@ -60,7 +60,7 @@ export const DEFAULT_PACKUMENT_TIMEOUT_MS = 15_000;
 export function classifyPackumentError(message: string, stderr = ""): PackumentProbe["state"] {
   const text = `${message}\n${stderr}`;
   if (/E404|404 Not Found|code E404|error:\s*404|\b404\b/i.test(text)) return "notfound";
-  if (/ETIMEDOUT|ESOCKETTIMEDOUT|timeout|TIMEOUT|max-time/i.test(text)) return "timeout";
+  if (/ETIMEDOUT|ESOCKETTIMEDOUT|timeout|TIMEOUT|timed out|max-time/i.test(text)) return "timeout";
   if (/ENOTFOUND|ECONNRESET|ECONNREFUSED|network|EAI_AGAIN|socket hang up/i.test(text)) {
     return "network";
   }
@@ -107,22 +107,22 @@ export function evaluateDistTags(
 ): { ok: boolean; notes: string[] } {
   const notes: string[] = [];
   const expected = distTagForVersion(version);
-  if (isPrerelease(version)) {
-    if (tags.next !== version) {
-      return { ok: false, notes: [`prerelease requires dist-tags.next=${version}, got ${tags.next ?? "(absent)"}`] };
-    }
-    notes.push(`prerelease dist-tag next=${version} (policy ok)`);
-    if (tags.latest === version && version === RC0_HISTORICAL_LATEST) {
-      notes.push(
-        `HISTORICAL: latest=${version} was set by the first publish of rc.0; documented only — do not auto-repair`,
-      );
-    }
-    return { ok: true, notes };
+  if (tags[expected] !== version) {
+    return {
+      ok: false,
+      notes: [
+        `${isPrerelease(version) ? "prerelease" : "stable"} requires dist-tags.${expected}=${version}, got ${tags[expected] ?? "(absent)"}`,
+      ],
+    };
   }
-  if (tags.latest !== version) {
-    return { ok: false, notes: [`stable requires dist-tags.latest=${version}, got ${tags.latest ?? "(absent)"}`] };
+  notes.push(
+    `${isPrerelease(version) ? "prerelease" : "stable"} dist-tag ${expected}=${version} (policy ok)`,
+  );
+  if (isPrerelease(version) && tags.latest === version && version === RC0_HISTORICAL_LATEST) {
+    notes.push(
+      `HISTORICAL: latest=${version} was set by the first publish of rc.0; documented only — do not auto-repair`,
+    );
   }
-  notes.push(`stable dist-tag latest=${version} (policy ok)`);
   return { ok: true, notes };
 }
 

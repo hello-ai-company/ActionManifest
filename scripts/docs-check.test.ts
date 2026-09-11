@@ -53,6 +53,11 @@ describe("docs:check no-bare-npx-actionman", () => {
     expect(findForbiddenPatterns(safe, "a.md")).toHaveLength(0);
   });
 
+  it("PASSES a version-pinned --package=@actionmanifest/cli@<ver>", () => {
+    const safe = `${NPX} --package=@actionmanifest/cli@0.9.0-rc.0 -- ${BIN} conformance\n`;
+    expect(findForbiddenPatterns(safe, "README.md")).toHaveLength(0);
+  });
+
   it("PASSES the safe form with npx flags before --package", () => {
     const safe = `${NPX} -y ${PKG} -- ${BIN} --version\n`;
     expect(findForbiddenPatterns(safe, "a.md")).toHaveLength(0);

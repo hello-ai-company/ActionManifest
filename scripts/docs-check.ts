@@ -211,10 +211,13 @@ export function findForbiddenPatterns(content: string, file: string): DocsCheckV
         analysis.firstPositional === "actionman" ||
         analysis.commandAfterSeparator === "actionman";
       if (!touchesActionman) continue;
+      const namesCliPackage = analysis.packageOptions.some(
+        (opt) => opt === CLI_PACKAGE || opt.startsWith(`${CLI_PACKAGE}@`),
+      );
       const safe =
         analysis.firstPositional === undefined && // command comes after `--`
         analysis.commandAfterSeparator === "actionman" &&
-        analysis.packageOptions.includes(CLI_PACKAGE);
+        namesCliPackage;
       if (!safe) {
         violations.push({
           file,

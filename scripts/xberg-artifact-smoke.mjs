@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { TextEncoder } from "node:util";
 
 const NOTICE = `保護者向け行事案内
 

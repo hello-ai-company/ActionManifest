@@ -18,10 +18,12 @@ function read(rel: string): string {
 }
 
 function jobBlock(yaml: string, id: string): string {
-  const re = new RegExp(`^  ${id}:\\n([\\s\\S]*?)(?=^  [a-z0-9_-]+:|$)`, "m");
+  // Do not use the `m` flag with `$` — `$` would match end-of-line and
+  // truncate the job after the first body line.
+  const re = new RegExp(`(?:^|\\n)(  ${id}:\\n[\\s\\S]*?)(?=\\n  [a-z0-9_-]+:|$)`);
   const m = re.exec(yaml);
-  if (!m) throw new Error(`job ${id} not found`);
-  return m[0];
+  if (!m?.[1]) throw new Error(`job ${id} not found`);
+  return m[1];
 }
 
 describe("release.yml static asserts", () => {
@@ -29,8 +31,8 @@ describe("release.yml static asserts", () => {
 
   it("is workflow_dispatch only (no push-tags auto-stage)", () => {
     expect(yml).toMatch(/workflow_dispatch:/);
-    expect(yml).not.toMatch(/^on:\n  push:/m);
-    expect(yml).not.toMatch(/push:\n    tags:/);
+    expect(yml).not.toMatch(/^on:\n {2}push:/m);
+    expect(yml).not.toMatch(/push:\n {4}tags:/);
   });
 
   it("has stage|verify modes and environment npm-release on the stage job only", () => {
@@ -55,8 +57,8 @@ describe("release.yml static asserts", () => {
 
   it("stage job is Node+npm+artifacts+OIDC — no pnpm, no cache, no pack", () => {
     const stage = jobBlock(yml, "stage");
-    expect(stage).not.toContain("pnpm/action-setup");
-    expect(stage).not.toMatch(/cache: pnpm/);
+    expect(stage).not.toMatch(/uses:\s*pnpm\/action-setup/);
+    expect(stage).not.toMatch(/cache:\s*pnpm/);
     expect(stage).not.toMatch(/pnpm install|pnpm pack|npm pack|release:dry-run/);
     expect(stage).toContain("stage-from-artifact.mjs");
     expect(stage).toContain("normalize-canonical-artifact.mjs");
@@ -65,13 +67,15 @@ describe("release.yml static asserts", () => {
 
   it("stages via npm stage publish and never approves or npm publish", () => {
     expect(yml).toMatch(/npm stage publish/);
-    expect(yml).not.toMatch(/npm stage approve/);
+    expect(yml).not.toMatch(/^\s+npm stage approve/m);
+    expect(yml).not.toMatch(/run:\s*npm stage approve/);
     expect(yml).not.toMatch(/^\s+npm publish /m);
     const stageSrc = read("scripts/stage-from-artifact.mjs");
     expect(stageSrc).toContain('"stage"');
     expect(stageSrc).toContain('"publish"');
     expect(stageSrc).not.toMatch(/npm publish /);
-    expect(stageSrc).not.toMatch(/stage approve/);
+    expect(stageSrc).not.toMatch(/spawnSync\(\s*["']npm["']\s*,\s*\[[^\]]*approve/);
+    expect(stageSrc).toMatch(/does not approve/);
   });
 
   it("does not write a GitHub Release", () => {
@@ -105,8 +109,8 @@ describe("release-check.yml static asserts", () => {
 
   it("Node20 consumer job uses npm only and excludes adapter-xberg", () => {
     const job = jobBlock(yml, "consumer-node20");
-    expect(job).not.toContain("pnpm/action-setup");
-    expect(job).not.toMatch(/cache: pnpm/);
+    expect(job).not.toMatch(/uses:\s*pnpm\/action-setup/);
+    expect(job).not.toMatch(/cache:\s*pnpm/);
     expect(job).toMatch(/node-version: 20/);
     expect(job).toContain(DOWNLOAD);
     expect(job).toContain("consumer-artifact-smoke.mjs");

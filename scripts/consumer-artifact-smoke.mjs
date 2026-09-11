@@ -60,8 +60,6 @@ function main() {
   const env = {
     ...process.env,
     npm_config_cache: cache,
-    npm_config_userconfig: "/dev/null",
-    npm_config_globalconfig: "/dev/null",
   };
   delete env.NPM_TOKEN;
   delete env.NODE_AUTH_TOKEN;
@@ -113,7 +111,7 @@ function main() {
     );
 
     console.log("consumer-artifact-smoke — npm install --prefer-online (fresh temp cache)…");
-    run("npm", ["install", "--prefer-online", "--ignore-scripts", "--no-fund", "--no-audit"], work, env);
+    run("npm", ["install", "--prefer-online", "--ignore-scripts", "--no-fund", "--no-audit", "--cache", cache], work, env);
 
     if (existsSync(join(work, "node_modules", "@xberg-io"))) {
       fail("Node 20 consumer pulled @xberg-io/* — adapter-xberg must stay excluded");

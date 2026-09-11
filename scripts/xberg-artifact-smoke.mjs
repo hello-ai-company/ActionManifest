@@ -9,8 +9,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { TextEncoder } from "node:util";
 
 const NOTICE = `保護者向け行事案内
@@ -60,8 +59,6 @@ async function main() {
   const env = {
     ...process.env,
     npm_config_cache: cache,
-    npm_config_userconfig: "/dev/null",
-    npm_config_globalconfig: "/dev/null",
   };
   delete env.NPM_TOKEN;
   delete env.NODE_AUTH_TOKEN;
@@ -111,14 +108,14 @@ async function main() {
     console.log("xberg-artifact-smoke — npm install --prefer-online (fresh temp cache)…");
     const inst = spawnSync(
       "npm",
-      ["install", "--prefer-online", "--no-fund", "--no-audit"],
+      ["install", "--prefer-online", "--no-fund", "--no-audit", "--cache", cache],
       { cwd: work, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], env },
     );
     if (inst.status !== 0) fail(`npm install failed: ${inst.stderr || inst.stdout}`);
 
-    const req = createRequire(join(work, "package.json"));
-    const adapterPath = req.resolve("@actionmanifest/adapter-xberg");
-    const { XbergAdapter } = await import(adapterPath);
+    const adapterEntry = join(work, "node_modules/@actionmanifest/adapter-xberg/dist/index.js");
+    if (!existsSync(adapterEntry)) fail("adapter-xberg dist/index.js missing after install");
+    const { XbergAdapter } = await import(pathToFileURL(adapterEntry).href);
 
     let passed = 0;
     const dir = mkdtempSync(join(tmpdir(), "xberg-fix-"));

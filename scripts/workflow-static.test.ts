@@ -140,6 +140,7 @@ describe("consumer / xberg smoke scripts", () => {
     expect(src).toContain("--prefer-online");
     expect(src).toContain("npm_config_cache");
     expect(src).not.toMatch(/pnpm install|pnpm pack/);
+    expect(src).not.toMatch(/npm_config_userconfig|npm_config_globalconfig/);
     expect(src).toMatch(/65/);
   });
 
@@ -149,6 +150,9 @@ describe("consumer / xberg smoke scripts", () => {
     expect(src).toContain("xberg-bytes");
     expect(src).toContain("2/2");
     expect(src).toContain("npm_config_cache");
+    expect(src).not.toMatch(/npm_config_userconfig|npm_config_globalconfig/);
+    expect(src).not.toMatch(/createRequire/);
+    expect(src).toContain("pathToFileURL");
     expect(src).toContain("--prefer-online");
   });
 });

@@ -76,6 +76,15 @@ describe("bootstrap-plan module purity", () => {
     );
     expect(prepare).toMatch(/release:dry-run/);
   });
+
+  it("publish-ready gates require a FULL Release Check, never array[0]", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(join(here, "bootstrap-release.ts"), "utf8");
+    expect(source).toContain("pickReleaseGates");
+    expect(source).toContain("FULL_RELEASE_CHECK_NOT_FOUND");
+    expect(source).not.toMatch(/\.\[0\]/);
+    expect(source).not.toMatch(/conclusion \+ " " \+ \(\.id/);
+  });
 });
 
 describe("buildBootstrapPlan", () => {

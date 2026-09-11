@@ -71,6 +71,10 @@ package only) — document it in CHANGELOG when it happens.
 
 ## 2. Preflight registry checks (read-only)
 
+Machine truth is **not** `npm view`. `pnpm release:registry-verify` reads three
+independent registry GETs (exact version, dist-tags, root packument). Human
+eyeballing may still use `npm view` as a convenience; it is not the gate.
+
 ```bash
 for p in schema core temporal adapters extractor verifier exporters consumer adapter-xberg cli; do
   npm view "@actionmanifest/$p" version dist-tags 2>&1 | head -2
@@ -287,8 +291,10 @@ The release is **not** tag-triggered. A human creates the immutable tag
 3. **Create + push the version tag** on that exact commit (never for rc.0;
    rc.0 has no tag).
 4. **Manual `workflow_dispatch` `release.yml` mode=stage** — verifies
-   tag/HEAD/CI/Release Check, downloads `release-check-<sha>`,
-   `npm stage publish` exact `.tgz` files. Stops. Human 2FA approve later.
+   tag/HEAD/CI + a successful **FULL** Release Check (not a `pull_request`
+   check), downloads that run's `release-check-<sha>`, validates the full
+   canonical identity, then `npm stage publish` exact `.tgz` files. Stops.
+   Human 2FA approve later.
 5. **Manual `workflow_dispatch` mode=verify** — registry byte identity,
    dist-tags, Node 20 registry smoke, Node 22 Xberg registry smoke.
 6. **GitHub Release** — only after verify, by a human (not this workflow).

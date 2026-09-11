@@ -94,6 +94,41 @@ describe("release.yml static asserts", () => {
     expect(yml).toMatch(/NODE_AUTH_TOKEN: ""/);
     expect(yml).toMatch(/registry write credentials must never be present/);
   });
+
+  it("pins verify-node20 and verify-xberg checkout to the exact git_sha input", () => {
+    for (const id of ["verify-node20", "verify-xberg", "verify-registry", "gates", "stage"]) {
+      const job = jobBlock(yml, id);
+      expect(job, id).toMatch(/uses:\s*actions\/checkout@11d5960a326750d5838078e36cf38b85af677262/);
+      expect(job, id).toMatch(/ref:\s*\$\{\{\s*github\.event\.inputs\.git_sha\s*\}\}/);
+    }
+  });
+
+  it("selects a successful FULL Release Check only (never array[0] of any RC)", () => {
+    expect(yml).not.toMatch(/\.\[0\]/);
+    expect(yml).toContain("select-release-gates.mjs");
+    expect(yml).toContain("FULL Release Check");
+    const selector = read("scripts/select-release-gates.mjs");
+    expect(selector).toContain("FULL_RELEASE_CHECK_NOT_FOUND");
+    expect(selector).toContain("pickReleaseGates");
+    const helper = read("scripts/full-release-check.mjs");
+    expect(helper).toMatch(/event === "pull_request"/);
+    expect(helper).toMatch(/push/);
+    expect(helper).toMatch(/workflow_dispatch/);
+    expect(helper).toContain('name !== "Release Check"');
+  });
+
+  it("stages only after normalize then full canonical identity validation", () => {
+    const stage = jobBlock(yml, "stage");
+    const normalizeAt = stage.indexOf("normalize-canonical-artifact.mjs");
+    const validateAt = stage.indexOf("validate-canonical-artifact.mjs");
+    const publishAt = stage.indexOf("stage-from-artifact.mjs");
+    expect(normalizeAt).toBeGreaterThan(0);
+    expect(validateAt).toBeGreaterThan(normalizeAt);
+    expect(publishAt).toBeGreaterThan(validateAt);
+    expect(stage).toMatch(/--git-sha "\$\{\{ github\.event\.inputs\.git_sha \}\}"/);
+    expect(stage).toMatch(/--version "\$\{\{ needs\.gates\.outputs\.version \}\}"/);
+    expect(stage).toContain(`gh run download "\${{ needs.gates.outputs.run_id }}"`);
+  });
 });
 
 describe("release-check.yml static asserts", () => {

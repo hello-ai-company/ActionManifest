@@ -20,7 +20,8 @@ GitHub Release, no Trusted Publisher configuration, no `NPM_TRUSTED_PUBLISHING_R
 - **SHA256SUMS** written with `tarballs/` prefixes; cwd-independent TS /
   `.mjs` helper resolves bare names (rc.0 layout) and prefixed names.
 - **`release-manifest.json` identity** (`version`, `git_sha`, `git_tree`,
-  `package_manager`, `node_version`, `platform`, `packages`, `publish_order`).
+  `package_manager`, `node_major`, `pnpm_version`, `platform`, `packages`,
+  `publish_order`). Host Node patch is `evidence.node_patch`, not identity.
 - **Release Check** keeps canonical build on Node 22 + pnpm 11.23.0; adds
   Node 20 npm-only consumer proof (exclude adapter-xberg) and Node 22+
   Xberg native gate (2/2) on the same artifact.

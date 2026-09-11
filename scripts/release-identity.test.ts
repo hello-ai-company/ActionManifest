@@ -34,7 +34,8 @@ const baseInput = {
   git_sha: "c0030b71e7497eb7e53b9348fa7101733f025b85",
   git_tree: "918112608e35ba5d59cc47302324f71263280848",
   package_manager: "pnpm@11.23.0",
-  node_version: "v22.18.0",
+  node_major: 22,
+  pnpm_version: "11.23.0",
   platform: "linux",
   publish_order: packages.map((p) => p.name),
   packages,
@@ -86,8 +87,10 @@ describe("buildReleaseIdentity", () => {
     expect(id.git_sha).toBe(baseInput.git_sha);
     expect(id.git_tree).toBe(baseInput.git_tree);
     expect(id.package_manager).toBe("pnpm@11.23.0");
-    expect(id.node_version).toBe("v22.18.0");
+    expect(id.node_major).toBe(22);
+    expect(id.pnpm_version).toBe("11.23.0");
     expect(id.platform).toBe("linux");
+    expect(id).not.toHaveProperty("node_version");
     expect(id.packages).toHaveLength(10);
     expect(id.publish_order).toEqual(baseInput.publish_order);
     assertDeterministicIdentity(id as unknown as Record<string, unknown>);
@@ -100,6 +103,13 @@ describe("buildReleaseIdentity", () => {
     ).toThrow(/expected 10/);
     expect(() => buildReleaseIdentity({ ...baseInput, version: "0.9.0-rc.1" })).toThrow(
       /lockstep/,
+    );
+  });
+
+  it("rejects a host patch stored as deterministic identity", () => {
+    const sneaky = { ...buildReleaseIdentity(baseInput), node_version: "v22.18.0" };
+    expect(() => assertDeterministicIdentity(sneaky as unknown as Record<string, unknown>)).toThrow(
+      /node_version/,
     );
   });
 });

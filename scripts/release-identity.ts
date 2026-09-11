@@ -35,7 +35,9 @@ export interface ReleaseIdentity {
   git_sha: string;
   git_tree: string;
   package_manager: string;
-  node_version: string;
+  /** Deterministic contract: major only. Host patch belongs in evidence. */
+  node_major: number;
+  pnpm_version: string;
   platform: string;
   packages: { name: string; version: string; tarball: string; sha256: string }[];
   publish_order: string[];
@@ -46,7 +48,8 @@ export interface IdentityInput {
   git_sha: string;
   git_tree: string;
   package_manager: string;
-  node_version: string;
+  node_major: number;
+  pnpm_version: string;
   platform: string;
   publish_order: string[];
   packages: { name: string; version: string; tarball: string; sha256: string }[];
@@ -60,6 +63,7 @@ const NON_DETERMINISTIC_KEYS = [
   "hostname",
   "date",
   "now",
+  "node_version",
 ];
 
 /** True when the version is a semver prerelease (contains `-`). */
@@ -98,6 +102,12 @@ export function stagePublishCommand(tarball: string, version: string): string {
 }
 
 export function buildReleaseIdentity(input: IdentityInput): ReleaseIdentity {
+  if (!Number.isInteger(input.node_major) || input.node_major < 20) {
+    throw new Error(`identity: node_major must be an integer >= 20, got ${String(input.node_major)}`);
+  }
+  if (typeof input.pnpm_version !== "string" || !input.pnpm_version) {
+    throw new Error("identity: pnpm_version is required");
+  }
   if (input.packages.length !== EXPECTED_PACKAGE_COUNT) {
     throw new Error(
       `identity: expected ${EXPECTED_PACKAGE_COUNT} packages, got ${input.packages.length}`,
@@ -119,7 +129,8 @@ export function buildReleaseIdentity(input: IdentityInput): ReleaseIdentity {
     git_sha: input.git_sha,
     git_tree: input.git_tree,
     package_manager: input.package_manager,
-    node_version: input.node_version,
+    node_major: input.node_major,
+    pnpm_version: input.pnpm_version,
     platform: input.platform,
     publish_order: [...input.publish_order],
     packages: input.packages.map((p) => ({

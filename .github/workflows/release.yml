@@ -104,23 +104,14 @@ jobs:
           case "$EXPECTED" in
             *-*) if [ "${EXPECTED}" = "${EXPECTED%-*}" ]; then echo "internal prerelease parse error"; exit 1; fi ;;
           esac
-      - name: Exact-commit gates green (CI + Release Check)
+      - name: Exact-commit gates green (CI + FULL Release Check)
         id: find
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           SHA="${{ github.event.inputs.git_sha }}"
-          RUN_ID=""
-          for WORKFLOW in "CI" "Release Check"; do
-            LINE=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=$SHA&per_page=100" \
-              --jq "[.workflow_runs[] | select(.name == \"$WORKFLOW\")] | if length == 0 then \"missing\" else (.[0] | .conclusion + \" \" + (.id | tostring)) end")
-            STATUS=${LINE%% *}
-            ID=${LINE#* }
-            if [ "$STATUS" != "success" ]; then
-              echo "$WORKFLOW is not SUCCESS on $SHA (got: ${STATUS:-missing})"; exit 1;
-            fi
-            if [ "$WORKFLOW" = "Release Check" ]; then RUN_ID="$ID"; fi
-          done
+          RUN_ID=$(node scripts/select-release-gates.mjs "$SHA")
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
       - name: Record lockstep version
         id: meta
@@ -165,8 +156,8 @@ jobs:
             -n "release-check-${SHA}" \
             -D /tmp/release-check-dl
           node scripts/normalize-canonical-artifact.mjs /tmp/release-check-dl release-artifacts
-      - name: Verify SHA256SUMS (cwd-independent; bare names + tarballs/)
-        run: node scripts/verify-sha256sums.mjs release-artifacts
+      - name: Validate full canonical release identity
+        run: node scripts/validate-canonical-artifact.mjs --dir release-artifacts --git-sha "${{ github.event.inputs.git_sha }}" --version "${{ needs.gates.outputs.version }}"
       - name: Stage exact tarballs (npm stage publish only)
         run: node scripts/stage-from-artifact.mjs release-artifacts
       - name: Upload non-secret stage evidence
@@ -216,6 +207,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.inputs.git_sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
@@ -229,6 +222,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.inputs.git_sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22

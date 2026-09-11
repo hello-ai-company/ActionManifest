@@ -7,8 +7,9 @@ import { describe, expect, it } from "vitest";
 import { sha256File, writeSha256Sums } from "./sha256sums.js";
 import { verifyCanonicalArtifactLayout } from "./canonical-artifact.js";
 import { PUBLIC_PACKAGE_NAMES } from "./release-identity.js";
+import { EXPECTED_PACKAGE_NAMES } from "./canonical-validate.mjs";
 
-function fixture(opts?: { badHash?: boolean; nest?: boolean }): string {
+function fixture(opts?: { badHash?: boolean; nest?: boolean; omitIdentity?: boolean }): string {
   const dl = mkdtempSync(join(tmpdir(), "canonical-art-"));
   const root = opts?.nest ? join(dl, "release-artifacts") : dl;
   mkdirSync(join(root, "tarballs"), { recursive: true });
@@ -39,16 +40,19 @@ function fixture(opts?: { badHash?: boolean; nest?: boolean }): string {
     join(root, "release-manifest.json"),
     JSON.stringify(
       {
-        identity: {
-          version: "0.9.0-rc.0",
-          git_sha: "c0030b71e7497eb7e53b9348fa7101733f025b85",
-          git_tree: "918112608e35ba5d59cc47302324f71263280848",
-          package_manager: "pnpm@11.23.0",
-          node_version: "v22.18.0",
-          platform: "linux",
-          packages,
-          publish_order: packages.map((p) => p.name),
-        },
+        identity: opts?.omitIdentity
+          ? undefined
+          : {
+              version: "0.9.0-rc.0",
+              git_sha: "c0030b71e7497eb7e53b9348fa7101733f025b85",
+              git_tree: "918112608e35ba5d59cc47302324f71263280848",
+              package_manager: "pnpm@11.23.0",
+              node_major: 22,
+              pnpm_version: "11.23.0",
+              platform: "linux",
+              packages,
+              publish_order: packages.map((p) => p.name),
+            },
         publish_order: packages.map((p) => p.name),
         packages,
         git: { head: "c0030b71e7497eb7e53b9348fa7101733f025b85" },
@@ -99,5 +103,40 @@ describe("verifyCanonicalArtifactLayout", () => {
     } finally {
       rmSync(dl, { recursive: true, force: true });
     }
+  });
+
+  it("FAILS when expectedHead is supplied but identity is missing", () => {
+    const dl = fixture({ omitIdentity: true });
+    try {
+      const { issues } = verifyCanonicalArtifactLayout(
+        dl,
+        "c0030b71e7497eb7e53b9348fa7101733f025b85",
+      );
+      expect(issues.some((i) => i.code === "identity-missing")).toBe(true);
+      expect(issues.map((i) => i.message).join("\n")).toMatch(/identity is missing/);
+    } finally {
+      rmSync(dl, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when identity.git_sha or version does not match the requested release", () => {
+    const dl = fixture();
+    try {
+      const sha = verifyCanonicalArtifactLayout(dl, "ffffffffffffffffffffffffffffffffffffffff");
+      expect(sha.issues.some((i) => i.code === "git-sha")).toBe(true);
+      const ver = verifyCanonicalArtifactLayout(
+        dl,
+        "c0030b71e7497eb7e53b9348fa7101733f025b85",
+        "0.9.0-rc.1",
+      );
+      expect(ver.issues.length).toBeGreaterThan(0);
+      expect(ver.issues.map((i) => i.message).join("\n")).toMatch(/version/);
+    } finally {
+      rmSync(dl, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps EXPECTED_PACKAGE_NAMES lockstepped with PUBLIC_PACKAGE_NAMES", () => {
+    expect([...EXPECTED_PACKAGE_NAMES]).toEqual([...PUBLIC_PACKAGE_NAMES]);
   });
 });

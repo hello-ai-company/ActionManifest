@@ -73,3 +73,12 @@ schema from CI plus cli from local plus extractor from an older run.
 - Node 20 consumers are unaffected (engines unchanged); only the CI/release
   toolchain lane moves to Node 22+.
 - Old artifact sets (pre-fix) are obsolete and must never be published.
+
+## Deterministic toolchain identity (Phase 2.4B review)
+
+Choice **B**: the compared identity contract is `node_major=22` +
+`pnpm_version=11.23.0` + `platform=linux`. The host Node patch
+(`process.version`, e.g. `v22.18.0`) is **not** deterministic — GitHub
+image updates move it independently of the git tree — so it is recorded
+only as non-deterministic `evidence.node_patch`. Canonical validation
+compares the contract fields, never the time-varying patch.

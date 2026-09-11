@@ -2,6 +2,9 @@
  * Locate + verify a downloaded `release-check-<sha>` artifact.
  * Used by bootstrap:check --publish-ready and the stage/verify workflow.
  * Never packs, never rebuilds.
+ *
+ * When expectedHead is supplied, a missing identity is FAIL CLOSED
+ * (never a silent pass).
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -11,6 +14,7 @@ import {
   PUBLIC_PACKAGE_NAMES,
   type ReleaseIdentity,
 } from "./release-identity.js";
+import { validateCanonicalReleaseDir } from "./canonical-validate.mjs";
 
 export interface CanonicalArtifact {
   root: string;
@@ -53,6 +57,7 @@ export interface ArtifactVerifyIssue {
 export function verifyCanonicalArtifactLayout(
   downloadDir: string,
   expectedHead?: string,
+  expectedVersion?: string,
 ): { artifact: CanonicalArtifact; issues: ArtifactVerifyIssue[] } {
   const issues: ArtifactVerifyIssue[] = [];
   const root = locateArtifactRoot(downloadDir);
@@ -82,18 +87,39 @@ export function verifyCanonicalArtifactLayout(
       issues.push({ code: "publish-order", message: `publish_order references unknown ${name}` });
     }
   }
-  if (expectedHead) {
-    const recorded = manifest.identity?.git_sha ?? manifest.git?.head;
-    if (recorded && recorded !== expectedHead) {
-      issues.push({
-        code: "git-sha",
-        message: `manifest git sha ${recorded} != expected ${expectedHead}`,
-      });
+
+  // CRITICAL: expectedHead + missing identity must FAIL (never pass).
+  if (expectedHead && (manifest.identity == null || typeof manifest.identity !== "object")) {
+    issues.push({
+      code: "identity-missing",
+      message: "FAIL: expectedHead supplied but canonical identity is missing",
+    });
+  }
+
+  try {
+    validateCanonicalReleaseDir({
+      dir: root,
+      expectedHead,
+      expectedVersion,
+      requireIdentity: Boolean(expectedHead),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const code = message.includes("identity is missing")
+      ? "identity-missing"
+      : message.includes("git_sha")
+        ? "git-sha"
+        : message.includes("SHA256SUMS") || message.includes("sha256")
+          ? "sha256sums"
+          : "canonical";
+    if (!issues.some((i) => i.message === message)) {
+      issues.push({ code, message });
     }
   }
+
   const identity = manifest.identity;
   if (identity) {
-    for (const bad of ["generated_at", "timestamp", "hostname", "run_id"] as const) {
+    for (const bad of ["generated_at", "timestamp", "hostname", "run_id", "node_version"] as const) {
       if (bad in identity) {
         issues.push({ code: "identity", message: `non-deterministic identity field ${bad}` });
       }

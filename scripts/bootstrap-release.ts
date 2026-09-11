@@ -41,6 +41,10 @@ import {
   type ReleaseManifestLike,
 } from "./bootstrap-plan.js";
 import { verifyCanonicalArtifactLayout } from "./canonical-artifact.js";
+import {
+  FULL_RELEASE_CHECK_NOT_FOUND,
+  pickReleaseGates,
+} from "./full-release-check.mjs";
 import { PUBLIC_PACKAGE_NAMES } from "./release-identity.js";
 import { verifyPackagesOnRegistry } from "./registry-truth.js";
 
@@ -79,28 +83,32 @@ export function checkExactHeadGates(head: string): { error?: string; releaseChec
     return { error: "cannot resolve the GitHub repository via `gh` (missing or unauthenticated) — CI gates UNKNOWN" };
   }
   const repo = repoProbe.stdout.trim();
-  let releaseCheckRunId: string | undefined;
-  for (const workflow of ["CI", "Release Check"]) {
-    const r = spawnSync(
-      "gh",
-      [
-        "api",
-        `repos/${repo}/actions/runs?head_sha=${head}&per_page=100`,
-        "--jq",
-        `[.workflow_runs[] | select(.name == "${workflow}")] | if length == 0 then "missing" else (.[0] | .conclusion + " " + (.id | tostring)) end`,
-      ],
-      { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-    );
-    if (r.status !== 0) {
-      return { error: `cannot read workflow runs for ${workflow} on ${head} — CI gates UNKNOWN` };
-    }
-    const [conclusion, runId] = r.stdout.trim().split(" ");
-    if (conclusion !== "success") {
-      return { error: `${workflow} on exact HEAD ${head.slice(0, 12)}… is "${conclusion}", not success` };
-    }
-    if (workflow === "Release Check") releaseCheckRunId = runId;
+  const r = spawnSync(
+    "gh",
+    ["api", `repos/${repo}/actions/runs?head_sha=${head}&per_page=100`],
+    { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+  );
+  if (r.status !== 0) {
+    return { error: `cannot read workflow runs on ${head} — CI gates UNKNOWN` };
   }
-  return { releaseCheckRunId };
+  let payload: { workflow_runs?: unknown[] };
+  try {
+    payload = JSON.parse(r.stdout) as { workflow_runs?: unknown[] };
+  } catch {
+    return { error: "cannot parse workflow-run list — CI gates UNKNOWN" };
+  }
+  const runs = Array.isArray(payload.workflow_runs) ? payload.workflow_runs : [];
+  const { ci, releaseCheck } = pickReleaseGates(
+    runs as Parameters<typeof pickReleaseGates>[0],
+    head,
+  );
+  if (!ci) {
+    return { error: `CI on exact HEAD ${head.slice(0, 12)}… is not success` };
+  }
+  if (!releaseCheck) {
+    return { error: FULL_RELEASE_CHECK_NOT_FOUND };
+  }
+  return { releaseCheckRunId: String(releaseCheck.id) };
 }
 
 /** Download release-check-<sha> into dest. No pack. */

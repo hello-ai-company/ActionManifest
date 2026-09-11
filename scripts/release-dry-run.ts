@@ -200,13 +200,16 @@ const conformanceManifest = JSON.parse(
 const xbergPin = entries.find((e) => e.pkg.name === "@actionmanifest/adapter-xberg")?.pkg
   .dependencies?.["@xberg-io/xberg"];
 
-const packageManager = `pnpm@${run("pnpm", ["--version"], root)}`;
+const pnpmVersion = run("pnpm", ["--version"], root);
+const packageManager = `pnpm@${pnpmVersion}`;
+const nodeMajor = Number.parseInt(process.versions.node.split(".")[0] ?? "", 10);
 const identity = buildReleaseIdentity({
   version: releaseVersion,
   git_sha: head,
   git_tree: tree,
   package_manager: packageManager,
-  node_version: process.version,
+  node_major: nodeMajor,
+  pnpm_version: pnpmVersion,
   platform: process.platform,
   publish_order: publishOrder,
   packages: entries.map((e) => ({
@@ -228,8 +231,13 @@ const manifest = {
   git_sha: identity.git_sha,
   git_tree: identity.git_tree,
   package_manager: identity.package_manager,
-  node_version: identity.node_version,
+  node_major: identity.node_major,
+  pnpm_version: identity.pnpm_version,
   platform: identity.platform,
+  evidence: {
+    node_patch: process.version,
+    note: "node_patch is host-specific observational evidence; it is not part of deterministic identity",
+  },
   git: { head, tree, branch, dirty },
   node: process.version,
   axes: {

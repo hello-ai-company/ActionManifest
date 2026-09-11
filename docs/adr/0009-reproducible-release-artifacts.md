@@ -51,12 +51,12 @@ built with a different toolchain.
 
 - The exact-head **Release Check artifact** is the canonical release
   artifact: `release-artifacts/` from the CI run on the exact commit.
-- `bootstrap:check --publish-ready` downloads that canonical artifact and
-  requires the local tarball set to be byte-identical (10/10 SHA-256) —
-  local rebuilds that differ from the reviewed CI artifact are BLOCKED.
-- The future `release.yml` (template) no longer re-packs in the publish job:
-  the verify job builds + uploads `canonical-release-<sha>`; the publish job
-  downloads it, re-verifies `SHA256SUMS`, and publishes exactly those files.
+- `bootstrap:check --publish-ready` does **not** local-pack. It downloads
+  `release-check-<sha>` and plans from those files. `--prepare` may pack
+  locally (NON-CANONICAL).
+- `release.yml` (manual `workflow_dispatch`) never re-packs: it downloads
+  the exact-head Release Check artifact and runs `npm stage publish` on
+  those `.tgz` files only.
 
 ### 4. Never mix artifact sets
 
@@ -73,3 +73,12 @@ schema from CI plus cli from local plus extractor from an older run.
 - Node 20 consumers are unaffected (engines unchanged); only the CI/release
   toolchain lane moves to Node 22+.
 - Old artifact sets (pre-fix) are obsolete and must never be published.
+
+## Deterministic toolchain identity (Phase 2.4B review)
+
+Choice **B**: the compared identity contract is `node_major=22` +
+`pnpm_version=11.23.0` + `platform=linux`. The host Node patch
+(`process.version`, e.g. `v22.18.0`) is **not** deterministic — GitHub
+image updates move it independently of the git tree — so it is recorded
+only as non-deterministic `evidence.node_patch`. Canonical validation
+compares the contract fields, never the time-varying patch.

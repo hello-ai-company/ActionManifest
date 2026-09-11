@@ -1,87 +1,63 @@
 /**
- * bootstrap:check — Phase 2.4A first-release bootstrap preparation.
+ * bootstrap:check — prepare / consume canonical release artifacts.
  *
- * DRY RUN ONLY. This script NEVER publishes, NEVER creates tags or GitHub
- * Releases, and NEVER touches npm authentication. It prepares and verifies
- * everything a maintainer needs for the manual, 2FA-protected bootstrap
- * publish of 0.9.0-rc.0 (docs/RELEASING.md §"First-ever publish").
+ * DRY RUN ONLY. This script NEVER publishes, NEVER stages, NEVER approves,
+ * NEVER creates tags or GitHub Releases, and NEVER touches npm authentication.
  *
  * Modes:
- *   pnpm bootstrap:check              (same as --prepare)
- *   pnpm bootstrap:check --prepare    CI/dev preparation: pack + verify +
- *                                     registry preflight + plan. Allowed on
- *                                     feature branches and dirty trees.
+ *   pnpm bootstrap:check --prepare
+ *     Local NON-CANONICAL pack via release:dry-run. Allowed on feature
+ *     branches and dirty trees. Artifacts are operator-machine bytes —
+ *     never publish them.
  *   pnpm bootstrap:check --publish-ready
- *                                     Pre-publish gate for the irreversible
- *                                     manual bootstrap: everything above PLUS
- *                                     clean tree, branch == main, HEAD ==
- *                                     origin/main. Only this mode may say
- *                                     "READY FOR MANUAL BOOTSTRAP".
+ *     NO local pack / dry-run / pack. Resolves exact-head CI + Release
+ *     Check, downloads release-check-<sha>, verifies SHA256SUMS + manifest
+ *     + 10 tarballs + publish_order, and writes a plan that points at those
+ *     downloaded files. Requires clean tree, main, HEAD == origin/main.
  *
- * Pure logic (plan building, readiness policy) lives in
- * `bootstrap-plan.ts` — importable with zero side effects. This file is the
- * CLI entry point and only runs under a main-module guard.
+ * 0.9.0-rc.0 bootstrap is COMPLETE. --publish-ready does not require a
+ * registry 404 and must not be used to republish rc.0.
  *
- * Exit codes: 0 = ready (mode-dependent), 1 = NOT READY (version / registry /
- * artifact / git-state mismatch), 2 = BLOCKED/UNKNOWN (preflight could not
- * be completed, e.g. network failure).
+ * Exit codes: 0 = ready (mode-dependent), 1 = NOT READY, 2 = BLOCKED/UNKNOWN.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   EXPECTED_BOOTSTRAP_VERSION,
   buildBootstrapPlan,
+  buildCanonicalReleasePlan,
   publishReadinessIssues,
   type ReleaseManifestLike,
 } from "./bootstrap-plan.js";
+import { verifyCanonicalArtifactLayout } from "./canonical-artifact.js";
+import {
+  FULL_RELEASE_CHECK_NOT_FOUND,
+  pickReleaseGates,
+} from "./full-release-check.mjs";
+import { PUBLIC_PACKAGE_NAMES } from "./release-identity.js";
+import { verifyPackagesOnRegistry } from "./registry-truth.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "release-artifacts");
 
-const PACKAGE_NAMES = [
-  "@actionmanifest/schema",
-  "@actionmanifest/core",
-  "@actionmanifest/temporal",
-  "@actionmanifest/adapters",
-  "@actionmanifest/extractor",
-  "@actionmanifest/verifier",
-  "@actionmanifest/exporters",
-  "@actionmanifest/consumer",
-  "@actionmanifest/adapter-xberg",
-  "@actionmanifest/cli",
-] as const;
-
-function fail(message: string, code = 1): never {
+export function fail(message: string, code = 1): never {
   console.error(`bootstrap:check ${code === 2 ? "BLOCKED" : "NOT READY"}: ${message}`);
   process.exit(code);
 }
 
 function run(cmd: string, args: string[], cwd: string): string {
   return execFileSync(cmd, args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
-}
-
-function execFileSyncSafe(
-  cmd: string,
-  args: string[],
-): { error: null | "network" | "notfound"; stdout: string } {
-  try {
-    const stdout = execFileSync(cmd, args, {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      timeout: 30_000,
-    }).trim();
-    return { error: null, stdout };
-  } catch (e) {
-    const stderr = String((e as { stderr?: unknown }).stderr ?? "");
-    const message = String((e as Error).message ?? "");
-    if (/E404|404 Not Found/.test(stderr) || /E404|404 Not Found/.test(message)) {
-      return { error: "notfound", stdout: "" };
-    }
-    return { error: "network", stdout: "" };
-  }
 }
 
 function gitState(): { head: string; branch: string; dirty: boolean; originMain: string } {
@@ -95,13 +71,9 @@ function gitState(): { head: string; branch: string; dirty: boolean; originMain:
 
 /**
  * Exact-head CI gates (publish-ready only). Verifies via GitHub that the
- * exact commit to be published has SUCCESS on BOTH required workflows.
- * Uses the maintainer's local `gh` authentication — never a stored token.
- * Any inability to verify (gh missing, unauthenticated, API error) is
- * BLOCKED, never assumed green.
- * Returns the Release Check run id on success (for the canonical artifact).
+ * exact commit has SUCCESS on BOTH required workflows.
  */
-function checkExactHeadGates(head: string): { error?: string; releaseCheckRunId?: string } {
+export function checkExactHeadGates(head: string): { error?: string; releaseCheckRunId?: string } {
   const repoProbe = spawnSync("gh", ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"], {
     cwd: root,
     encoding: "utf8",
@@ -111,62 +83,123 @@ function checkExactHeadGates(head: string): { error?: string; releaseCheckRunId?
     return { error: "cannot resolve the GitHub repository via `gh` (missing or unauthenticated) — CI gates UNKNOWN" };
   }
   const repo = repoProbe.stdout.trim();
-  let releaseCheckRunId: string | undefined;
-  for (const workflow of ["CI", "Release Check"]) {
-    const r = spawnSync(
-      "gh",
-      [
-        "api",
-        `repos/${repo}/actions/runs?head_sha=${head}&per_page=100`,
-        "--jq",
-        `[.workflow_runs[] | select(.name == "${workflow}")] | if length == 0 then "missing" else (.[0] | .conclusion + " " + (.id | tostring)) end`,
-      ],
-      { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-    );
-    if (r.status !== 0) {
-      return { error: `cannot read workflow runs for ${workflow} on ${head} — CI gates UNKNOWN` };
-    }
-    const [conclusion, runId] = r.stdout.trim().split(" ");
-    if (conclusion !== "success") {
-      return { error: `${workflow} on exact HEAD ${head.slice(0, 12)}… is "${conclusion}", not success` };
-    }
-    if (workflow === "Release Check") releaseCheckRunId = runId;
+  const r = spawnSync(
+    "gh",
+    ["api", `repos/${repo}/actions/runs?head_sha=${head}&per_page=100`],
+    { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+  );
+  if (r.status !== 0) {
+    return { error: `cannot read workflow runs on ${head} — CI gates UNKNOWN` };
   }
-  return { releaseCheckRunId };
+  let payload: { workflow_runs?: unknown[] };
+  try {
+    payload = JSON.parse(r.stdout) as { workflow_runs?: unknown[] };
+  } catch {
+    return { error: "cannot parse workflow-run list — CI gates UNKNOWN" };
+  }
+  const runs = Array.isArray(payload.workflow_runs) ? payload.workflow_runs : [];
+  const { ci, releaseCheck } = pickReleaseGates(
+    runs as Parameters<typeof pickReleaseGates>[0],
+    head,
+  );
+  if (!ci) {
+    return { error: `CI on exact HEAD ${head.slice(0, 12)}… is not success` };
+  }
+  if (!releaseCheck) {
+    return { error: FULL_RELEASE_CHECK_NOT_FOUND };
+  }
+  return { releaseCheckRunId: String(releaseCheck.id) };
+}
+
+/** Download release-check-<sha> into dest. No pack. */
+export function downloadReleaseCheckArtifact(runId: string, head: string, dest: string): string | undefined {
+  mkdirSync(dest, { recursive: true });
+  const artifactName = `release-check-${head}`;
+  const dl = spawnSync("gh", ["run", "download", runId, "-n", artifactName, "-D", dest], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (dl.status !== 0) {
+    return `cannot download canonical Release Check artifact ${artifactName} from run ${runId} — ${dl.stderr.trim() || "UNAVAILABLE"}`;
+  }
+  return undefined;
+}
+
+function copyArtifactToOutDir(artifactRoot: string): void {
+  rmSync(outDir, { recursive: true, force: true });
+  mkdirSync(outDir, { recursive: true });
+  cpSync(artifactRoot, outDir, { recursive: true });
+}
+
+function readManifestFrom(dir: string): ReleaseManifestLike {
+  const manifestPath = join(dir, "release-manifest.json");
+  if (!existsSync(manifestPath)) {
+    fail(`release-manifest.json missing under ${dir}`);
+  }
+  return JSON.parse(readFileSync(manifestPath, "utf8")) as ReleaseManifestLike;
+}
+
+function assertLockstepVersion(manifest: ReleaseManifestLike): void {
+  const byName = new Map(manifest.packages.map((p) => [p.name, p]));
+  for (const name of PUBLIC_PACKAGE_NAMES) {
+    const entry = byName.get(name);
+    if (!entry) fail(`expected package ${name} missing from release manifest`);
+    if (entry.version !== EXPECTED_BOOTSTRAP_VERSION) {
+      fail(
+        `version gate: ${name} is ${entry.version}, expected ${EXPECTED_BOOTSTRAP_VERSION} (lockstep; this phase does not bump off rc.0)`,
+      );
+    }
+  }
+  console.log(`  ✓ version gate: all ${PUBLIC_PACKAGE_NAMES.length} packages at ${EXPECTED_BOOTSTRAP_VERSION}`);
+}
+
+function reportRegistryTruth(version: string): void {
+  console.log("bootstrap:check — registry READ (truth first; timeout ≠ publish failure)…");
+  const canonicalSha256 = new Map<string, string>();
+  const { reports, overall } = verifyPackagesOnRegistry(PUBLIC_PACKAGE_NAMES, {
+    version,
+    canonicalSha256,
+    retries: 3,
+    timeoutMs: 15_000,
+  });
+  for (const r of reports) {
+    console.log(`  ${r.name}@${r.version}: ${r.state}${r.notes[0] ? ` — ${r.notes[0]}` : ""}`);
+  }
+  if (overall === "UNKNOWN") {
+    fail(
+      "registry READ could not be completed (timeout/network). This is NOT a publish failure — do not republish. Retry the read.",
+      2,
+    );
+  }
 }
 
 /**
- * Canonical artifact identity (publish-ready only): the local tarball set
- * must be byte-identical to the exact-head Release Check artifact —
- * 10/10 SHA-256 must match. Never publish a locally rebuilt artifact that
- * differs from the reviewed CI artifact.
+ * --prepare: local NON-CANONICAL pack is allowed. Isolated so tests can
+ * assert that --publish-ready never calls this.
  */
-function verifyAgainstCanonicalCiArtifact(releaseCheckRunId: string, head: string): string | undefined {
+export function runPreparePack(): void {
+  console.log("bootstrap:check — --prepare: local NON-CANONICAL release:dry-run (not the publish artifact)…");
+  execFileSync("pnpm", ["release:dry-run"], { cwd: root, stdio: "inherit" });
+}
+
+/**
+ * --publish-ready body: download + verify only. MUST NOT pack / dry-run.
+ */
+export function runPublishReadyConsume(head: string, runId: string): string {
   const tmp = mkdtempSync(join(tmpdir(), "actionmanifest-canonical-"));
   try {
-    const artifactName = `release-check-${head}`;
-    const dl = spawnSync(
-      "gh",
-      ["run", "download", releaseCheckRunId, "-n", artifactName, "-D", tmp],
-      { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    const dlErr = downloadReleaseCheckArtifact(runId, head, tmp);
+    if (dlErr) fail(dlErr, 2);
+    const { artifact, issues } = verifyCanonicalArtifactLayout(tmp, head);
+    if (issues.length > 0) {
+      fail(`canonical artifact verification failed:\n  - ${issues.map((i) => i.message).join("\n  - ")}`);
+    }
+    copyArtifactToOutDir(artifact.root);
+    console.log(
+      `  ✓ canonical artifact: ${artifact.tarballs.length} tarballs, SHA256SUMS, manifest, publish_order (run ${runId})`,
     );
-    if (dl.status !== 0) {
-      return `cannot download canonical Release Check artifact ${artifactName} from run ${releaseCheckRunId} — canonical artifact UNAVAILABLE`;
-    }
-    const ciSumsPath = join(tmp, "SHA256SUMS");
-    const localSumsPath = join(outDir, "SHA256SUMS");
-    if (!existsSync(ciSumsPath)) return `canonical artifact has no SHA256SUMS`;
-    if (!existsSync(localSumsPath)) return `local SHA256SUMS missing — run the dry-run first`;
-    const ciSums = readFileSync(ciSumsPath, "utf8").trim();
-    const localSums = readFileSync(localSumsPath, "utf8").trim();
-    if (ciSums !== localSums) {
-      return (
-        `local artifacts differ from reviewed CI artifacts (run ${releaseCheckRunId}).\n` +
-        `  --- CI SHA256SUMS ---\n  ${ciSums.split("\n").join("\n  ")}\n` +
-        `  --- local SHA256SUMS ---\n  ${localSums.split("\n").join("\n  ")}`
-      );
-    }
-    return undefined;
+    return outDir;
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
@@ -180,9 +213,8 @@ function main(): void {
     fail("unknown mode — use --prepare or --publish-ready", 2);
   }
 
-  // ---------- accidental-publish guard (fail closed) ----------
   if (args.some((a) => /publish/i.test(a) && a !== "--publish-ready")) {
-    fail("refusing to run: argv contains 'publish'. This script plans; it never publishes.", 2);
+    fail("refusing to run: argv contains 'publish'. This script plans; it never publishes or stages.", 2);
   }
   for (const tokenVar of ["NPM_TOKEN", "NODE_AUTH_TOKEN"]) {
     if (process.env[tokenVar]) {
@@ -190,61 +222,17 @@ function main(): void {
     }
   }
 
-  // ---------- 1. release dry-run (exact artifacts) ----------
-  console.log("bootstrap:check — running release:dry-run (pack + verify artifacts)…");
-  execFileSync("pnpm", ["release:dry-run"], { cwd: root, stdio: "inherit" });
+  let git = gitState();
+  let manifest: ReleaseManifestLike;
 
-  // ---------- 2. version gate ----------
-  const manifestPath = join(outDir, "release-manifest.json");
-  if (!existsSync(manifestPath)) {
-    fail("release-artifacts/release-manifest.json missing — dry-run did not produce it");
-  }
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as ReleaseManifestLike;
-
-  const byName = new Map(manifest.packages.map((p) => [p.name, p]));
-  for (const name of PACKAGE_NAMES) {
-    const entry = byName.get(name);
-    if (!entry) fail(`expected package ${name} missing from release manifest`);
-    if (entry.version !== EXPECTED_BOOTSTRAP_VERSION) {
-      fail(
-        `version gate: ${name} is ${entry.version}, expected ${EXPECTED_BOOTSTRAP_VERSION} (lockstep bootstrap candidate)`,
-      );
-    }
-  }
-  console.log(`  ✓ version gate: all ${PACKAGE_NAMES.length} packages at ${EXPECTED_BOOTSTRAP_VERSION}`);
-
-  // ---------- 3. registry preflight (read-only; 404 expected) ----------
-  console.log("bootstrap:check — registry preflight (read-only; every package must be 404)…");
-  for (const name of PACKAGE_NAMES) {
-    const probe = execFileSyncSafe("npm", ["view", name, "version", "--registry", "https://registry.npmjs.org/"]);
-    if (probe.error === "network") {
-      fail(
-        `registry preflight could not complete for ${name}: network/registry unreachable. ` +
-          `Bootstrap readiness is UNKNOWN — do not proceed on assumption.`,
-        2,
-      );
-    }
-    if (probe.error === null) {
-      fail(
-        `registry state changed: ${name} already exists on npm (version ${probe.stdout}). ` +
-          `Expected 404 for the first-ever bootstrap. Investigate before proceeding.`,
-      );
-    }
-    console.log(`  ✓ ${name}: 404 (not published — as expected)`);
-  }
-
-  // ---------- 4. publish-readiness gate (mode-dependent) ----------
   if (publishReadyMode) {
-    // Fresh remote truth: never compare against a stale local tracking ref.
     console.log("bootstrap:check — fetching fresh origin/main before comparison…");
     try {
       run("git", ["fetch", "origin", "main", "--prune"], root);
     } catch {
       fail("git fetch origin main failed — remote state UNKNOWN, refusing to proceed", 2);
     }
-  }
-  const git = gitState();
-  if (publishReadyMode) {
+    git = gitState();
     const issues = publishReadinessIssues(git);
     if (issues.length > 0) {
       fail(`publish-readiness gate failed:\n  - ${issues.join("\n  - ")}`);
@@ -254,48 +242,53 @@ function main(): void {
     if (gates.error) {
       fail(`exact-head CI gate failed: ${gates.error}`, 2);
     }
-    console.log("  ✓ exact-head gates: CI + Release Check SUCCESS on the exact commit to publish");
-    // Canonical artifact identity: local tarballs must be byte-identical to
-    // the reviewed CI artifact set. Never publish a local rebuild that
-    // differs from what CI verified.
     if (!gates.releaseCheckRunId) {
       fail("Release Check run id unavailable — canonical artifact UNAVAILABLE", 2);
     }
-    const artifactIssue = verifyAgainstCanonicalCiArtifact(gates.releaseCheckRunId, git.head);
-    if (artifactIssue) {
-      fail(`canonical artifact mismatch:\n${artifactIssue}`);
-    }
-    console.log("  ✓ canonical artifact identity: local SHA256SUMS == exact-head Release Check artifact (10/10)");
+    console.log("  ✓ exact-head gates: CI + Release Check SUCCESS on the exact commit");
+    runPublishReadyConsume(git.head, gates.releaseCheckRunId);
+    manifest = readManifestFrom(outDir);
+    assertLockstepVersion(manifest);
+    reportRegistryTruth(EXPECTED_BOOTSTRAP_VERSION);
   } else {
+    runPreparePack();
+    manifest = readManifestFrom(outDir);
+    assertLockstepVersion(manifest);
+    reportRegistryTruth(EXPECTED_BOOTSTRAP_VERSION);
     console.log(
-      `  i prepare mode: git state recorded but not enforced (branch=${git.branch}, dirty=${git.dirty})`,
+      `  i prepare mode: git state recorded but not enforced (branch=${git.branch}, dirty=${git.dirty}). Artifacts are NON-CANONICAL.`,
     );
   }
 
-  // ---------- 5. bootstrap plan ----------
-  const plan = buildBootstrapPlan(manifest, git);
+  const plan = publishReadyMode
+    ? buildCanonicalReleasePlan(manifest, git, "release-artifacts/")
+    : buildBootstrapPlan(manifest, git);
   writeFileSync(join(outDir, "bootstrap-plan.json"), JSON.stringify(plan, null, 2) + "\n", "utf8");
 
-  // ---------- 6. print the manual plan ----------
-  console.log("\nManual bootstrap publish commands (MAINTAINER ONLY — 2FA, reviewed tarballs):");
+  console.log("\nPlan commands (DRY RUN — this script never executes them):");
   for (const p of plan.packages) {
     console.log(`  # ${p.name}@${p.version} (sha256 ${p.sha256.slice(0, 12)}…)`);
-    console.log(`  ${p.publish_command}`);
+    if (publishReadyMode) {
+      console.log(`  ${p.stage_command}`);
+    } else {
+      console.log(`  ${p.publish_command}`);
+    }
   }
   console.log(`\nPlan written: ${join(outDir, "bootstrap-plan.json")}`);
+  console.log(`  artifact_source: ${plan.artifact_source}`);
   if (publishReadyMode) {
     console.log(
-      `bootstrap:check READY FOR MANUAL BOOTSTRAP — ${PACKAGE_NAMES.length} packages at ${EXPECTED_BOOTSTRAP_VERSION}, registry clear (all 404), clean reviewed main, artifacts verified.`,
+      `bootstrap:check CANONICAL ARTIFACTS VERIFIED — ${PUBLIC_PACKAGE_NAMES.length} packages at ${EXPECTED_BOOTSTRAP_VERSION}, plan points at downloaded Release Check files. ` +
+        `0.9.0-rc.0 bootstrap is COMPLETE; do not republish. Subsequent versions use release.yml mode=stage.`,
     );
   } else {
     console.log(
-      `bootstrap:check PREPARE OK — ${PACKAGE_NAMES.length} packages at ${EXPECTED_BOOTSTRAP_VERSION}, registry clear (all 404), artifacts verified. ` +
-        `Run 'pnpm bootstrap:check --publish-ready' from a clean reviewed main before the manual publish.`,
+      `bootstrap:check PREPARE OK — local NON-CANONICAL artifacts at ${EXPECTED_BOOTSTRAP_VERSION}. ` +
+        `Run 'pnpm bootstrap:check --publish-ready' on clean reviewed main to consume the exact-head Release Check artifact.`,
     );
   }
 }
 
-// Main-module guard: importing this file (e.g. from tests) runs nothing.
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
   main();
 }

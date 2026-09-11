@@ -15,7 +15,7 @@ Three independent version axes (details: [COMPATIBILITY.md](COMPATIBILITY.md)):
 
 | Axis | Current | Bumps when |
 | --- | --- | --- |
-| npm **package version** (all 10 packages, lockstep) | `0.1.0` → bootstrap: **`0.9.0-rc.0`**, first OIDC RC: **`0.9.0-rc.1`** | any code/packaging change |
+| npm **package version** (all 10 packages, lockstep) | **`0.9.0-rc.0`** (on npm; no tag/Release) | any code/packaging change |
 | Manifest **schema version** | `0.1.0`, `0.2.0` (frozen) | never in a release — new schema = new versioned directory, separate governance |
 | **Conformance suite version** | `0.2.0` | normative vector/meta-schema changes (governance-enforced) |
 
@@ -32,12 +32,20 @@ the conformance suite". **npm reality (verified against docs.npmjs.com,
 exists on the registry.** Therefore the first-ever publish cannot use OIDC:
 
 ```
-0.9.0-rc.0  — bootstrap release (manual, maintainer 2FA, exact reviewed
-              tarballs, dist-tag `next`): creates the package identities
-              so Trusted Publishing can be attached. NOT latest.
-0.9.0-rc.1+ — OIDC-only releases via GitHub Actions Trusted Publishing
-              (provenance automatic for public repo + public packages).
+0.9.0-rc.0  — COMPLETE (2026-09-11): 10/10 packages on npm.
+              Manual maintainer 2FA. No git tag, no GitHub Release, no
+              provenance, no staged publish. Dist-tags: next=rc.0 and
+              historically latest=rc.0 (do not auto-repair).
+Next        — version PR → main CI → Release Check (canonical tarballs
+              ONCE) → Node20 + Xberg gates on that artifact → human tag
+              → workflow_dispatch release.yml mode=stage → OIDC
+              `npm stage publish <canonical.tgz>` → human 2FA
+              `npm stage approve` → mode=verify → GitHub Release last.
 ```
+
+See [evidence/RC0_BOOTSTRAP_RELEASE_2026-09-11.md](evidence/RC0_BOOTSTRAP_RELEASE_2026-09-11.md)
+and [RELEASE_TRUSTED_PUBLISHING_SETUP.md](RELEASE_TRUSTED_PUBLISHING_SETUP.md).
+This phase does **not** bump off `0.9.0-rc.0`.
 
 All 10 packages share one version (**lockstep / fixed versioning**) — one
 coherent `@actionmanifest/*` line, one changelog entry, one tag. Trade-off:
@@ -63,16 +71,19 @@ package only) — document it in CHANGELOG when it happens.
 
 ## 2. Preflight registry checks (read-only)
 
+Machine truth is **not** `npm view`. `pnpm release:registry-verify` reads three
+independent registry GETs (exact version, dist-tags, root packument). Human
+eyeballing may still use `npm view` as a convenience; it is not the gate.
+
 ```bash
 for p in schema core temporal adapters extractor verifier exporters consumer adapter-xberg cli; do
   npm view "@actionmanifest/$p" version dist-tags 2>&1 | head -2
 done
 ```
 
-- Expect `404` for all before the first release. Anything else → investigate
-  (a pre-existing package under our scope means a registry account issue;
-  a third-party-owned scope would be a **BLOCKER** — do not rename the scope
-  unilaterally; escalate).
+- `0.9.0-rc.0` **exists** on all 10 names. A 404 now means packument lag or
+  a registry-read problem — retry bounded reads; do not republish. CLI
+  timeout is UNKNOWN, not a publish failure.
 - Confirm the npm org `actionmanifest` exists and you can publish into it.
 - Confirm no `git tag` / GitHub Release collision: `git tag --list`,
   `gh release list`.
@@ -178,31 +189,30 @@ package's dependencies are already on the registry when it is published.
 > first-ever publish therefore CANNOT use OIDC — it is a one-time,
 > maintainer-controlled, 2FA-protected manual bootstrap.
 
-### 6.1 Bootstrap sequence (`0.9.0-rc.0`)
+### 6.1 Bootstrap sequence (`0.9.0-rc.0`) — COMPLETE
+
+The sequence below is **historical**. Do not run it again for rc.0.
 
 ```
 release preparation (this repo, PR-reviewed)
   → pnpm bootstrap:check --publish-ready
-      # version gate + registry preflight + plan + clean/main/exact-head
-      # + CI & Release Check SUCCESS on the exact commit
-  → maintainer reviews the EXACT tarballs (release-artifacts/tarballs/*.tgz)
+      # NO local pack: download release-check-<sha>, verify, plan from those files
+  → maintainer reviews the EXACT tarballs
   → manual authenticated bootstrap publish with maintainer 2FA
       npm publish ./release-artifacts/tarballs/<pkg>.tgz \
         --access public --tag next --registry https://registry.npmjs.org/
-      (in bootstrap-plan.json publish_order — never re-pack from a package dir)
-  → all 10 packages now exist on npm (dist-tag: next; latest untouched)
-  → configure Trusted Publisher per package (§6.2)
-  → restrict direct token publishing
-  → 0.9.0-rc.1+ ships via GitHub Actions OIDC only
+  → all 10 packages now exist on npm
 ```
+
+Observed after the fact: `latest` was also set to `0.9.0-rc.0` (npm first-publish
+behaviour). **Documented only — do not auto-repair dist-tags.**
 
 Hard rules for the bootstrap:
 
-- **Build once, verify once, publish exactly that artifact** (ADR 0009). The
-  canonical artifact set is the exact-head Release Check CI artifact. The
-  strict gate (`--publish-ready`) downloads it and requires the local
-  tarballs to be byte-identical (10/10 SHA-256) — a local rebuild that
-  differs from the reviewed CI artifact is BLOCKED from publication.
+- **Build once, verify once, stage exactly that artifact** (ADR 0009). The
+  canonical artifact set is the exact-head Release Check CI artifact.
+  `--publish-ready` does **not** local-pack; it downloads `release-check-<sha>`
+  and plans from those files. `--prepare` may pack locally (NON-CANONICAL).
 - **Reproducibility is gated**: `pnpm release:reproducibility` (10 packs ×
   10 packages, byte-identical, pnpm 11.23.0 only) runs inside
   `release:check`. Same tree → same bytes → same SHA-256.
@@ -236,54 +246,58 @@ on npmjs.com (or via `npm trust github`, npm CLI ≥ 11.15):
 | Organization/user | `hello-ai-company` |
 | Repository | `ActionManifest` |
 | Workflow filename | `release.yml` (must exist under `.github/workflows/`) |
-| Environment | `release` |
-| Allowed actions | `npm publish` |
+| Environment | `npm-release` |
+| Allowed actions | `npm stage` (stage-only) |
 
 All fields are case-sensitive and must match exactly. `npm trust` requires
 write access to the package and account-level 2FA. Agents never run it.
 
-### 6.3 OIDC release workflow (Phase 2.4B — NOT enabled yet)
+### 6.3 OIDC release workflow (Phase 2.4B — file present, not yet armed)
 
-`.github/workflows/release.yml.template` documents the future workflow. It is
-deliberately **not** an active workflow in this phase: enabling a
-tag-triggered publish workflow before Trusted Publishers exist would only
-fail. Requirements (current npm/GitHub docs):
+`.github/workflows/release.yml` is the real workflow: **manual
+`workflow_dispatch` only** (`stage` | `verify`). It never runs on tag push.
+The `stage` job fails loudly unless `vars.NPM_TRUSTED_PUBLISHING_READY`
+is exactly `true`. That variable is **not** set in this change — a human
+must finish [RELEASE_TRUSTED_PUBLISHING_SETUP.md](RELEASE_TRUSTED_PUBLISHING_SETUP.md)
+**after** this workflow file is on `main` (npm Trusted Publisher matches
+the filename on the default branch).
 
-- GitHub-hosted runner (self-hosted unsupported),
-- `permissions: { contents: read, id-token: write }`,
-- Node 24 lane with npm CLI ≥ 11.5.1 pinned (Trusted Publishing minimum;
-  the release lane is separate from the Node 20 support floor),
-- OIDC only — no `NPM_TOKEN` / `NODE_AUTH_TOKEN` write credentials anywhere
-  (the job fails closed if present),
-- provenance is automatic for public repo + public package under Trusted
-  Publishing (no `--provenance` flag required; adding it is harmless),
-- tag == all 10 package versions, clean tree, green CI + Release Check on
-  the exact tagged commit, registry == registry.npmjs.org.
+Invariants:
+
+- GitHub-hosted runner, environment `npm-release`
+- `id-token: write` **only** on the stage job
+- Node 24 + npm CLI **11.15.0** (Trusted Publishing minimum is 11.5.1;
+  we retain 11.15.0). No pnpm, no package-manager cache, no pack/rebuild
+- Consumes `release-check-<sha>` — `npm stage publish <canonical.tgz>`
+  in manifest order; prerelease → `--tag next`, stable → `--tag latest`
+- No `npm publish`, no `npm stage approve`, no GitHub Release, no tag create
+- OIDC only — fails closed if `NPM_TOKEN` / `NODE_AUTH_TOKEN` are present
 
 ### 6.4 Status
 
-As of Phase 2.4A: **no npm package exists yet, no Trusted Publisher is
-configured, no tag or GitHub Release exists.** The bootstrap is prepared and
-verified; the publish itself is a maintainer operation.
+`0.9.0-rc.0` is on npm (10/10). **No git tag, no GitHub Release, no
+Trusted Publisher, no `NPM_TRUSTED_PUBLISHING_READY`.** Merge `release.yml`
+before configuring Trusted Publishers. Do not bump the version in this phase.
 
 ## 7. Tag & publish ordering (unified, tag-triggered)
 
-The release is **tag-triggered**. The ordering is fixed — no variant that
-creates the tag "after publish" exists, because the tag is what triggers the
-publish workflow:
+The release is **not** tag-triggered. A human creates the immutable tag
+**after** gates are green; staging is a later `workflow_dispatch`:
 
 1. **Version PR merge** — the lockstep version bump lands on `main`.
-2. **Exact-commit CI GREEN** — CI and Release Check must both be green on
-   the exact `main` commit to be released (ungated CI aborts).
-3. **Create + push the version tag** — e.g. `v0.9.0-rc.1` on that exact commit
-   (never for the rc.0 bootstrap: the bootstrap creates no tag).
-   Lockstep versions mean one tag covers all packages.
-4. **Tag-triggered release workflow starts** (design-only, §6) — the
-   Release Check workflow also runs on the tag push
-   (`tags: ["v*"]` = tag / pre-publish verification).
-5. **Full validation** — the release workflow runs `pnpm release:check`
-   (the single entry) on the tagged commit, plus the §8 guards.
-6. **npm publish** — only after validation passes (§8).
+2. **Exact-commit CI + Release Check GREEN** — canonical tarballs built
+   once on GHA Linux; Node 20 consumer proof + Node 22 Xberg proof run on
+   those artifacts.
+3. **Create + push the version tag** on that exact commit (never for rc.0;
+   rc.0 has no tag).
+4. **Manual `workflow_dispatch` `release.yml` mode=stage** — verifies
+   tag/HEAD/CI + a successful **FULL** Release Check (not a `pull_request`
+   check), downloads that run's `release-check-<sha>`, validates the full
+   canonical identity, then `npm stage publish` exact `.tgz` files. Stops.
+   Human 2FA approve later.
+5. **Manual `workflow_dispatch` mode=verify** — registry byte identity,
+   dist-tags, Node 20 registry smoke, Node 22 Xberg registry smoke.
+6. **GitHub Release** — only after verify, by a human (not this workflow).
 
 **Tag immutability and failure policy:** once pushed, a tag is never moved
 or deleted. If validation or publish fails, **the tag remains** — retry the
@@ -313,17 +327,14 @@ constraint ④):
   `NPM_TOKEN`/`NODE_AUTH_TOKEN` are present. No long-lived tokens exist.
 
 ```bash
-# In the OIDC release workflow — never from a laptop with a long-lived token.
-# Exact tarballs built by `pnpm release:dry-run`, published in manifest order,
-# registry pinned (provenance is automatic under Trusted Publishing):
-npm publish ./release-artifacts/tarballs/<file>.tgz \
+# In the OIDC stage job — never from a laptop with a long-lived token.
+# Exact tarballs from the Release Check artifact (never rebuilt):
+npm stage publish ./release-artifacts/tarballs/<file>.tgz \
   --access public --tag <next|latest per prerelease> --registry https://registry.npmjs.org/
 ```
 
-(publish in the §5 order from `release-manifest.json → publish_order`; the
-workflow publishes the exact tarballs produced by the verified dry-run, and
-provenance attestations are generated automatically by Trusted Publishing —
-no `--provenance` flag is required.)
+A human later approves the npm stage (2FA). CI never runs `npm stage approve`
+and never runs `npm publish`.
 
 ## 9. Post-publish verification (mandatory)
 
@@ -381,11 +392,11 @@ Also verify provenance attestations are visible on npmjs.com
   publish ran (tag-triggered, §7) and is never moved or deleted. Retry the
   workflow on the same tag, or cut the next RC tag.
 
-## 11. What this phase deliberately does NOT do
+## 11. What Phase 2.4B deliberately does NOT do
 
-- No `npm publish` / `pnpm publish` has been run. No tags, no GitHub
-  Releases. The live OIDC workflow is specified but intentionally not
-  enabled. `pnpm release:check` / `pnpm release:dry-run` are
-  **verification-only** and prove everything short of the registry write;
-  they fail closed in the presence of registry credentials (ops constraints
-  ①–⑧ are implemented and enforced, not just documented).
+- No version bump off `0.9.0-rc.0`. No `rc.1`. No merge of this PR by the agent.
+- No npm write: no publish / stage / approve / reject / dist-tag / unpublish
+  / deprecate / trust / access.
+- No git tag. No GitHub Release. No Trusted Publisher configuration.
+- `NPM_TRUSTED_PUBLISHING_READY` is **not** set.
+- `pnpm release:check` / `pnpm release:dry-run` remain verification-only.

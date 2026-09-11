@@ -53,6 +53,11 @@ describe("docs:check no-bare-npx-actionman", () => {
     expect(findForbiddenPatterns(safe, "a.md")).toHaveLength(0);
   });
 
+  it("PASSES a version-pinned --package=@actionmanifest/cli@<ver>", () => {
+    const safe = `${NPX} --package=@actionmanifest/cli@0.9.0-rc.0 -- ${BIN} conformance\n`;
+    expect(findForbiddenPatterns(safe, "README.md")).toHaveLength(0);
+  });
+
   it("PASSES the safe form with npx flags before --package", () => {
     const safe = `${NPX} -y ${PKG} -- ${BIN} --version\n`;
     expect(findForbiddenPatterns(safe, "a.md")).toHaveLength(0);
@@ -105,6 +110,16 @@ describe("docs:check bootstrap-publish-safety", () => {
   it("flags a publish command line without the registry pin", () => {
     const v = findForbiddenPatterns(
       `${PUB} ./release-artifacts/tarballs/x.tgz --access public --tag next\n`,
+      "docs/x.md",
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]!.rule).toBe("bootstrap-publish-safety");
+  });
+
+  it("flags a stage-publish command line without the registry pin", () => {
+    const STAGE = "npm stage pub" + "lish";
+    const v = findForbiddenPatterns(
+      `${STAGE} ./release-artifacts/tarballs/x.tgz --access public --tag next\n`,
       "docs/x.md",
     );
     expect(v).toHaveLength(1);

@@ -40,6 +40,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cliInstallSmoke } from "./cli-install-smoke.js";
 import { validateSbom } from "./sbom-validate.js";
+import { writeSha256Sums } from "./sha256sums.js";
+import { assertDeterministicIdentity, buildReleaseIdentity } from "./release-identity.js";
+import { parseSemver } from "./semver.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "release-artifacts");
@@ -98,6 +101,7 @@ if (existsSync(repoNpmrc)) {
 
 // ---------- git state ----------
 const head = run("git", ["rev-parse", "HEAD"], root);
+const tree = run("git", ["rev-parse", "HEAD^{tree}"], root);
 const branch = run("git", ["rev-parse", "--abbrev-ref", "HEAD"], root);
 const dirty = run("git", ["status", "--porcelain"], root).length > 0;
 // Ops constraint ④: a release-candidate dry-run in CI must come from a clean
@@ -157,13 +161,15 @@ if (distinctVersions.length !== 1) {
   fail(`lockstep violation: package versions differ (${distinctVersions.join(", ")})`);
 }
 const releaseVersion = distinctVersions[0]!;
-if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(releaseVersion)) {
+if (!parseSemver(releaseVersion)) {
   fail(`version ${releaseVersion} is not a valid semver (prerelease allowed)`);
 }
 
-// ---------- SHA256SUMS ----------
-const sums = entries.map((e) => `${e.sha256}  ${e.tarball.replace(/^tarballs\//, "")}`).join("\n") + "\n";
-writeFileSync(join(outDir, "SHA256SUMS"), sums, "utf8");
+// ---------- SHA256SUMS (tarballs/ prefix so sha256sum --check works from artifact root) ----------
+writeSha256Sums(
+  outDir,
+  entries.map((e) => ({ sha256: e.sha256, file: e.tarball })),
+);
 
 // ---------- publish order (topological; STOP on cycle) ----------
 const byName = new Map(entries.map((e) => [e.pkg.name, e]));
@@ -195,14 +201,46 @@ const conformanceManifest = JSON.parse(
 const xbergPin = entries.find((e) => e.pkg.name === "@actionmanifest/adapter-xberg")?.pkg
   .dependencies?.["@xberg-io/xberg"];
 
+const pnpmVersion = run("pnpm", ["--version"], root);
+const packageManager = `pnpm@${pnpmVersion}`;
+const nodeMajor = Number.parseInt(process.versions.node.split(".")[0] ?? "", 10);
+const identity = buildReleaseIdentity({
+  version: releaseVersion,
+  git_sha: head,
+  git_tree: tree,
+  package_manager: packageManager,
+  node_major: nodeMajor,
+  pnpm_version: pnpmVersion,
+  platform: process.platform,
+  publish_order: publishOrder,
+  packages: entries.map((e) => ({
+    name: e.pkg.name,
+    version: e.pkg.version,
+    tarball: e.tarball,
+    sha256: e.sha256,
+  })),
+});
+assertDeterministicIdentity(identity as unknown as Record<string, unknown>);
+
 const manifest = {
   kind: "actionmanifest-release-dry-run",
   dry_run: true,
   registry_writes: "none (pack only; publish is a separate, gated phase)",
   generated_by: "scripts/release-dry-run.ts",
-  git: { head, branch, dirty },
+  identity,
+  version: identity.version,
+  git_sha: identity.git_sha,
+  git_tree: identity.git_tree,
+  package_manager: identity.package_manager,
+  node_major: identity.node_major,
+  pnpm_version: identity.pnpm_version,
+  platform: identity.platform,
+  evidence: {
+    node_patch: process.version,
+    note: "node_patch is host-specific observational evidence; it is not part of deterministic identity",
+  },
+  git: { head, tree, branch, dirty },
   node: process.version,
-  package_manager: `pnpm@${run("pnpm", ["--version"], root)}`,
   axes: {
     package_version: entries[0]?.pkg.version,
     schema_versions: conformanceManifest.schema_versions,

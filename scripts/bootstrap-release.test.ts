@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   EXPECTED_BOOTSTRAP_VERSION,
   buildBootstrapPlan,
+  buildCanonicalReleasePlan,
   publishReadinessIssues,
 } from "./bootstrap-plan.js";
 
@@ -53,6 +54,36 @@ describe("bootstrap-plan module purity", () => {
     const source = readFileSync(join(here, "bootstrap-release.ts"), "utf8");
     expect(source).toMatch(/if \(process\.argv\[1\].*import\.meta\.url/s);
     expect(source).toContain('from "./bootstrap-plan.js"');
+  });
+
+  it("--publish-ready consume path has no pack / dry-run / npm pack side effect", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(join(here, "bootstrap-release.ts"), "utf8");
+    const start = source.indexOf("export function runPublishReadyConsume");
+    expect(start).toBeGreaterThan(0);
+    const consume = source.slice(start, source.indexOf("function main"));
+    expect(consume).not.toMatch(/release:dry-run/);
+    expect(consume).not.toMatch(/pnpm["']?,?\s*\[[^\]]*pack/);
+    expect(consume).not.toMatch(/npm pack/);
+    expect(consume).not.toMatch(/pnpm pack/);
+    expect(consume).toMatch(/downloadReleaseCheckArtifact/);
+    expect(consume).toMatch(/verifyCanonicalArtifactLayout/);
+    expect(source).toMatch(/if \(publishReadyMode\)/);
+    expect(source).toMatch(/runPublishReadyConsume/);
+    const prepare = source.slice(
+      source.indexOf("export function runPreparePack"),
+      source.indexOf("export function runPublishReadyConsume"),
+    );
+    expect(prepare).toMatch(/release:dry-run/);
+  });
+
+  it("publish-ready gates require a FULL Release Check, never array[0]", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(join(here, "bootstrap-release.ts"), "utf8");
+    expect(source).toContain("pickReleaseGates");
+    expect(source).toContain("FULL_RELEASE_CHECK_NOT_FOUND");
+    expect(source).not.toMatch(/\.\[0\]/);
+    expect(source).not.toMatch(/conclusion \+ " " \+ \(\.id/);
   });
 });
 
@@ -109,6 +140,21 @@ describe("buildBootstrapPlan", () => {
     const plan = buildBootstrapPlan(manifest, git);
     expect(plan.dry_run).toBe(true);
     expect(plan.registry_writes).toContain("none");
+    expect(plan.artifact_source).toBe("local-noncanonical");
+  });
+
+  it("canonical plan points at the downloaded prefix and emits stage commands", () => {
+    const plan = buildCanonicalReleasePlan(manifest, git, "release-artifacts/");
+    expect(plan.artifact_source).toBe("canonical-release-check");
+    expect(plan.dist_tag).toBe("next");
+    for (const p of plan.packages) {
+      expect(p.tarball).toMatch(/^release-artifacts\/tarballs\//);
+      expect(p.stage_command).toContain("npm stage publish");
+      expect(p.stage_command).toContain(`./${p.tarball}`);
+      expect(p.stage_command).toContain("--tag next");
+      expect(p.stage_command).not.toMatch(/npm publish /);
+      expect(p.stage_command).not.toContain("approve");
+    }
   });
 
   it("fails when publish_order references an unknown package", () => {

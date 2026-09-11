@@ -2,7 +2,44 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
-## Phase 2.4A.1 — Reproducible Release Artifact Gate (NOT YET PUBLISHED)
+## Phase 2.4B — Production release hardening (no version bump)
+
+Hardening only. Package versions stay `0.9.0-rc.0`. No npm write, no tag, no
+GitHub Release, no Trusted Publisher configuration, no `NPM_TRUSTED_PUBLISHING_READY`.
+
+### Changed
+
+- **`0.9.0-rc.0` recorded as COMPLETE** (10/10 on npm, 2026-09-11). No fake
+  tag / Release / provenance / staging claims. Incidents A–H documented in
+  `docs/evidence/RC0_BOOTSTRAP_RELEASE_2026-09-11.md`. Historical
+  `latest=0.9.0-rc.0` is documented and not auto-repaired.
+- **`bootstrap:check --publish-ready` no longer packs.** It downloads
+  `release-check-<sha>`, verifies SHA256SUMS + manifest + 10 tarballs, and
+  writes a plan that points at those files. `--prepare` may local-pack
+  (NON-CANONICAL). Registry reads are truth-first (timeout ≠ publish failure).
+- **SHA256SUMS** written with `tarballs/` prefixes; cwd-independent TS /
+  `.mjs` helper resolves bare names (rc.0 layout) and prefixed names.
+- **`release-manifest.json` identity** (`version`, `git_sha`, `git_tree`,
+  `package_manager`, `node_major`, `pnpm_version`, `platform`, `packages`,
+  `publish_order`). Host Node patch is `evidence.node_patch`, not identity.
+- **Release Check** keeps canonical build on Node 22 + pnpm 11.23.0; adds
+  Node 20 npm-only consumer proof (exclude adapter-xberg) and Node 22+
+  Xberg native gate (2/2) on the same artifact.
+- **`.github/workflows/release.yml`** replaces the template: manual
+  `workflow_dispatch` `stage` \| `verify` only. Stage job: Environment
+  `npm-release`, OIDC `id-token` only there, npm 11.15.0, no pnpm, no
+  cache, `npm stage publish` exact `.tgz`, no approve, no GitHub Release.
+  Fails loudly unless `vars.NPM_TRUSTED_PUBLISHING_READY == true`.
+
+### Added
+
+- `pnpm release:registry-verify` — exact-version, dist-tags, bounded
+  packument, tarball SHA vs canonical; states PUBLISHED_VERIFIED / ABSENT /
+  PROPAGATING / INCONSISTENT / UNKNOWN.
+- `docs/RELEASE_TRUSTED_PUBLISHING_SETUP.md` — human checklist (merge
+  `release.yml` before configuring Trusted Publishers).
+
+## Phase 2.4A.1 — Reproducible Release Artifact Gate (rc.0 source)
 
 A release-blocking defect was found by independent artifact comparison: the same git tree produced tarballs with different SHA-256 values (upstream pnpm/pnpm#10167 — unstable dependency key ordering in packed workspace manifests). Reproduced locally: 5 packs of `@actionmanifest/cli` from one clean tree → 5 distinct hashes. No artifact from before this fix may be published.
 
@@ -18,9 +55,11 @@ A release-blocking defect was found by independent artifact comparison: the same
 - **Regression test**: repeated packs of the multi-workspace-dependency packages (`extractor`, `cli`) must produce identical dependency key order.
 - **Docs**: ADR 0009 + `docs/evidence/REPRODUCIBLE_RELEASE_ARTIFACTS.md` (incident, isolated reproduction, post-fix evidence).
 
-## 0.9.0-rc.0 — Phase 2.4A (bootstrap candidate, NOT YET PUBLISHED)
+## 0.9.0-rc.0 — Phase 2.4A (bootstrap; published 2026-09-11)
 
-First public bootstrap prerelease. **No npm publish, no tag, no GitHub Release has been performed** — this entry documents the prepared candidate.
+First public bootstrap prerelease. **Published to npm (10/10).** Still **no
+git tag and no GitHub Release**. No provenance / staged publish. Dist-tags:
+`next=0.9.0-rc.0` and historically `latest=0.9.0-rc.0` (do not auto-repair).
 
 Purpose:
 

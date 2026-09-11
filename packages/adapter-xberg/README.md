@@ -5,9 +5,8 @@ Xberg reference adapter: `Xberg ExtractionResult → CanonicalDocument`. The
 parser-independent. The native Xberg binding is isolated in this package —
 no other `@actionmanifest/*` package depends on it (enforced by CI).
 
-> **Release status:** release-candidate preparation — not yet published to
-> npm. First release: `0.9.0-rc.1`. Verified against `@xberg-io/xberg`
-> **1.1.3 exactly** (pinned; see
+> **Release status:** `0.9.0-rc.0` is on npm (no git tag / GitHub Release).
+> Verified against `@xberg-io/xberg` **1.1.3 exactly** (pinned; see
 > [ADR 0007](../../docs/adr/0007-release-versioning-and-supply-chain.md)).
 >
 > **Stability split (0.x):**
@@ -16,8 +15,8 @@ no other `@actionmanifest/*` package depends on it (enforced by CI).
 >   no native binding, no network. Normal 0.x policy.
 > - **Layer B — `XbergAdapter` runtime bridge** is **experimental**
 >   (`@experimental` in JSDoc): it dynamically imports the native NAPI
->   binding, requires Node >= 22, and its live behavior is covered by opt-in
->   integration tests (`pnpm xberg:integration`), not the default CI matrix.
+>   binding, requires Node >= 22. Release Check gates a native smoke (2/2)
+>   on the canonical tarball; `pnpm xberg:integration` is the local opt-in.
 >   The bridge API may change between 0.x minors.
 
 ```bash

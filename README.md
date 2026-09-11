@@ -27,33 +27,30 @@ This is **not** a PDF summarizer, OCR engine, RAG stack, or task manager. It is 
 
 ## Install
 
-> **Release status: bootstrap candidate prepared, NOT YET PUBLISHED.** As of
-> 2026-09-10 there is **no npm publish, no git tag, and no GitHub Release** —
-> the `@actionmanifest/*` scope does not exist on the registry. The first
-> public release is a two-stage bootstrap: `0.9.0-rc.0` (manual, maintainer
-> 2FA, exact reviewed tarballs, dist-tag `next`) creates the package
-> identities; `0.9.0-rc.1+` ships via OIDC Trusted Publishing only (see
-> [docs/RELEASING.md](docs/RELEASING.md) and
-> [docs/BOOTSTRAP-RELEASE-CHECKLIST.md](docs/BOOTSTRAP-RELEASE-CHECKLIST.md)).
-> Until then, use the repository directly (below). The commands in this
-> section are exactly what will work once published — they are verified on
-> every PR by packing the tarballs and installing them into a fresh project
-> (`pnpm release:dry-run`).
+> **Release status: `0.9.0-rc.0` is on npm (10/10 packages, 2026-09-11).**
+> There is still **no git tag and no GitHub Release**. Dist-tags are
+> `next=0.9.0-rc.0` and, historically, `latest=0.9.0-rc.0` (first-publish
+> behaviour — documented, not auto-repaired). Provenance / Trusted
+> Publishing / staged OIDC publish were **not** used for rc.0. Subsequent
+> versions stage via `.github/workflows/release.yml` after a human
+> completes [docs/RELEASE_TRUSTED_PUBLISHING_SETUP.md](docs/RELEASE_TRUSTED_PUBLISHING_SETUP.md).
+> Pin the exact version (or `next`); do not assume `latest` means “stable”.
 
-Once published (planned, not yet available):
+Install from npm (pin the exact prerelease):
 
 ```bash
 # Library (pick what you need — all packages are Apache-2.0, Node >= 20)
-npm install @actionmanifest/core @actionmanifest/adapters @actionmanifest/extractor \
-  @actionmanifest/verifier @actionmanifest/exporters @actionmanifest/consumer
+npm install @actionmanifest/core@0.9.0-rc.0 @actionmanifest/adapters@0.9.0-rc.0 \
+  @actionmanifest/extractor@0.9.0-rc.0 @actionmanifest/verifier@0.9.0-rc.0 \
+  @actionmanifest/exporters@0.9.0-rc.0 @actionmanifest/consumer@0.9.0-rc.0
 
 # CLI (ships the conformance suite + benchmark corpus; works from any directory)
-npm install -g @actionmanifest/cli
+npm install -g @actionmanifest/cli@0.9.0-rc.0
 actionman --help
 actionman conformance            # run the official conformance suite
 
 # One-shot without global install — ALWAYS name the package explicitly:
-npx --package=@actionmanifest/cli -- actionman conformance
+npx --package=@actionmanifest/cli@0.9.0-rc.0 -- actionman conformance
 ```
 
 `@actionmanifest/adapter-xberg` (Node >= 22) is an **optional** package — the
@@ -193,9 +190,12 @@ Docling (Python) runs **upstream**: pass `DoclingDocument.export_to_dict()`
 JSON to `DoclingAdapter`. The TypeScript core never embeds Python, never
 spawns subprocesses, and CI needs no network.
 
-**Runtime support:** Node.js >= 20 (`engines`); default CI runs on Node 20.
-The optional `@actionmanifest/adapter-xberg` native bridge requires
-Node >= 22 and is covered by opt-in `pnpm xberg:integration` (Node 22+).
+**Runtime support:** Node.js >= 20 (`engines`) for nine packages + CLI;
+`@actionmanifest/adapter-xberg` requires Node >= 22. The **toolchain**
+(CI / canonical pack) is Node >= 22 + pnpm 11.23.0. Release Check proves
+Node 20 consumers against those canonical tarballs (npm only, excluding
+adapter-xberg) and runs a Node 22+ native Xberg gate (2/2) on the same
+artifact. `pnpm xberg:integration` remains the local opt-in.
 
 The normative contract — CanonicalDocument fields, source identity, bbox
 convention, adapter error model, consumer policy, export policy — is
@@ -246,8 +246,9 @@ Honest boundaries of the current `0.x` line:
   safety layer: critical false-verified is gated at 0.
 - **`@actionmanifest/adapter-xberg` is experimental**: verified against
   `@xberg-io/xberg` 1.1.3 exactly (pinned), Node >= 22, native binaries via
-  upstream optionalDependencies. Live native-runtime tests are opt-in
-  (`pnpm xberg:integration`), not part of default CI.
+  upstream optionalDependencies. Default `pnpm test` stays portable; Release
+  Check gates a real native smoke (2/2) on the canonical tarball. Local
+  opt-in: `pnpm xberg:integration`.
 - **Docling adapter** consumes the documented `export_to_dict()` subset;
   upstream Docling format changes are handled by adapter updates, never Core
   changes.
@@ -255,7 +256,7 @@ Honest boundaries of the current `0.x` line:
   run it as a privileged user on untrusted input.
 - **ICS export** is RFC 5545-conformant with documented, intentional
   deviations ([docs/STANDARDS.md](docs/STANDARDS.md)).
-- **Not yet published to npm** — see Install above.
+- **`0.9.0-rc.0` is on npm; no git tag / GitHub Release yet** — see Install.
 
 ## Otayori vs this OSS
 

@@ -128,5 +128,8 @@ Reverse dependencies are forbidden and guarded.
   Kreuzberg / OCR / email / Otayori adapters.
 - Consumers who don't need Xberg pay zero cost (separate package, dynamic
   import, no native install).
-- Live native tests are opt-in (`pnpm xberg:integration`) to keep CI
-  deterministic and portable; pure mapping tests gate CI.
+- Live native tests stay out of default `pnpm test`; Release Check gates
+  them on the canonical tarball. Local opt-in remains `pnpm xberg:integration`.
+  The job must consume the canonical artifact tarball — not a local rebuild.
+  Expected result: 2/2 PASS (file + bytes). Pure mapping tests in
+  `packages/adapter-xberg/src/adapter.test.ts` still gate default CI.

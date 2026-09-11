@@ -142,9 +142,11 @@ function findBootstrapSafetyViolations(
       rule: "bootstrap-publish-safety",
     });
   }
-  // A real publish command line must pin the npmjs registry.
+  // A real publish / stage-publish command line must pin the npmjs registry.
   const trimmed = line.trim();
-  if (trimmed.startsWith("npm publish ") && !trimmed.includes(REGISTRY_PIN)) {
+  const isPublishCmd =
+    trimmed.startsWith("npm publish ") || trimmed.startsWith("npm stage publish ");
+  if (isPublishCmd && !trimmed.includes(REGISTRY_PIN)) {
     violations.push({
       file,
       line: lineNo,
@@ -209,10 +211,13 @@ export function findForbiddenPatterns(content: string, file: string): DocsCheckV
         analysis.firstPositional === "actionman" ||
         analysis.commandAfterSeparator === "actionman";
       if (!touchesActionman) continue;
+      const namesCliPackage = analysis.packageOptions.some(
+        (opt) => opt === CLI_PACKAGE || opt.startsWith(`${CLI_PACKAGE}@`),
+      );
       const safe =
         analysis.firstPositional === undefined && // command comes after `--`
         analysis.commandAfterSeparator === "actionman" &&
-        analysis.packageOptions.includes(CLI_PACKAGE);
+        namesCliPackage;
       if (!safe) {
         violations.push({
           file,

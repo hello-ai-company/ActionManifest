@@ -4,9 +4,9 @@ Status legend: **PASS** = verified by an automated gate or inspected artifact;
 **READY** = prepared and documented, awaiting the gated publish phase;
 **NOT READY** = open work.
 
-Last verified: Phase 2.4A / PR [#8](https://github.com/hello-ai-company/ActionManifest/pull/8)
-(head `afa8bd9`; CI 34440592699 + Release Check 34440592702 SUCCESS on that
-head). Re-run `pnpm release:check` before trusting this table.
+Last verified: Phase 2.4B hardening (rc.0 COMPLETE on npm 2026-09-11;
+canonical HEAD `c0030b7` / tree `91811260`). Re-run `pnpm release:check`
+before trusting this table. No tag / GitHub Release / Trusted Publisher yet.
 
 ## Installability
 
@@ -34,7 +34,7 @@ head). Re-run `pnpm release:check` before trusting this table.
 | 15 | Public `.d.ts` external references all declared as dependencies | PASS (declaration scan) |
 | 16 | `@xberg-io/xberg` pinned exactly (1.1.3), enforced by gate | PASS (ADR 0007; `pack:check` fails on any range operator) |
 | 17 | No circular package dependencies; publish order computed | PASS (`release:dry-run` stops on cycles) |
-| 17a | Node engines separation: all packages >= 20, adapter-xberg >= 22; default CI on Node 20 | PASS (full `release:check` verified on Node 20.20.2; `xberg:integration` opt-in Node 22+) |
+| 17a | Node engines: >= 20 (9 + CLI), adapter-xberg >= 22; toolchain Node 22+; consumer proof Node 20; Xberg gate Node 22+ | PASS (Release Check jobs; engines unchanged) |
 | 17b | Experimental markers: Xberg Layer B bridge triple-marked (README + COMPATIBILITY + JSDoc `@experimental`); Layer A labeled stable structural mapper | PASS |
 
 ## Safety gates (unchanged by this phase)
@@ -59,8 +59,8 @@ head). Re-run `pnpm release:check` before trusting this table.
 | 28 | CycloneDX SBOM (first-party + full external production closure) | PASS (24 components) |
 | 29 | No registry credentials in repo `.npmrc` | PASS (dry-run guard) |
 | 30 | Release Check workflow: `contents: read` only, SHA-pinned actions | PASS |
-| 31 | No long-lived npm tokens/PATs in CI; OIDC Trusted Publishing is design-only — intended, currently unimplemented and unverified | READY (design documented in RELEASING.md §6; never claimed as enabled) |
-| 32 | Provenance attestations | READY (automatic under Trusted Publishing for public repo + public packages — no `--provenance` flag required; unverified until first OIDC publish) |
+| 31 | No long-lived npm tokens/PATs in CI; `release.yml` is stage-only OIDC and fails unless `NPM_TRUSTED_PUBLISHING_READY=true` (unset) | READY (file present; human setup still required) |
+| 32 | Provenance attestations | NOT claimed (rc.0 had none; first staged OIDC publish is a later human step) |
 
 ## Ops constraints (Round-1, PA-20260910-001)
 
@@ -93,15 +93,15 @@ head). Re-run `pnpm release:check` before trusting this table.
 
 | # | Item | Status |
 | --- | --- | --- |
-| 42 | Version bump to `0.9.0-rc.0` across all 10 packages | READY (Phase 2.4A: lockstep bump + version gate in `bootstrap:check`) |
-| 43 | npm Trusted Publishing configured on npmjs.com | NOT READY (requires the packages to exist first — post-bootstrap, maintainer step) |
-| 44 | Live OIDC publish workflow (`.github/workflows/release.yml`) | NOT READY (template only — enabled in Phase 2.4B) |
-| 45 | Tag `v0.9.0-rc.1` + GitHub Release | NOT READY (post-bootstrap step; the rc.0 bootstrap creates no tag) |
-| 46 | Post-publish registry verification | NOT READY (after the manual bootstrap publish) |
+| 42 | Version bump to `0.9.0-rc.0` across all 10 packages | PASS (published; this phase does not bump) |
+| 43 | npm Trusted Publishing configured on npmjs.com | NOT READY (human; after `release.yml` is on main — see RELEASE_TRUSTED_PUBLISHING_SETUP.md) |
+| 44 | Live OIDC **stage** workflow (`.github/workflows/release.yml`) | READY (workflow_dispatch stage\|verify; not armed — READY var unset) |
+| 45 | Tag + GitHub Release | NOT READY (rc.0 has neither; not created in this phase) |
+| 46 | Registry verifier (`pnpm release:registry-verify`) | PASS (read-only tool; rc.0 latest observation documented, not mutated) |
 
 ## Merge-recommendation preconditions (Meeting Round-2, locked)
 
-Current cycle: **Phase 2.4A / PR #8**.
+Current cycle: **Phase 2.4B / production-release-hardening PR**.
 
 | # | Item | Status |
 | --- | --- | --- |

@@ -6,18 +6,11 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { distTagForVersion } from "./semver.mjs";
 
 function fail(message) {
   console.error(`stage-from-artifact FAIL: ${message}`);
   process.exit(1);
-}
-
-function isPrerelease(version) {
-  return version.includes("-");
-}
-
-function distTagForVersion(version) {
-  return isPrerelease(version) ? "next" : "latest";
 }
 
 function locateRoot(start) {

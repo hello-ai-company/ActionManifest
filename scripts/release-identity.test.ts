@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   PINNED_NPM_CLI,
@@ -46,6 +49,7 @@ describe("dist-tag policy", () => {
     expect(isPrerelease("0.9.0-rc.0")).toBe(true);
     expect(distTagForVersion("0.9.0-rc.0")).toBe("next");
     expect(distTagForVersion("1.0.0-beta.1")).toBe("next");
+    expect(distTagForVersion("0.9.0-rc.1")).toBe("next");
   });
 
   it("maps stable versions to latest", () => {
@@ -77,6 +81,15 @@ describe("dist-tag policy", () => {
 
   it("pins npm CLI 11.15.0 (Trusted Publishing minimum 11.5.1; already used)", () => {
     expect(PINNED_NPM_CLI).toBe("11.15.0");
+  });
+
+  it("does not classify prerelease with includes('-')", () => {
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "release-identity.ts"),
+      "utf8",
+    );
+    expect(src).not.toMatch(/\.includes\(\s*["']-["']\s*\)/);
+    expect(src).toContain("semverIsPrerelease");
   });
 });
 

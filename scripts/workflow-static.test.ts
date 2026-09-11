@@ -117,6 +117,22 @@ describe("release.yml static asserts", () => {
     expect(helper).toContain('name !== "Release Check"');
   });
 
+  it("requires a protected v* tag and main-ref dispatch for stage", () => {
+    const gates = jobBlock(yml, "gates");
+    expect(gates).toContain("assert-release-tag.mjs");
+    expect(gates).toContain("refs/heads/main");
+    expect(gates).toMatch(/github\.ref/);
+    expect(gates).not.toMatch(/TAG#v|\$\{TAG#v\}/);
+    expect(gates).not.toMatch(/\*-\*\)/);
+    expect(gates).not.toMatch(/\.includes\(\s*["']-["']\s*\)/);
+    const helper = read("scripts/assert-release-tag.mjs");
+    expect(helper).toContain("assertProtectedReleaseTag");
+    expect(helper).not.toMatch(/\.includes\(\s*["']-["']\s*\)/);
+    const semver = read("scripts/semver.mjs");
+    expect(semver).not.toMatch(/\.includes\(\s*["']-["']\s*\)/);
+    expect(semver).toMatch(/prerelease/);
+  });
+
   it("stages only after normalize then full canonical identity validation", () => {
     const stage = jobBlock(yml, "stage");
     const normalizeAt = stage.indexOf("normalize-canonical-artifact.mjs");

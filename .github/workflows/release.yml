@@ -76,12 +76,21 @@ jobs:
             echo "This workflow will not stage until that is done. Do not set the var from CI."
             exit 1
           fi
-      - name: Stage requires a tag that points at git_sha on origin/main
+      - name: Stage must be dispatched from main
+        if: github.event.inputs.mode == 'stage'
+        run: |
+          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "FAIL: stage must be dispatched from refs/heads/main (got ${{ github.ref }})"
+            echo "Feature-branch or tag refs cannot stage."
+            exit 1
+          fi
+      - name: Stage requires a protected v* tag that points at git_sha on origin/main
         if: github.event.inputs.mode == 'stage'
         run: |
           TAG="${{ github.event.inputs.tag }}"
           SHA="${{ github.event.inputs.git_sha }}"
           if [ -z "$TAG" ]; then echo "stage mode requires the tag input"; exit 1; fi
+          EXPECTED=$(node scripts/assert-release-tag.mjs --tag "$TAG" --root .)
           git fetch origin main
           git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}" || {
             echo "tag $TAG does not exist on origin — create the immutable tag first"; exit 1;
@@ -94,16 +103,7 @@ jobs:
             echo "commit $SHA is not on origin/main — only reviewed main commits may stage";
             exit 1;
           }
-          EXPECTED="${TAG#v}"
-          for p in packages/*/package.json apps/cli/package.json; do
-            V=$(node -p "require('./$p').version")
-            if [ "$V" != "$EXPECTED" ]; then
-              echo "tag $TAG != $p version $V"; exit 1;
-            fi
-          done
-          case "$EXPECTED" in
-            *-*) if [ "${EXPECTED}" = "${EXPECTED%-*}" ]; then echo "internal prerelease parse error"; exit 1; fi ;;
-          esac
+          echo "protected tag $TAG => version $EXPECTED"
       - name: Exact-commit gates green (CI + FULL Release Check)
         id: find
         env:

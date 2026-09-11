@@ -42,6 +42,7 @@ import { cliInstallSmoke } from "./cli-install-smoke.js";
 import { validateSbom } from "./sbom-validate.js";
 import { writeSha256Sums } from "./sha256sums.js";
 import { assertDeterministicIdentity, buildReleaseIdentity } from "./release-identity.js";
+import { parseSemver } from "./semver.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "release-artifacts");
@@ -160,7 +161,7 @@ if (distinctVersions.length !== 1) {
   fail(`lockstep violation: package versions differ (${distinctVersions.join(", ")})`);
 }
 const releaseVersion = distinctVersions[0]!;
-if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(releaseVersion)) {
+if (!parseSemver(releaseVersion)) {
   fail(`version ${releaseVersion} is not a valid semver (prerelease allowed)`);
 }
 

@@ -6,6 +6,10 @@
  * non-reproducible values here.
  */
 import { basename } from "node:path";
+import {
+  distTagForVersion as semverDistTag,
+  isPrerelease as semverIsPrerelease,
+} from "./semver.mjs";
 
 export const PUBLIC_PACKAGE_NAMES = [
   "@actionmanifest/schema",
@@ -66,9 +70,9 @@ const NON_DETERMINISTIC_KEYS = [
   "node_version",
 ];
 
-/** True when the version is a semver prerelease (contains `-`). */
+/** True when the parsed SemVer has a prerelease identifier. */
 export function isPrerelease(version: string): boolean {
-  return version.includes("-");
+  return semverIsPrerelease(version);
 }
 
 /**
@@ -77,7 +81,7 @@ export function isPrerelease(version: string): boolean {
  *   - stable     → `latest`
  */
 export function distTagForVersion(version: string): "next" | "latest" {
-  return isPrerelease(version) ? "next" : "latest";
+  return semverDistTag(version);
 }
 
 /**

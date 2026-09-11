@@ -154,6 +154,17 @@ export function validateCanonicalReleaseDir(opts) {
     }
   }
 
+  if (identity) {
+    if (!Array.isArray(identity.packages)) {
+      throw new Error("identity.packages is required and must be an array");
+    }
+    if (!Array.isArray(identity.publish_order)) {
+      throw new Error("identity.publish_order is required and must be an array");
+    }
+    assertPublishOrderEqual(identity.publish_order, order);
+    assertPackageRecordsEqual(identity.packages, packages);
+  }
+
   const names = new Set();
   const sumsText = readFileSync(sumsPath, "utf8");
   const sums = parseSha256Sums(sumsText);
@@ -161,7 +172,7 @@ export function validateCanonicalReleaseDir(opts) {
     throw new Error(`SHA256SUMS must list 10 tarballs, got ${sums.size}`);
   }
 
-  const version = identity?.version ?? expectedVersion;
+  const lockstepVersion = identity?.version ?? expectedVersion ?? requireLockstepVersion(packages);
   for (const entry of packages) {
     if (!entry || typeof entry !== "object") {
       throw new Error("package entry must be an object");
@@ -182,10 +193,18 @@ export function validateCanonicalReleaseDir(opts) {
     if (typeof entry.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(entry.sha256)) {
       throw new Error(`${entry.name}: sha256 must be 64 hex chars`);
     }
-    if (version && entry.version && entry.version !== version) {
-      throw new Error(`${entry.name}: version ${entry.version} !== ${version}`);
+    if (typeof entry.version !== "string" || !entry.version) {
+      throw new Error(`${entry.name}: version is required`);
     }
-    if (expectedVersion && entry.version && entry.version !== expectedVersion) {
+    if (entry.version !== lockstepVersion) {
+      throw new Error(`${entry.name}: version ${entry.version} !== ${lockstepVersion}`);
+    }
+    if (identity && entry.version !== identity.version) {
+      throw new Error(
+        `${entry.name}: version ${entry.version} !== identity.version ${identity.version}`,
+      );
+    }
+    if (expectedVersion && entry.version !== expectedVersion) {
       throw new Error(`${entry.name}: version ${entry.version} !== expected ${expectedVersion}`);
     }
     const abs = join(dir, entry.tarball);
@@ -215,4 +234,97 @@ export function validateCanonicalReleaseDir(opts) {
   }
 
   return { ok: true, identity: identity ?? null, packages: packages.length };
+}
+
+/**
+ * @param {unknown[]} left
+ * @param {unknown[]} right
+ */
+function assertPublishOrderEqual(left, right) {
+  if (left.length !== right.length) {
+    throw new Error(
+      `identity.publish_order length ${left.length} !== publish_order length ${right.length}`,
+    );
+  }
+  for (let i = 0; i < left.length; i++) {
+    if (left[i] !== right[i]) {
+      throw new Error(
+        `identity.publish_order mismatch at ${i}: ${String(left[i])} !== ${String(right[i])}`,
+      );
+    }
+  }
+}
+
+/**
+ * @param {unknown[]} left
+ * @param {unknown[]} right
+ */
+function assertPackageRecordsEqual(left, right) {
+  if (left.length !== right.length) {
+    throw new Error(
+      `identity.packages length ${left.length} !== packages length ${right.length}`,
+    );
+  }
+  const seen = new Set();
+  for (let i = 0; i < left.length; i++) {
+    const a = packageRecord(left[i], `identity.packages[${i}]`);
+    const b = packageRecord(right[i], `packages[${i}]`);
+    if (seen.has(a.name)) {
+      throw new Error(`identity.packages duplicate ${a.name}`);
+    }
+    seen.add(a.name);
+    for (const key of ["name", "version", "tarball", "sha256"]) {
+      if (a[key] !== b[key]) {
+        throw new Error(
+          `identity.packages ${a.name} ${key} mismatch: ${String(a[key])} !== ${String(b[key])}`,
+        );
+      }
+    }
+  }
+}
+
+/**
+ * @param {unknown} entry
+ * @param {string} label
+ */
+function packageRecord(entry, label) {
+  if (!entry || typeof entry !== "object") {
+    throw new Error(`${label} must be an object`);
+  }
+  const rec = /** @type {Record<string, unknown>} */ (entry);
+  if (typeof rec.name !== "string" || !rec.name) {
+    throw new Error(`${label}.name is required`);
+  }
+  if (typeof rec.version !== "string" || !rec.version) {
+    throw new Error(`${label}.version is required`);
+  }
+  if (typeof rec.tarball !== "string" || !rec.tarball) {
+    throw new Error(`${label}.tarball is required`);
+  }
+  if (typeof rec.sha256 !== "string" || !rec.sha256) {
+    throw new Error(`${label}.sha256 is required`);
+  }
+  return {
+    name: rec.name,
+    version: rec.version,
+    tarball: rec.tarball,
+    sha256: rec.sha256,
+  };
+}
+
+/**
+ * @param {unknown[]} packages
+ */
+function requireLockstepVersion(packages) {
+  const versions = [];
+  for (const entry of packages) {
+    if (!entry || typeof entry !== "object" || typeof entry.version !== "string" || !entry.version) {
+      throw new Error("package entry.version is required");
+    }
+    versions.push(entry.version);
+  }
+  if (new Set(versions).size !== 1) {
+    throw new Error(`package versions are not lockstep (${[...new Set(versions)].join(",")})`);
+  }
+  return versions[0];
 }

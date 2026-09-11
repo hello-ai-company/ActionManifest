@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { sha256File, writeSha256Sums } from "./sha256sums.js";
 import { verifyCanonicalArtifactLayout } from "./canonical-artifact.js";
 import { PUBLIC_PACKAGE_NAMES } from "./release-identity.js";
-import { EXPECTED_PACKAGE_NAMES } from "./canonical-validate.mjs";
+import { EXPECTED_PACKAGE_NAMES, validateCanonicalReleaseDir } from "./canonical-validate.mjs";
 
 function fixture(opts?: { badHash?: boolean; nest?: boolean; omitIdentity?: boolean }): string {
   const dl = mkdtempSync(join(tmpdir(), "canonical-art-"));
@@ -138,5 +138,96 @@ describe("verifyCanonicalArtifactLayout", () => {
 
   it("keeps EXPECTED_PACKAGE_NAMES lockstepped with PUBLIC_PACKAGE_NAMES", () => {
     expect([...EXPECTED_PACKAGE_NAMES]).toEqual([...PUBLIC_PACKAGE_NAMES]);
+  });
+});
+
+function manifestRoot(dl: string): string {
+  return existsSync(join(dl, "release-manifest.json")) ? dl : join(dl, "release-artifacts");
+}
+
+function mutateManifest(dl: string, fn: (manifest: Record<string, unknown>) => void): void {
+  const path = join(manifestRoot(dl), "release-manifest.json");
+  const manifest = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+  fn(manifest);
+  writeFileSync(path, JSON.stringify(manifest, null, 2) + "\n");
+}
+
+describe("validateCanonicalReleaseDir fail-closed identity", () => {
+  const head = "c0030b71e7497eb7e53b9348fa7101733f025b85";
+
+  it("PASS on a valid artifact", () => {
+    const dl = fixture();
+    try {
+      expect(
+        validateCanonicalReleaseDir({
+          dir: manifestRoot(dl),
+          expectedHead: head,
+          expectedVersion: "0.9.0-rc.0",
+          requireIdentity: true,
+        }).ok,
+      ).toBe(true);
+    } finally {
+      rmSync(dl, { recursive: true, force: true });
+    }
+  });
+
+  it("FAIL when a package entry.version is missing", () => {
+    const dl = fixture();
+    try {
+      mutateManifest(dl, (m) => {
+        const pkgs = m.packages as { name: string; version?: string }[];
+        delete pkgs[0]!.version;
+      });
+      expect(() =>
+        validateCanonicalReleaseDir({ dir: manifestRoot(dl), expectedHead: head }),
+      ).toThrow(/version is required/);
+    } finally {
+      rmSync(dl, { recursive: true, force: true });
+    }
+  });
+
+  it("FAIL when identity.packages is missing", () => {
+    const dl = fixture();
+    try {
+      mutateManifest(dl, (m) => {
+        const identity = m.identity as Record<string, unknown>;
+        delete identity.packages;
+      });
+      expect(() =>
+        validateCanonicalReleaseDir({ dir: manifestRoot(dl), expectedHead: head }),
+      ).toThrow(/identity\.packages is required/);
+    } finally {
+      rmSync(dl, { recursive: true, force: true });
+    }
+  });
+
+  it("FAIL when an identity package sha256 mismatches top-level packages", () => {
+    const dl = fixture();
+    try {
+      mutateManifest(dl, (m) => {
+        const identity = m.identity as { packages: { sha256: string; name: string }[] };
+        identity.packages[0]!.sha256 = "ff".repeat(32);
+      });
+      expect(() =>
+        validateCanonicalReleaseDir({ dir: manifestRoot(dl), expectedHead: head }),
+      ).toThrow(/sha256 mismatch/);
+    } finally {
+      rmSync(dl, { recursive: true, force: true });
+    }
+  });
+
+  it("FAIL when identity.publish_order mismatches publish_order", () => {
+    const dl = fixture();
+    try {
+      mutateManifest(dl, (m) => {
+        const identity = m.identity as { publish_order: string[] };
+        identity.publish_order = [...identity.publish_order].reverse();
+      });
+      expect(() =>
+        validateCanonicalReleaseDir({ dir: manifestRoot(dl), expectedHead: head }),
+      ).toThrow(/identity\.publish_order mismatch/);
+    } finally {
+      rmSync(dl, { recursive: true, force: true });
+    }
   });
 });

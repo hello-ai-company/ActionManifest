@@ -121,7 +121,7 @@ New TypeScript monorepo: `packages/{schema,core,adapters,temporal,extractor,veri
 - Year inheritance from 令和N年 in the same document is inferred — correct for Golden, must stay scoped to that document
 - Recursive `temporal.alternatives` in JSON Schema is accepted by Ajv 2020
 - CLI name `actionman` / internal name `action-manifest` are provisional
-- pnpm 10 may skip the esbuild install script; CI runs `node node_modules/esbuild/install.js`
+- pnpm 10-era esbuild `install.js` workaround is obsolete (pnpm 11 `allowBuilds` runs the postinstall; do not reintroduce `node node_modules/esbuild/install.js`)
 
 ## Recommended Phase 2
 

@@ -79,8 +79,9 @@ with its own `sourceId`.
 - Archive decompression, format sniffing, and file parsing safety are
   Xberg-upstream responsibilities (Xberg ships its own `security_limits`
   configuration); ActionManifest adds no sandbox of its own.
-- CI and the default test suite never run the native binding; live runtime
-  tests are opt-in (`pnpm xberg:integration`, local files/bytes only).
+- Default `pnpm test` never loads the native binding (portable). Release
+  Check gates a real native smoke (2/2 synthetic fixtures) on the canonical
+  `adapter-xberg` tarball (Node 22+). Local opt-in: `pnpm xberg:integration`.
 
 ## Errors
 

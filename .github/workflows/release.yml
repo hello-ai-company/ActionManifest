@@ -1,0 +1,236 @@
+# Manual staged OIDC release. NEVER tag-triggered. NEVER auto-approves.
+#
+# Prerequisite: merge this workflow to main BEFORE configuring npm Trusted
+# Publishers (the publisher record must name workflow filename `release.yml`).
+# Then a human completes docs/RELEASE_TRUSTED_PUBLISHING_SETUP.md and sets
+# repository variable NPM_TRUSTED_PUBLISHING_READY=true.
+#
+# Modes:
+#   stage  — download exact-head release-check-<sha>, npm stage publish
+#            <canonical.tgz> --tag next|latest. STOP. Human 2FA approve later.
+#   verify — registry READ + Node20 consumer smoke + Node22 Xberg smoke.
+#
+# This workflow does not: npm publish, npm stage approve, create tags,
+# create GitHub Releases, bump versions, or set NPM_TRUSTED_PUBLISHING_READY.
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "stage = OIDC stage publish of canonical tarballs; verify = registry+consumer proof (read-only)"
+        required: true
+        type: choice
+        options: [stage, verify]
+      git_sha:
+        description: "Exact commit SHA whose Release Check artifact will be staged/verified"
+        required: true
+        type: string
+      tag:
+        description: "Git tag that MUST point at git_sha (required for stage)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.inputs.git_sha }}-${{ github.event.inputs.mode }}
+  cancel-in-progress: false
+
+env:
+  NPM_TOKEN: ""
+  NODE_AUTH_TOKEN: ""
+  NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+  PINNED_NPM: "11.15.0"
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      run_id: ${{ steps.find.outputs.run_id }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.git_sha }}
+      - name: Fail closed on registry credentials
+        run: |
+          if [ -n "$NPM_TOKEN" ] || [ -n "$NODE_AUTH_TOKEN" ]; then
+            echo "registry write credentials must never be present"; exit 1;
+          fi
+      - name: Trusted Publishing readiness (stage only)
+        if: github.event.inputs.mode == 'stage'
+        run: |
+          if [ "${{ vars.NPM_TRUSTED_PUBLISHING_READY }}" != "true" ]; then
+            echo "FAIL LOUDLY: vars.NPM_TRUSTED_PUBLISHING_READY is not 'true'."
+            echo "A human must complete docs/RELEASE_TRUSTED_PUBLISHING_SETUP.md"
+            echo "(Environment npm-release, Trusted Publisher stage-only for 10 packages,"
+            echo "2FA + disallow tokens, tag protection) and then set the repository variable."
+            echo "This workflow will not stage until that is done. Do not set the var from CI."
+            exit 1
+          fi
+      - name: Stage requires a tag that points at git_sha on origin/main
+        if: github.event.inputs.mode == 'stage'
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          SHA="${{ github.event.inputs.git_sha }}"
+          if [ -z "$TAG" ]; then echo "stage mode requires the tag input"; exit 1; fi
+          git fetch origin main
+          git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}" || {
+            echo "tag $TAG does not exist on origin — create the immutable tag first"; exit 1;
+          }
+          TAG_SHA=$(git rev-list -n1 "$TAG")
+          if [ "$TAG_SHA" != "$SHA" ]; then
+            echo "tag $TAG points at $TAG_SHA, not $SHA"; exit 1;
+          fi
+          git merge-base --is-ancestor "$SHA" origin/main || {
+            echo "commit $SHA is not on origin/main — only reviewed main commits may stage";
+            exit 1;
+          }
+          EXPECTED="${TAG#v}"
+          for p in packages/*/package.json apps/cli/package.json; do
+            V=$(node -p "require('./$p').version")
+            if [ "$V" != "$EXPECTED" ]; then
+              echo "tag $TAG != $p version $V"; exit 1;
+            fi
+          done
+          case "$EXPECTED" in
+            *-*) if [ "${EXPECTED}" = "${EXPECTED%-*}" ]; then echo "internal prerelease parse error"; exit 1; fi ;;
+          esac
+      - name: Exact-commit gates green (CI + Release Check)
+        id: find
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SHA="${{ github.event.inputs.git_sha }}"
+          RUN_ID=""
+          for WORKFLOW in "CI" "Release Check"; do
+            LINE=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=$SHA&per_page=100" \
+              --jq "[.workflow_runs[] | select(.name == \"$WORKFLOW\")] | if length == 0 then \"missing\" else (.[0] | .conclusion + \" \" + (.id | tostring)) end")
+            STATUS=${LINE%% *}
+            ID=${LINE#* }
+            if [ "$STATUS" != "success" ]; then
+              echo "$WORKFLOW is not SUCCESS on $SHA (got: ${STATUS:-missing})"; exit 1;
+            fi
+            if [ "$WORKFLOW" = "Release Check" ]; then RUN_ID="$ID"; fi
+          done
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+      - name: Record lockstep version
+        id: meta
+        run: |
+          V=$(node -p "require('./packages/schema/package.json').version")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+  stage:
+    if: github.event.inputs.mode == 'stage'
+    needs: gates
+    runs-on: ubuntu-latest
+    environment: npm-release
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.inputs.git_sha }}
+      # Node + npm + artifacts + OIDC only. No pnpm/action-setup. No pack.
+      # No package-manager cache (must not restore a different lock/toolchain).
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          # cache intentionally omitted
+      - name: Pin npm CLI 11.15.0 (Trusted Publishing minimum 11.5.1; retain existing pin)
+        run: npm install --global npm@11.15.0
+      - name: Fail closed on registry credentials
+        run: |
+          if [ -n "$NPM_TOKEN" ] || [ -n "$NODE_AUTH_TOKEN" ]; then
+            echo "registry write credentials must never be present"; exit 1;
+          fi
+      - name: Download exact-head Release Check artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SHA="${{ github.event.inputs.git_sha }}"
+          mkdir -p /tmp/release-check-dl
+          gh run download "${{ needs.gates.outputs.run_id }}" \
+            -n "release-check-${SHA}" \
+            -D /tmp/release-check-dl
+          node scripts/normalize-canonical-artifact.mjs /tmp/release-check-dl release-artifacts
+      - name: Verify SHA256SUMS (cwd-independent; bare names + tarballs/)
+        run: node scripts/verify-sha256sums.mjs release-artifacts
+      - name: Stage exact tarballs (npm stage publish only)
+        run: node scripts/stage-from-artifact.mjs release-artifacts
+      - name: Upload non-secret stage evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: stage-evidence-${{ github.event.inputs.git_sha }}
+          path: |
+            release-artifacts/stage-evidence.json
+            release-artifacts/SHA256SUMS
+            release-artifacts/release-manifest.json
+          retention-days: 90
+
+  verify-registry:
+    if: github.event.inputs.mode == 'verify'
+    needs: gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.inputs.git_sha }}
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          # cache intentionally omitted
+      - run: pnpm install --frozen-lockfile
+      - name: Download exact-head Release Check artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/release-check-dl
+          gh run download "${{ needs.gates.outputs.run_id }}" \
+            -n "release-check-${{ github.event.inputs.git_sha }}" \
+            -D /tmp/release-check-dl
+          node scripts/normalize-canonical-artifact.mjs /tmp/release-check-dl release-artifacts
+      - name: Registry truth (read-only)
+        run: pnpm release:registry-verify --version "${{ needs.gates.outputs.version }}" --artifacts release-artifacts
+
+  verify-node20:
+    if: github.event.inputs.mode == 'verify'
+    needs: gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+      - name: Node 20 registry consumer smoke (fresh temp cache)
+        run: node scripts/consumer-artifact-smoke.mjs --registry --version "${{ needs.gates.outputs.version }}"
+
+  verify-xberg:
+    if: github.event.inputs.mode == 'verify'
+    needs: gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Node 22 Xberg registry smoke (2/2)
+        run: node scripts/xberg-artifact-smoke.mjs --registry --version "${{ needs.gates.outputs.version }}"

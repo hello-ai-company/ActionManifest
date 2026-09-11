@@ -51,12 +51,12 @@ built with a different toolchain.
 
 - The exact-head **Release Check artifact** is the canonical release
   artifact: `release-artifacts/` from the CI run on the exact commit.
-- `bootstrap:check --publish-ready` downloads that canonical artifact and
-  requires the local tarball set to be byte-identical (10/10 SHA-256) —
-  local rebuilds that differ from the reviewed CI artifact are BLOCKED.
-- The future `release.yml` (template) no longer re-packs in the publish job:
-  the verify job builds + uploads `canonical-release-<sha>`; the publish job
-  downloads it, re-verifies `SHA256SUMS`, and publishes exactly those files.
+- `bootstrap:check --publish-ready` does **not** local-pack. It downloads
+  `release-check-<sha>` and plans from those files. `--prepare` may pack
+  locally (NON-CANONICAL).
+- `release.yml` (manual `workflow_dispatch`) never re-packs: it downloads
+  the exact-head Release Check artifact and runs `npm stage publish` on
+  those `.tgz` files only.
 
 ### 4. Never mix artifact sets
 

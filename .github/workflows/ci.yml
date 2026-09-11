@@ -22,8 +22,8 @@ jobs:
           # pnpm/pnpm#10167) which requires Node >= 22 to EXECUTE. The
           # consumer-facing runtime floor is unchanged: every public package
           # still declares engines.node >= 20 (adapter-xberg >= 22).
-          # The native Xberg runtime is covered by opt-in
-          # `pnpm xberg:integration` on Node 22+ only.
+          # Native Xberg is release-gated on the canonical artifact
+          # (Release Check Node 22 job). Local opt-in: `pnpm xberg:integration`.
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile

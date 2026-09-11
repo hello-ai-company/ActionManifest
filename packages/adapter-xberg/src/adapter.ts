@@ -58,8 +58,9 @@ async function runXberg(input: XbergRuntimeInput): Promise<unknown> {
  * @experimental The native runtime bridge (`xberg-uri` / `xberg-bytes`
  * inputs, which dynamically import the NAPI binding) is experimental in the
  * 0.x line: verified against `@xberg-io/xberg` exactly 1.1.3 (pinned), Node
- * >= 22, covered by opt-in live integration tests (`pnpm xberg:integration`)
- * rather than the default CI matrix. The bridge API may change between 0.x
+ * >= 22. Default `pnpm test` stays portable; Release Check gates a real
+ * native smoke (2/2 synthetic fixtures) on the canonical tarball. Local
+ * opt-in: `pnpm xberg:integration`. The bridge API may change between 0.x
  * minors; the Layer A mapper follows the normal 0.x policy.
  */
 export class XbergAdapter implements DocumentAdapter<XbergAdapterInput> {

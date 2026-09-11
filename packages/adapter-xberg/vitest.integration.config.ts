@@ -8,7 +8,9 @@ const root = dirname(fileURLToPath(import.meta.url));
  * Opt-in live-runtime tests for the Xberg native binding. Not part of the
  * default `pnpm test` run (native binaries are platform-dependent); run
  * explicitly with `pnpm xberg:integration`. Requires Node >= 22 (the
- * adapter-xberg engines floor; default CI runs on Node 20 without these).
+ * adapter-xberg engines floor). Toolchain CI is Node 22+; Node 20 consumer
+ * proof excludes this package. Release Check also gates native smoke on
+ * the canonical artifact.
  * Offline inputs only (local files / bytes) — no network.
  */
 export default defineConfig({

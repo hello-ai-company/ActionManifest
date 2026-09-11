@@ -21,7 +21,8 @@ pnpm schema:validate
 pnpm benchmark:smoke
 ```
 
-Node 20+. pnpm workspaces. Default extractor is deterministic (no network).
+Node >= 20 to consume; toolchain (pnpm 11.23.0 / canonical pack) needs
+Node >= 22. pnpm workspaces. Default extractor is deterministic (no network).
 
 ## CI gates (all must be green)
 

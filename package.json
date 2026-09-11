@@ -30,6 +30,7 @@
     "release:dry-run": "pnpm build && tsx scripts/release-dry-run.ts",
     "bootstrap:check": "tsx scripts/bootstrap-release.ts",
     "release:reproducibility": "tsx scripts/release-reproducibility.ts",
+    "release:registry-verify": "tsx scripts/verify-registry-release.ts",
     "release:check": "pnpm governance:validate && pnpm lint && pnpm docs:check && pnpm typecheck && pnpm schema:validate && pnpm test && pnpm integration:test && pnpm conformance && pnpm conformance:reference && pnpm benchmark:smoke && pnpm benchmark && pnpm pack:check && pnpm docs:examples && pnpm release:dry-run && pnpm release:reproducibility",
     "release:check:quick": "pnpm docs:check && pnpm pack:check && pnpm docs:examples && pnpm release:dry-run && pnpm release:reproducibility --runs 2"
   },

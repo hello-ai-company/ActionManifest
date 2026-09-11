@@ -8,21 +8,22 @@ Three version axes evolve independently. Never conflate them.
 | **Package version** (npm, per package) | `0.1.0` | The TypeScript reference implementation's API |
 | **Conformance suite version** | `0.1.0` | The official test vectors (`conformance/manifest.json`) |
 
-## Current state (Phase 2.3)
+## Current state (Phase 2.4B)
 
 | Component | Version | Notes |
 | --- | --- | --- |
-| All 10 npm packages (lockstep) | `0.1.0` — **unpublished**; first release `0.9.0-rc.1` | Lockstep/fixed versioning (ADR 0007) |
+| All 10 npm packages (lockstep) | `0.9.0-rc.0` **on npm** (no git tag / GitHub Release) | Lockstep/fixed versioning (ADR 0007) |
 | Manifest schema | `0.1.0` + `0.2.0` (both frozen, sha256-pinned) | `0.2.0` is current; `0.1.0` still accepted by readers |
 | CanonicalDocument schema | unversioned | additive-only evolution (integration boundary) |
 | Conformance suite | `0.2.0` | 65 universal vectors + 4 reference-serialization goldens |
-| Node.js | `>= 20` (9 packages + CLI); `>= 22` (`adapter-xberg` only) | developed/tested on Node 22 |
-| `@xberg-io/xberg` | exactly `1.1.3` | exact pin (ADR 0007); optional package only |
-| pnpm | `10.14.0` (`packageManager`) | workspace + pack/publish tooling |
+| Node.js engines | `>= 20` (9 packages + CLI); `>= 22` (`adapter-xberg` only) | consumer floor unchanged |
+| Node.js toolchain | CI / canonical pack: **Node >= 22** + pnpm 11.23.0 | consumer proof: Node 20 via npm |
+| `@xberg-io/xberg` | exactly `1.1.3` | exact pin (ADR 0007); Release Check native gate (2/2) |
+| pnpm | `11.23.0` (`packageManager`) | deterministic pack (upstream #10167) |
 
 ## Stability & experimental markers (0.x line)
 
-The whole line is `0.x` and **unpublished** until `0.9.0-rc.1`: no stability
+The whole line is `0.x`. `0.9.0-rc.0` is on npm; there is still no stability
 promise beyond what the conformance suite pins. Within that line, markers are
 applied in three places (package README + this document + JSDoc):
 
@@ -30,18 +31,20 @@ applied in three places (package README + this document + JSDoc):
 | --- | --- | --- |
 | 9 core packages (schema, core, temporal, adapters, extractor, verifier, exporters, consumer, cli) | `0.x` — normal pre-1.0 policy (this document) | README "Known limitations"; no per-API marker |
 | `@actionmanifest/adapter-xberg` Layer A — `mapXbergResultToCanonical` | **Stable structural mapper** (pure; no native binding, no network) — normal 0.x policy | README stability split; JSDoc stability note |
-| `@actionmanifest/adapter-xberg` Layer B — `XbergAdapter` runtime bridge (`xberg-uri` / `xberg-bytes`, dynamic NAPI import) | **Experimental** — may change between 0.x minors; Node >= 22; live tests opt-in (`pnpm xberg:integration`, Node 22+) | README stability split; this table; JSDoc `@experimental` on `XbergAdapter` |
+| `@actionmanifest/adapter-xberg` Layer B — `XbergAdapter` runtime bridge (`xberg-uri` / `xberg-bytes`, dynamic NAPI import) | **Experimental** — may change between 0.x minors; Node >= 22; Release Check native gate (canonical tarball, 2/2); local opt-in `pnpm xberg:integration` | README stability split; this table; JSDoc `@experimental` on `XbergAdapter` |
 
-Default CI runs on **Node 20** (all packages except the Xberg bridge paths);
-`pnpm xberg:integration` is the opt-in Node 22+ lane for the native runtime.
+Toolchain CI runs on **Node 22+**. Release Check proves **Node 20** consumers
+against canonical tarballs (npm, excluding adapter-xberg) and gates Xberg
+on **Node 22+**. Default `pnpm test` stays portable (no native binding).
 
 ## Schema compatibility
 
 - **Shipped (frozen) schema versions are immutable.** `0.1.0` and `0.2.0` are
   frozen contracts, pinned by sha256 (`packages/schema/schemas/checksums.json`)
   and enforced in CI. A frozen schema MUST NOT change — not even for
-  clarifications. ("Shipped" here means shipped in this repository — as of
-  2026-09-10 nothing has been published to npm.)
+  clarifications. ("Shipped" here means the frozen schema bytes in this
+  repository. Package versions `0.9.0-rc.0` are on npm; schema version
+  axes stay independent of the package version.)
 - **Breaking schema change → new `schema_version`.** Removing/renaming a
   field, tightening a type, or changing field semantics requires a new
   version directory (`schemas/v0.3/…`) and dispatch entry.

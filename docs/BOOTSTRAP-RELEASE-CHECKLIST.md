@@ -1,7 +1,8 @@
 # Bootstrap Release Checklist — 0.9.0-rc.0
 
-The first-ever publish of `@actionmanifest/*`. **Manual, maintainer-only,
-2FA-protected.** Agents prepare and verify; they never publish.
+The first-ever publish of `@actionmanifest/*` — **COMPLETE (2026-09-11)**.
+10/10 packages are on npm at `0.9.0-rc.0`. There is **no git tag and no
+GitHub Release**. Do not republish rc.0. Agents never publish.
 
 ## Why a manual bootstrap
 
@@ -26,9 +27,9 @@ identities safely; `0.9.0-rc.1+` ships via OIDC only.
 
 ## Manual prerequisites (maintainer)
 
-- [ ] npm org/scope `actionmanifest` exists and you hold publish rights (owner). Agents never create it.
-- [ ] Maintainer account has 2FA enabled (required for publish and for `npm trust`).
-- [ ] You reviewed the exact tarballs listed in `release-artifacts/bootstrap-plan.json`.
+- [x] npm org/scope `actionmanifest` exists (packages are on the registry)
+- [x] Maintainer 2FA was used for the bootstrap publish
+- [x] Exact reviewed tarballs were published (do not re-pack / republish)
 
 ## Manual bootstrap publish (maintainer ONLY)
 
@@ -48,10 +49,9 @@ npm publish ./release-artifacts/tarballs/<file>.tgz \
   --registry https://registry.npmjs.org/
 ```
 
-- [ ] `pnpm bootstrap:check --publish-ready` printed `READY FOR MANUAL BOOTSTRAP`
-- [ ] All 10 commands executed in `publish_order`
-- [ ] Every command used `--access public`, `--tag next`, AND `--registry https://registry.npmjs.org/`
-- [ ] `latest` dist-tag untouched (`npm view <pkg> dist-tags --registry https://registry.npmjs.org/` shows only `next`)
+- [x] All 10 commands executed in `publish_order` (historical)
+- [x] Every command used `--access public`, `--tag next`, AND `--registry https://registry.npmjs.org/`
+- [x] `next=0.9.0-rc.0` — **and** `latest=0.9.0-rc.0` (first-publish behaviour; documented; do not auto-repair)
 
 ## Post-publish verification (maintainer)
 
@@ -83,7 +83,7 @@ For each of the 10 packages:
       ```
 - [ ] Fresh directory `npm install <pkg>@0.9.0-rc.0 --registry $R` works
 - [ ] `npm install @actionmanifest/cli@0.9.0-rc.0 --registry $R` → `actionman --version` → `0.9.0-rc.0`, `actionman conformance` → CONFORMANT
-- [ ] `npm view <pkg> dist-tags --registry $R` shows `next` only (no `latest`)
+- [x] `npm view <pkg> dist-tags --registry $R` shows `next=0.9.0-rc.0` and historically `latest=0.9.0-rc.0` (do not mutate)
 
 ## Trusted Publisher configuration (after ALL 10 exist)
 
@@ -91,15 +91,14 @@ Per package, on npmjs.com (or `npm trust github`, npm CLI ≥ 11.15, 2FA):
 
 - [ ] Organization/user: `hello-ai-company`
 - [ ] Repository: `ActionManifest`
-- [ ] Workflow filename: `release.yml`
-- [ ] Environment: `release`
-- [ ] Allowed actions: `npm publish`
+- [ ] Workflow filename: `release.yml` (**must already be on `main`**)
+- [ ] Environment: `npm-release`
+- [ ] Allowed actions: `npm stage` (stage-only)
 - [ ] Direct token publishing restricted (org/package settings)
+- [ ] Then set `NPM_TRUSTED_PUBLISHING_READY=true` (human; never from CI)
 
-## Then (Phase 2.4B)
-
-- [ ] Enable `.github/workflows/release.yml` from `release.yml.template`
-- [ ] Bump `0.9.0-rc.1`, tag `v0.9.0-rc.1`, OIDC release via GitHub Actions
+See [RELEASE_TRUSTED_PUBLISHING_SETUP.md](RELEASE_TRUSTED_PUBLISHING_SETUP.md).
+**Do not bump to rc.1 in this phase.**
 
 ## Partial bootstrap failure policy
 

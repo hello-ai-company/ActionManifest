@@ -111,6 +111,16 @@ describe("docs:check bootstrap-publish-safety", () => {
     expect(v[0]!.rule).toBe("bootstrap-publish-safety");
   });
 
+  it("flags a stage-publish command line without the registry pin", () => {
+    const STAGE = "npm stage pub" + "lish";
+    const v = findForbiddenPatterns(
+      `${STAGE} ./release-artifacts/tarballs/x.tgz --access public --tag next\n`,
+      "docs/x.md",
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]!.rule).toBe("bootstrap-publish-safety");
+  });
+
   it("accepts a publish command line with the registry pin", () => {
     const v = findForbiddenPatterns(
       `${PUB} ./release-artifacts/tarballs/x.tgz --access public --tag next ${REG}\n`,

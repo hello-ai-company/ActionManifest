@@ -184,3 +184,13 @@ caught by a regression test).
   (RELEASING.md §10): no unpublish, no overwrite, no silent solo bump.
 - Phase 2.4B enables `release.yml` only after all 10 packages exist and
   Trusted Publishers are configured — verified by a preflight step.
+
+## Phase 2.4B addendum (2026-09-11)
+
+`0.9.0-rc.0` is COMPLETE on npm (10/10). No git tag, no GitHub Release, no
+provenance. `latest=0.9.0-rc.0` is a historical first-publish observation
+and must not be auto-repaired. `.github/workflows/release.yml` is now a
+real `workflow_dispatch` stage|verify workflow (environment `npm-release`,
+`npm stage publish` only). Merge that file to `main` before configuring
+Trusted Publishers. `NPM_TRUSTED_PUBLISHING_READY` stays unset until a
+human finishes `docs/RELEASE_TRUSTED_PUBLISHING_SETUP.md`.

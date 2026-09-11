@@ -7,8 +7,9 @@ import { XbergAdapter } from "./index.js";
 /**
  * Live Xberg runtime bridge tests (opt-in; run via `pnpm xberg:integration`).
  * These load the native binding and run real extraction on synthetic local
- * inputs. No network. Not part of the default CI gate — see
- * docs/ADAPTER-XBERG.md for the rationale.
+ * inputs. No network. Default `pnpm test` excludes this file; Release Check
+ * runs the equivalent 2/2 smoke against the canonical tarball. See
+ * docs/ADAPTER-XBERG.md.
  */
 
 const NOTICE = `保護者向け行事案内

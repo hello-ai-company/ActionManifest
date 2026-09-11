@@ -10,7 +10,7 @@ const root = join(here, "..");
 const CHECKOUT = "actions/checkout@11d5960a326750d5838078e36cf38b85af677262";
 const SETUP_NODE = "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020";
 const UPLOAD = "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02";
-const DOWNLOAD = "actions/download-artifact@fa0a91b85d4f404e444e00e005071372651a0412";
+const DOWNLOAD = "actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e";
 const PNPM_SETUP = "pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1";
 
 function read(rel: string): string {

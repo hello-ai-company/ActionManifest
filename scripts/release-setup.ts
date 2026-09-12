@@ -12,7 +12,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PUBLIC_PACKAGE_NAMES } from "./release-identity.js";
 import { GhControlPlaneClient, readOnlyGitHub, type GitHubControlPlaneClient } from "./release-setup-github.js";
-import { OfficialNpmTrustClient, readOnlyNpm, type NpmTrustClient } from "./release-setup-npm.js";
+import {
+  OfficialNpmTrustClient,
+  TRUSTED_PUBLISHER_WRITE_PACE_MS,
+  readOnlyNpm,
+  type NpmTrustClient,
+} from "./release-setup-npm.js";
 import {
   READY_VARIABLE_NAME,
   RELEASE_ENVIRONMENT_NAME,
@@ -42,6 +47,7 @@ export interface SetupDeps {
   readWorkflow: () => string;
   writeReport?: (report: ControlPlaneReport) => void;
   log: (line: string) => void;
+  paceTrustedPublisherWrites?: (ms: number) => Promise<void>;
 }
 
 export interface ControlPlaneReport {
@@ -195,6 +201,14 @@ async function applyMutations(
     } else if (item.id.startsWith("tp:") && item.action === "CREATE") {
       await deps.npm.addTrustedPublisher(item.resource);
       writes.push(item.id);
+      const remainingTp = pending.filter(
+        (p) => p.id.startsWith("tp:") && p.action === "CREATE" && !writes.includes(p.id),
+      );
+      if (remainingTp.length > 0) {
+        await (deps.paceTrustedPublisherWrites ?? defaultPaceTrustedPublisherWrites)(
+          TRUSTED_PUBLISHER_WRITE_PACE_MS,
+        );
+      }
     } else if (item.id.startsWith("security:") && item.action === "UPDATE") {
       await deps.npm.applyAutomatableSecurity(item.resource);
       writes.push(item.id);
@@ -278,6 +292,12 @@ export function parseSetupArgs(argv: string[]): SetupMode {
   if (apply) return "apply";
   if (check) return "check";
   return "check";
+}
+
+async function defaultPaceTrustedPublisherWrites(ms: number): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 function liveDeps(): SetupDeps {

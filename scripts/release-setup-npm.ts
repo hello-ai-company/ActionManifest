@@ -17,6 +17,7 @@ import {
   type TrustedPublisherRecord,
   normalizeProvider,
 } from "./release-setup-plan.js";
+import { pinnedNpmInvocation, resolvePinnedNpm } from "./release-setup-npm-runner.js";
 
 export interface NpmCliCapabilities {
   version: string;
@@ -44,6 +45,9 @@ export interface NpmExecResult {
 }
 
 export type NpmExec = (args: string[], options?: { inheritStdio?: boolean }) => NpmExecResult;
+
+/** Official npm docs: bulk `npm trust github` may pass `--yes`. Pace writes ~2s. */
+export const TRUSTED_PUBLISHER_WRITE_PACE_MS = 2000;
 
 const FORBIDDEN_NPM_ARGS = [
   ["publish"],
@@ -83,6 +87,7 @@ export function defaultNpmExec(args: string[], options?: { inheritStdio?: boolea
   if (isForbiddenNpmArgv(args)) {
     return { status: 2, stdout: "", stderr: `refusing forbidden npm argv: ${args[0] ?? ""}` };
   }
+  const invocation = pinnedNpmInvocation(args, resolvePinnedNpm());
   const spawnOpts: SpawnSyncOptions = {
     encoding: "utf8",
     env: {
@@ -96,7 +101,7 @@ export function defaultNpmExec(args: string[], options?: { inheritStdio?: boolea
   } else {
     spawnOpts.stdio = ["ignore", "pipe", "pipe"];
   }
-  const r = spawnSync("npm", args, spawnOpts);
+  const r = spawnSync(invocation.command, invocation.args, spawnOpts);
   return {
     status: r.status,
     stdout: typeof r.stdout === "string" ? r.stdout : "",
@@ -227,7 +232,9 @@ export class OfficialNpmTrustClient implements NpmTrustClient {
     const trustHelp = `${trust.stdout}\n${trust.stderr}`;
     const accessHelp = `${access.stdout}\n${access.stderr}`;
     const stageHelp = `${stage.stdout}\n${stage.stderr}`;
-    const notes: string[] = [`npm --version ${version || "UNKNOWN"}`];
+    const notes: string[] = [
+      `pinned npm runner ${PINNED_NPM_CLI} --version ${version || "UNKNOWN"} (host npm ignored)`,
+    ];
     if (!version) notes.push("npm --version produced no output");
     return {
       version,
@@ -340,6 +347,7 @@ export class OfficialNpmTrustClient implements NpmTrustClient {
       "--environment",
       RELEASE_ENVIRONMENT_NAME,
       "--allow-stage-publish",
+      "--yes",
       "--registry",
       "https://registry.npmjs.org/",
     ];
@@ -370,8 +378,10 @@ export class OfficialNpmTrustClient implements NpmTrustClient {
         ],
       };
     }
-    // `npm access set mfa=` can express publish-time 2FA; "disallow tokens" is
-    // documented as an npmjs.com package Settings control (UI / break-glass).
+    // Official CLI: `npm access set mfa=none|publish|automation`. Official npm
+    // docs do NOT equate mfa=publish with Settings → Publishing access
+    // "Require two-factor authentication and disallow tokens" (that UI option
+    // additionally blocks granular tokens regardless of bypass-2FA). Not automated.
     const accessGet = this.exec([
       "access",
       "list",
@@ -401,7 +411,7 @@ export class OfficialNpmTrustClient implements NpmTrustClient {
       trustedPublishingUsed,
       status: "MANUAL_REQUIRED",
       notes: [
-        "package publishing-access 'require 2FA and disallow tokens' is not a safely documented official CLI write — MANUAL_REQUIRED (UI break-glass). Trusted Publishing used is derived from npm trust list.",
+        "package publishing-access 'require 2FA and disallow tokens' is not officially equivalent to `npm access set mfa=publish` — MANUAL_REQUIRED (UI break-glass). Trusted Publishing used is derived from npm trust list.",
       ],
     };
   }

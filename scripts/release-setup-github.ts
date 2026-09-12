@@ -11,12 +11,15 @@ import {
   RELEASE_REPO,
   RELEASE_REPO_SLUG,
   RELEASE_RULESET_NAME,
-  RELEASE_TAG_INCLUDE,
   READY_VARIABLE_NAME,
-  MANAGED_RULESET_RULES,
+  desiredRulesetPayload,
+  emptyEnvironmentActual,
+  managedRulesetUpdatePayload,
+  type EnvironmentReviewer,
   type GitHubEnvironmentActual,
   type ReadyVariableActual,
   type RepoIdentityActual,
+  type RulesetRuleObject,
   type RulesetSnapshot,
   type TagRulesetActual,
 } from "./release-setup-plan.js";
@@ -94,31 +97,255 @@ export function defaultGhExec(args: string[], body?: unknown): GhApiResult {
   };
 }
 
-function env404(name: string): GitHubEnvironmentActual {
+export interface GhReadResult {
+  ok: boolean;
+  status: number | null;
+  json: unknown;
+  stdout?: string;
+  stderr?: string;
+}
+
+export function classifyGhReadFailure(status: number | null): "AUTH_REQUIRED" | "UNKNOWN" {
+  return status === 401 || status === 403 ? "AUTH_REQUIRED" : "UNKNOWN";
+}
+
+const KNOWN_PROTECTION_TYPES = new Set(["wait_timer", "required_reviewers", "branch_policy"]);
+
+export function parseReviewers(raw: unknown): { ok: true; reviewers: EnvironmentReviewer[] } | { ok: false } {
+  if (raw == null) return { ok: true, reviewers: [] };
+  if (!Array.isArray(raw)) return { ok: false };
+  const reviewers: EnvironmentReviewer[] = [];
+  for (const row of raw) {
+    if (!row || typeof row !== "object") return { ok: false };
+    const r = row as { type?: unknown; id?: unknown; reviewer?: { id?: unknown; type?: unknown } };
+    const type = r.type === "User" || r.type === "Team" ? r.type : r.reviewer?.type;
+    const idRaw = typeof r.id === "number" ? r.id : r.reviewer?.id;
+    if ((type !== "User" && type !== "Team") || typeof idRaw !== "number") return { ok: false };
+    reviewers.push({ type, id: idRaw });
+  }
+  return { ok: true, reviewers };
+}
+
+export function buildEnvironmentPutBody(actual: GitHubEnvironmentActual): Record<string, unknown> {
   return {
-    exists: false,
-    name,
-    deploymentBranches: [],
-    requiredReviewerCount: 0,
-    secretNames: [],
-    status: "MISSING",
-    notes: [`environment ${name} does not exist`],
+    wait_timer: actual.waitTimer ?? 0,
+    prevent_self_review: actual.preventSelfReview ?? false,
+    reviewers: actual.requiredReviewers.map((r) => ({ type: r.type, id: r.id })),
+    deployment_branch_policy: {
+      protected_branches: false,
+      custom_branch_policies: true,
+    },
   };
 }
 
-function desiredRulesetBody(): Record<string, unknown> {
-  return {
-    name: RELEASE_RULESET_NAME,
-    target: "tag",
-    enforcement: "active",
-    conditions: {
-      ref_name: {
-        include: [RELEASE_TAG_INCLUDE],
-        exclude: [],
+export type EnvironmentWritePlan =
+  | { kind: "CREATE"; putBody: Record<string, unknown> }
+  | { kind: "POST_BRANCH_ONLY"; reason: string }
+  | { kind: "PUT_THEN_POST"; reason: string; putBody: Record<string, unknown> }
+  | { kind: "NOOP"; reason: string }
+  | { kind: "STOP"; reason: string };
+
+export function planEnvironmentWrite(actual: GitHubEnvironmentActual): EnvironmentWritePlan {
+  if (actual.status === "AUTH_REQUIRED" || actual.status === "UNKNOWN") {
+    return { kind: "STOP", reason: actual.notes[0] ?? "environment discovery fail-closed" };
+  }
+  if (!actual.exists || actual.status === "MISSING") {
+    return {
+      kind: "CREATE",
+      putBody: {
+        wait_timer: 0,
+        prevent_self_review: false,
+        reviewers: [],
+        deployment_branch_policy: {
+          protected_branches: false,
+          custom_branch_policies: true,
+        },
       },
-    },
-    rules: MANAGED_RULESET_RULES.map((type) => ({ type })),
+    };
+  }
+  if (actual.secretsReadStatus !== "OK" || actual.branchPoliciesReadStatus !== "OK") {
+    return { kind: "STOP", reason: "refusing UPDATE on unread secrets or branch policies" };
+  }
+  const hasMain = actual.deploymentBranches.includes("main");
+  const customOn = actual.deploymentBranchPolicy?.custom_branch_policies === true;
+  if (hasMain && customOn) {
+    return { kind: "NOOP", reason: "environment already has main + custom branch policies" };
+  }
+  if (!hasMain && customOn) {
+    return { kind: "POST_BRANCH_ONLY", reason: "add main deployment branch policy; no Environment PUT" };
+  }
+  if (!actual.protectionMetadataRepresentable) {
+    return { kind: "STOP", reason: "cannot represent protection metadata safely — no overwrite" };
+  }
+  return {
+    kind: "PUT_THEN_POST",
+    reason: "enable custom_branch_policies while preserving wait_timer/reviewers/prevent_self_review",
+    putBody: buildEnvironmentPutBody(actual),
   };
+}
+
+export function parseEnvironmentDiscovery(
+  name: string,
+  envRes: GhReadResult,
+  secretsRes: GhReadResult | null,
+  branchRes: GhReadResult | null,
+): GitHubEnvironmentActual {
+  if (!envRes.ok) {
+    if (envRes.status === 404 || /Not Found|404/i.test(`${envRes.stderr ?? ""}${envRes.stdout ?? ""}`)) {
+      return emptyEnvironmentActual({
+        exists: false,
+        name,
+        status: "MISSING",
+        notes: [`environment ${name} does not exist`],
+      });
+    }
+    const status = classifyGhReadFailure(envRes.status);
+    return emptyEnvironmentActual({
+      exists: false,
+      name,
+      status,
+      notes: [
+        status === "AUTH_REQUIRED"
+          ? "cannot read GitHub Environment (401/403)"
+          : "cannot read GitHub Environment",
+      ],
+    });
+  }
+
+  const body = (envRes.json ?? {}) as {
+    name?: string;
+    protection_rules?: {
+      type?: string;
+      wait_timer?: number;
+      prevent_self_review?: boolean;
+      reviewers?: unknown[];
+    }[];
+    wait_timer?: number;
+    prevent_self_review?: boolean;
+    deployment_branch_policy?: { custom_branch_policies?: boolean; protected_branches?: boolean } | null;
+  };
+
+  const rules = Array.isArray(body.protection_rules) ? body.protection_rules : [];
+  let representable = true;
+  for (const rule of rules) {
+    if (rule?.type && !KNOWN_PROTECTION_TYPES.has(rule.type)) {
+      representable = false;
+    }
+  }
+  const waitRule = rules.find((r) => r.type === "wait_timer");
+  const reviewerRule = rules.find((r) => r.type === "required_reviewers");
+  const parsedReviewers = parseReviewers(reviewerRule?.reviewers);
+  if (reviewerRule && !parsedReviewers.ok) representable = false;
+  const reviewers = parsedReviewers.ok ? parsedReviewers.reviewers : [];
+  const waitTimer =
+    typeof waitRule?.wait_timer === "number"
+      ? waitRule.wait_timer
+      : typeof body.wait_timer === "number"
+        ? body.wait_timer
+        : waitRule
+          ? null
+          : 0;
+  if (waitRule && waitTimer === null) representable = false;
+  const preventSelfReview =
+    typeof reviewerRule?.prevent_self_review === "boolean"
+      ? reviewerRule.prevent_self_review
+      : typeof body.prevent_self_review === "boolean"
+        ? body.prevent_self_review
+        : reviewerRule
+          ? null
+          : false;
+  if (reviewerRule && preventSelfReview === null) representable = false;
+
+  const policy = body.deployment_branch_policy;
+  const deploymentBranchPolicy =
+    policy && typeof policy.custom_branch_policies === "boolean" && typeof policy.protected_branches === "boolean"
+      ? {
+          custom_branch_policies: policy.custom_branch_policies,
+          protected_branches: policy.protected_branches,
+        }
+      : policy == null
+        ? null
+        : null;
+  if (policy && deploymentBranchPolicy === null) representable = false;
+
+  if (!secretsRes || !secretsRes.ok) {
+    const status = classifyGhReadFailure(secretsRes?.status ?? null);
+    return emptyEnvironmentActual({
+      exists: true,
+      name: body.name ?? name,
+      waitTimer,
+      preventSelfReview,
+      requiredReviewers: reviewers,
+      requiredReviewerCount: reviewers.length,
+      deploymentBranchPolicy,
+      protectionMetadataRepresentable: representable,
+      secretNames: [],
+      secretsReadStatus: status,
+      branchPoliciesReadStatus: "SKIPPED",
+      status,
+      notes: [
+        status === "AUTH_REQUIRED"
+          ? "cannot read environment secrets (401/403) — fail closed"
+          : "cannot read environment secrets — fail closed",
+      ],
+    });
+  }
+
+  const secretNames: string[] = [];
+  if (secretsRes.json && typeof secretsRes.json === "object") {
+    const payload = secretsRes.json as { secrets?: { name?: string }[] };
+    for (const s of payload.secrets ?? []) {
+      if (s.name) secretNames.push(s.name);
+    }
+  }
+
+  if (!branchRes || !branchRes.ok) {
+    const status = classifyGhReadFailure(branchRes?.status ?? null);
+    return emptyEnvironmentActual({
+      exists: true,
+      name: body.name ?? name,
+      waitTimer,
+      preventSelfReview,
+      requiredReviewers: reviewers,
+      requiredReviewerCount: reviewers.length,
+      deploymentBranchPolicy,
+      protectionMetadataRepresentable: representable,
+      secretNames,
+      secretsReadStatus: "OK",
+      branchPoliciesReadStatus: status,
+      status,
+      notes: [
+        status === "AUTH_REQUIRED"
+          ? "cannot read deployment branch policies (401/403) — fail closed"
+          : "cannot read deployment branch policies — fail closed",
+      ],
+    });
+  }
+
+  const branchNames: string[] = [];
+  if (branchRes.json && typeof branchRes.json === "object") {
+    const payload = branchRes.json as { branch_policies?: { name?: string }[] };
+    for (const p of payload.branch_policies ?? []) {
+      if (p.name) branchNames.push(p.name);
+    }
+  }
+
+  return emptyEnvironmentActual({
+    exists: true,
+    name: body.name ?? name,
+    deploymentBranches: branchNames,
+    requiredReviewers: reviewers,
+    requiredReviewerCount: reviewers.length,
+    waitTimer,
+    preventSelfReview,
+    deploymentBranchPolicy,
+    protectionMetadataRepresentable: representable,
+    secretNames,
+    secretsReadStatus: "OK",
+    branchPoliciesReadStatus: "OK",
+    status: "OK",
+    notes: representable ? [] : ["environment has protection metadata that cannot be represented safely"],
+  });
 }
 
 export class GhControlPlaneClient implements GitHubControlPlaneClient {
@@ -161,70 +388,21 @@ export class GhControlPlaneClient implements GitHubControlPlaneClient {
       "GET",
       `repos/${RELEASE_OWNER}/${RELEASE_REPO}/environments/${name}`,
     ]);
-    if (!envRes.ok) {
-      if (envRes.status === 404 || /Not Found|404/i.test(envRes.stderr + envRes.stdout)) {
-        return env404(name);
-      }
-      if (envRes.status === 401 || envRes.status === 403) {
-        return {
-          exists: false,
-          name,
-          deploymentBranches: [],
-          requiredReviewerCount: 0,
-          secretNames: [],
-          status: "AUTH_REQUIRED",
-          notes: ["cannot read GitHub Environment (401/403)"],
-        };
-      }
-      return {
-        exists: false,
-        name,
-        deploymentBranches: [],
-        requiredReviewerCount: 0,
-        secretNames: [],
-        status: "UNKNOWN",
-        notes: ["cannot read GitHub Environment"],
-      };
+    let secretsRes: GhApiResult | null = null;
+    let branchRes: GhApiResult | null = null;
+    if (envRes.ok) {
+      secretsRes = this.exec([
+        "-X",
+        "GET",
+        `repos/${RELEASE_OWNER}/${RELEASE_REPO}/environments/${name}/secrets`,
+      ]);
+      branchRes = this.exec([
+        "-X",
+        "GET",
+        `repos/${RELEASE_OWNER}/${RELEASE_REPO}/environments/${name}/deployment-branch-policies`,
+      ]);
     }
-    const body = (envRes.json ?? {}) as {
-      name?: string;
-      protection_rules?: { type?: string; reviewers?: unknown[] }[];
-      deployment_branch_policy?: { custom_branch_policies?: boolean; protected_branches?: boolean };
-    };
-    const reviewers = (body.protection_rules ?? []).find((r) => r.type === "required_reviewers");
-    const branchRes = this.exec([
-      "-X",
-      "GET",
-      `repos/${RELEASE_OWNER}/${RELEASE_REPO}/environments/${name}/deployment-branch-policies`,
-    ]);
-    const branchNames: string[] = [];
-    if (branchRes.ok && branchRes.json && typeof branchRes.json === "object") {
-      const payload = branchRes.json as { branch_policies?: { name?: string }[] };
-      for (const p of payload.branch_policies ?? []) {
-        if (p.name) branchNames.push(p.name);
-      }
-    }
-    const secretRes = this.exec([
-      "-X",
-      "GET",
-      `repos/${RELEASE_OWNER}/${RELEASE_REPO}/environments/${name}/secrets`,
-    ]);
-    const secretNames: string[] = [];
-    if (secretRes.ok && secretRes.json && typeof secretRes.json === "object") {
-      const payload = secretRes.json as { secrets?: { name?: string }[] };
-      for (const s of payload.secrets ?? []) {
-        if (s.name) secretNames.push(s.name);
-      }
-    }
-    return {
-      exists: true,
-      name: body.name ?? name,
-      deploymentBranches: branchNames,
-      requiredReviewerCount: Array.isArray(reviewers?.reviewers) ? reviewers.reviewers.length : 0,
-      secretNames,
-      status: "OK",
-      notes: [],
-    };
+    return parseEnvironmentDiscovery(name, envRes, secretsRes, branchRes);
   }
 
   async listRulesets(): Promise<TagRulesetActual> {
@@ -246,6 +424,19 @@ export class GhControlPlaneClient implements GitHubControlPlaneClient {
         continue;
       }
       const detail = this.exec(["-X", "GET", `repos/${RELEASE_OWNER}/${RELEASE_REPO}/rulesets/${row.id}`]);
+      if (!detail.ok) {
+        const status = classifyGhReadFailure(detail.status);
+        return {
+          managed: [],
+          unrelated,
+          status,
+          notes: [
+            status === "AUTH_REQUIRED"
+              ? `cannot read ruleset ${row.id} detail (401/403)`
+              : `cannot read ruleset ${row.id} detail (HTTP ${detail.status ?? "?"})`,
+          ],
+        };
+      }
       managed.push(parseRulesetDetail(row.id, row.name, detail.json));
     }
     return {
@@ -289,15 +480,15 @@ export class GhControlPlaneClient implements GitHubControlPlaneClient {
   }
 
   async createEnvironment(): Promise<void> {
+    const planned = planEnvironmentWrite(
+      emptyEnvironmentActual({ exists: false, status: "MISSING", name: RELEASE_ENVIRONMENT_NAME }),
+    );
+    if (planned.kind !== "CREATE") {
+      throw new Error("internal: createEnvironment expected CREATE plan");
+    }
     const put = this.exec(
       ["-X", "PUT", `repos/${RELEASE_OWNER}/${RELEASE_REPO}/environments/${RELEASE_ENVIRONMENT_NAME}`, "--input", "-"],
-      {
-        wait_timer: 0,
-        deployment_branch_policy: {
-          protected_branches: false,
-          custom_branch_policies: true,
-        },
-      },
+      planned.putBody,
     );
     if (!put.ok) {
       throw new Error(`create environment npm-release failed (HTTP ${put.status ?? "?"})`);
@@ -307,32 +498,31 @@ export class GhControlPlaneClient implements GitHubControlPlaneClient {
 
   async updateEnvironment(): Promise<void> {
     const current = await this.getEnvironment(RELEASE_ENVIRONMENT_NAME);
-    if (!current.exists) {
+    const planned = planEnvironmentWrite(current);
+    if (planned.kind === "STOP") {
+      throw new Error(planned.reason);
+    }
+    if (planned.kind === "NOOP") return;
+    if (planned.kind === "CREATE") {
       await this.createEnvironment();
       return;
     }
-    if (!current.deploymentBranches.includes("main")) {
+    if (planned.kind === "PUT_THEN_POST") {
       const put = this.exec(
         ["-X", "PUT", `repos/${RELEASE_OWNER}/${RELEASE_REPO}/environments/${RELEASE_ENVIRONMENT_NAME}`, "--input", "-"],
-        {
-          wait_timer: 0,
-          deployment_branch_policy: {
-            protected_branches: false,
-            custom_branch_policies: true,
-          },
-        },
+        planned.putBody,
       );
       if (!put.ok) {
         throw new Error(`update environment npm-release failed (HTTP ${put.status ?? "?"})`);
       }
-      await this.ensureMainBranchPolicy();
     }
+    await this.ensureMainBranchPolicy();
   }
 
   async createRuleset(): Promise<void> {
     const res = this.exec(
       ["-X", "POST", `repos/${RELEASE_OWNER}/${RELEASE_REPO}/rulesets`, "--input", "-"],
-      desiredRulesetBody(),
+      desiredRulesetPayload(),
     );
     if (!res.ok) {
       throw new Error(`create ruleset ${RELEASE_RULESET_NAME} failed (HTTP ${res.status ?? "?"})`);
@@ -340,9 +530,23 @@ export class GhControlPlaneClient implements GitHubControlPlaneClient {
   }
 
   async updateRuleset(id: number): Promise<void> {
+    const detail = this.exec(["-X", "GET", `repos/${RELEASE_OWNER}/${RELEASE_REPO}/rulesets/${id}`]);
+    if (!detail.ok) {
+      const status = classifyGhReadFailure(detail.status);
+      throw new Error(
+        status === "AUTH_REQUIRED"
+          ? `cannot read ruleset ${id} before UPDATE (401/403)`
+          : `cannot read ruleset ${id} before UPDATE (HTTP ${detail.status ?? "?"})`,
+      );
+    }
+    const snap = parseRulesetDetail(id, RELEASE_RULESET_NAME, detail.json);
+    const payload = managedRulesetUpdatePayload(snap);
+    if (!payload.ok) {
+      throw new Error(payload.reason);
+    }
     const res = this.exec(
       ["-X", "PUT", `repos/${RELEASE_OWNER}/${RELEASE_REPO}/rulesets/${id}`, "--input", "-"],
-      desiredRulesetBody(),
+      payload.body,
     );
     if (!res.ok) {
       throw new Error(`update ruleset ${id} failed (HTTP ${res.status ?? "?"})`);
@@ -382,8 +586,16 @@ export class GhControlPlaneClient implements GitHubControlPlaneClient {
       "GET",
       `repos/${RELEASE_OWNER}/${RELEASE_REPO}/environments/${RELEASE_ENVIRONMENT_NAME}/deployment-branch-policies`,
     ]);
+    if (!current.ok) {
+      const status = classifyGhReadFailure(current.status);
+      throw new Error(
+        status === "AUTH_REQUIRED"
+          ? "cannot read deployment branch policies before POST (401/403) — fail closed"
+          : "cannot read deployment branch policies before POST — fail closed (no UPDATE on empty arrays)",
+      );
+    }
     const names: string[] = [];
-    if (current.ok && current.json && typeof current.json === "object") {
+    if (current.json && typeof current.json === "object") {
       const payload = current.json as { branch_policies?: { name?: string }[] };
       for (const p of payload.branch_policies ?? []) {
         if (p.name) names.push(p.name);
@@ -413,16 +625,26 @@ export function parseRulesetDetail(id: number, name: string, json: unknown): Rul
     : {};
   const include = Array.isArray(conditions.ref_name?.include) ? conditions.ref_name.include : [];
   const rulesRaw = Array.isArray(body.rules) ? body.rules : [];
-  const rules = rulesRaw
-    .map((r) => (r && typeof r === "object" && "type" in r ? String((r as { type: unknown }).type) : ""))
-    .filter(Boolean);
+  const ruleObjects: RulesetRuleObject[] = [];
+  for (const raw of rulesRaw) {
+    if (!raw || typeof raw !== "object" || !("type" in raw)) continue;
+    const type = String((raw as { type: unknown }).type);
+    const parameters =
+      "parameters" in raw &&
+      (raw as { parameters: unknown }).parameters &&
+      typeof (raw as { parameters: unknown }).parameters === "object"
+        ? { ...(raw as { parameters: Record<string, unknown> }).parameters }
+        : undefined;
+    ruleObjects.push(parameters ? { type, parameters } : { type });
+  }
   return {
     id,
     name,
     target: typeof body.target === "string" ? body.target : "",
     enforcement: typeof body.enforcement === "string" ? body.enforcement : "",
     include,
-    rules,
+    rules: ruleObjects.map((r) => r.type),
+    ruleObjects,
   };
 }
 

@@ -30,3 +30,6 @@ release-artifacts/
 
 # Local optional release-control-plane report (non-secret; never commit)
 release-control-plane-report.json
+
+# Exact pinned npm CLI cache used by release:setup (never a floating latest)
+.release-tools/

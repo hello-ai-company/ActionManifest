@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { PUBLIC_PACKAGE_NAMES } from "./release-identity.js";
 import {
+  DESIRED_RULESET_RULE_OBJECTS,
   RELEASE_ENVIRONMENT_NAME,
   RELEASE_REPO_SLUG,
   RELEASE_RULESET_NAME,
@@ -11,12 +12,17 @@ import {
   assertNoSecrets,
   containsForbiddenSecret,
   desiredControlPlane,
+  desiredRulesetPayload,
+  emptyEnvironmentActual,
   evaluatePrerequisites,
+  managedRulesetUpdatePayload,
+  mergeManagedRulesetRules,
   mutatingItems,
   planReleaseControlPlane,
   prerequisitesPass,
   publisherMatches,
   redactSecrets,
+  securityStatusBlocksReady,
   type ActualControlPlane,
   type GitHubEnvironmentActual,
   type PackageSecurityActual,
@@ -44,29 +50,37 @@ function okRepo(): RepoIdentityActual {
   return { slug: RELEASE_REPO_SLUG, verified: true, status: "OK", notes: [] };
 }
 
-function okEnv(): GitHubEnvironmentActual {
+function okRulesetSnapshot(id = 42): RulesetSnapshot {
   return {
-    exists: true,
-    name: RELEASE_ENVIRONMENT_NAME,
-    deploymentBranches: ["main"],
-    requiredReviewerCount: 0,
-    secretNames: [],
-    status: "OK",
-    notes: [],
-  };
-}
-
-function okRuleset(): TagRulesetActual {
-  const snap: RulesetSnapshot = {
-    id: 42,
+    id,
     name: RELEASE_RULESET_NAME,
     target: "tag",
     enforcement: "active",
     include: ["refs/tags/v*"],
     rules: ["deletion", "update", "non_fast_forward"],
+    ruleObjects: DESIRED_RULESET_RULE_OBJECTS.map((r) =>
+      r.parameters ? { type: r.type, parameters: { ...r.parameters } } : { type: r.type },
+    ),
   };
+}
+
+function okEnv(): GitHubEnvironmentActual {
+  return emptyEnvironmentActual({
+    exists: true,
+    name: RELEASE_ENVIRONMENT_NAME,
+    deploymentBranches: ["main"],
+    waitTimer: 0,
+    preventSelfReview: false,
+    deploymentBranchPolicy: { protected_branches: false, custom_branch_policies: true },
+    secretsReadStatus: "OK",
+    branchPoliciesReadStatus: "OK",
+    status: "OK",
+  });
+}
+
+function okRuleset(): TagRulesetActual {
   return {
-    managed: [snap],
+    managed: [okRulesetSnapshot()],
     unrelated: [{ id: 7, name: "some-other-branch-ruleset" }],
     status: "OK",
     notes: [],
@@ -74,15 +88,11 @@ function okRuleset(): TagRulesetActual {
 }
 
 function missingEnv(): GitHubEnvironmentActual {
-  return {
+  return emptyEnvironmentActual({
     exists: false,
     name: RELEASE_ENVIRONMENT_NAME,
-    deploymentBranches: [],
-    requiredReviewerCount: 0,
-    secretNames: [],
     status: "MISSING",
-    notes: [],
-  };
+  });
 }
 
 function missingRuleset(unrelated = okRuleset().unrelated): TagRulesetActual {
@@ -161,7 +171,7 @@ describe("desiredControlPlane uses PUBLIC_PACKAGE_NAMES as SoT", () => {
 });
 
 describe("planReleaseControlPlane", () => {
-  it("all missing → CREATE (env, ruleset, 10 TPs) and READY last", () => {
+  it("all missing + security MANUAL_REQUIRED → CREATE env/ruleset/TPs but READY is NOT SET", () => {
     const plan = planReleaseControlPlane(
       actual({
         environment: missingEnv(),
@@ -183,10 +193,25 @@ describe("planReleaseControlPlane", () => {
     const tps = plan.items.filter((i) => i.id.startsWith("tp:"));
     expect(tps).toHaveLength(10);
     expect(tps.every((i) => i.action === "CREATE")).toBe(true);
+    expect(plan.items.find((i) => i.id === "ready")?.action).not.toBe("SET_READY");
+    expect(mutatingItems(plan).some((i) => i.id === "ready")).toBe(false);
+    expect(plan.readyLast).toBe(true);
+    expect(plan.verdict).toBe("NOT_READY");
+  });
+
+  it("all missing + security OK → CREATE then READY last", () => {
+    const plan = planReleaseControlPlane(
+      actual({
+        environment: missingEnv(),
+        ruleset: missingRuleset(),
+        trustedPublishers: PUBLIC_PACKAGE_NAMES.map(missingTp),
+        packageSecurity: PUBLIC_PACKAGE_NAMES.map((n) => okSecurity(n)),
+        readyVariable: readyVar(null),
+      }),
+    );
     const writes = mutatingItems(plan);
     expect(writes.at(-1)?.id).toBe("ready");
     expect(writes.at(-1)?.action).toBe("SET_READY");
-    expect(plan.readyLast).toBe(true);
     expect(plan.verdict).toBe("NOT_READY");
   });
 
@@ -247,20 +272,14 @@ describe("planReleaseControlPlane", () => {
         ruleset: {
           managed: [
             {
-              id: 1,
-              name: RELEASE_RULESET_NAME,
-              target: "tag",
-              enforcement: "active",
-              include: ["refs/tags/v*"],
+              ...okRulesetSnapshot(1),
               rules: ["deletion"],
+              ruleObjects: [{ type: "deletion" }],
             },
             {
-              id: 2,
-              name: RELEASE_RULESET_NAME,
-              target: "tag",
-              enforcement: "active",
-              include: ["refs/tags/v*"],
+              ...okRulesetSnapshot(2),
               rules: ["update"],
+              ruleObjects: [{ type: "update", parameters: { update_allows_fetch_and_merge: false } }],
             },
           ],
           unrelated: [],
@@ -347,6 +366,137 @@ describe("planReleaseControlPlane", () => {
     expect(() => assertNoSecrets(text)).not.toThrow();
     expect(redactSecrets("Authorization: Bearer supersecret")).not.toMatch(/Bearer supersecret/i);
     expect(redactSecrets("Authorization: Bearer supersecret")).toMatch(/REDACTED/);
+  });
+});
+
+describe("security contract blocks READY unless OK", () => {
+  it("MANUAL_REQUIRED is not PASS and does not SET_READY", () => {
+    expect(securityStatusBlocksReady("MANUAL_REQUIRED")).toBe(true);
+    const plan = planReleaseControlPlane(
+      actual({
+        packageSecurity: PUBLIC_PACKAGE_NAMES.map((n) => ({
+          packageName: n,
+          twoFactorRequired: "UNKNOWN",
+          longLivedTokensDisallowed: "UNKNOWN",
+          trustedPublishingUsed: true,
+          status: "MANUAL_REQUIRED",
+          notes: ["UI break-glass"],
+        })),
+        readyVariable: readyVar(null),
+      }),
+    );
+    expect(plan.items.find((i) => i.id === "ready")?.action).not.toBe("SET_READY");
+    expect(["NOT_READY", "BLOCKED"]).toContain(plan.verdict);
+    expect(prerequisitesPass(evaluatePrerequisites(actual({
+      packageSecurity: PUBLIC_PACKAGE_NAMES.map((n) => ({
+        packageName: n,
+        twoFactorRequired: "UNKNOWN",
+        longLivedTokensDisallowed: "UNKNOWN",
+        trustedPublishingUsed: true,
+        status: "MANUAL_REQUIRED",
+        notes: [],
+      })),
+    })))).toBe(false);
+  });
+
+  it("UNSUPPORTED is not PASS and does not SET_READY", () => {
+    expect(securityStatusBlocksReady("UNSUPPORTED")).toBe(true);
+    const plan = planReleaseControlPlane(
+      actual({
+        packageSecurity: PUBLIC_PACKAGE_NAMES.map((n) => ({
+          packageName: n,
+          twoFactorRequired: "UNKNOWN",
+          longLivedTokensDisallowed: "UNKNOWN",
+          trustedPublishingUsed: "UNKNOWN",
+          status: "UNSUPPORTED",
+          notes: ["CLI cannot express token-disallow"],
+        })),
+        readyVariable: readyVar(null),
+      }),
+    );
+    expect(plan.items.find((i) => i.id === "ready")?.action).not.toBe("SET_READY");
+    expect(["NOT_READY", "BLOCKED"]).toContain(plan.verdict);
+  });
+
+  it("READY=true + MANUAL_REQUIRED → CRITICAL / BLOCKED", () => {
+    const plan = planReleaseControlPlane(
+      actual({
+        packageSecurity: PUBLIC_PACKAGE_NAMES.map((n) => ({
+          packageName: n,
+          twoFactorRequired: "UNKNOWN",
+          longLivedTokensDisallowed: "UNKNOWN",
+          trustedPublishingUsed: true,
+          status: "MANUAL_REQUIRED",
+          notes: [],
+        })),
+        readyVariable: readyVar("true"),
+      }),
+    );
+    expect(plan.critical.join(" ")).toMatch(/CRITICAL/);
+    expect(plan.verdict).toBe("BLOCKED");
+    expect(plan.items.find((i) => i.id === "ready")?.action).toBe("STOP");
+    expect(plan.items.find((i) => i.id === "ready")?.mutates).toBe(false);
+  });
+});
+
+describe("desiredRulesetPayload", () => {
+  it("emits explicit rule objects with required update parameters", () => {
+    const body = desiredRulesetPayload();
+    expect(body.name).toBe(RELEASE_RULESET_NAME);
+    expect(body.target).toBe("tag");
+    expect(body.enforcement).toBe("active");
+    expect(body.conditions.ref_name.include).toEqual(["refs/tags/v*"]);
+    expect(body.rules).toEqual([
+      { type: "deletion" },
+      { type: "update", parameters: { update_allows_fetch_and_merge: false } },
+      { type: "non_fast_forward" },
+    ]);
+    const update = body.rules.find((r) => r.type === "update");
+    expect(update?.parameters?.update_allows_fetch_and_merge).toBe(false);
+    expect(JSON.stringify(body.rules)).not.toBe(JSON.stringify(body.rules.map((r) => ({ type: r.type }))));
+  });
+
+  it("preserves compatible stronger extra rules and never weakens update", () => {
+    const merged = mergeManagedRulesetRules([
+      { type: "deletion" },
+      { type: "update", parameters: { update_allows_fetch_and_merge: true } },
+      { type: "required_signatures" },
+    ]);
+    expect(merged.ok).toBe(true);
+    if (merged.ok) {
+      expect(merged.rules.find((r) => r.type === "required_signatures")).toEqual({ type: "required_signatures" });
+      expect(merged.rules.find((r) => r.type === "update")?.parameters?.update_allows_fetch_and_merge).toBe(false);
+      expect(merged.rules.find((r) => r.type === "non_fast_forward")).toEqual({ type: "non_fast_forward" });
+    }
+    const extraOk = planReleaseControlPlane(
+      actual({
+        ruleset: {
+          managed: [
+            {
+              ...okRulesetSnapshot(),
+              rules: ["deletion", "update", "non_fast_forward", "required_signatures"],
+              ruleObjects: [
+                ...okRulesetSnapshot().ruleObjects,
+                { type: "required_signatures" },
+              ],
+            },
+          ],
+          unrelated: [{ id: 7, name: "some-other-branch-ruleset" }],
+          status: "OK",
+          notes: [],
+        },
+      }),
+    );
+    expect(extraOk.items.find((i) => i.id === "ruleset")?.action).toBe("NOOP");
+  });
+
+  it("update payload does not target unrelated rulesets", () => {
+    const payload = managedRulesetUpdatePayload(okRulesetSnapshot(42));
+    expect(payload.ok).toBe(true);
+    if (payload.ok) {
+      expect(payload.body.name).toBe(RELEASE_RULESET_NAME);
+      expect(JSON.stringify(payload.body)).not.toContain("some-other-branch-ruleset");
+    }
   });
 });
 

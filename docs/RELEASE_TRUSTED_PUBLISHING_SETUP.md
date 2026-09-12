@@ -52,10 +52,21 @@ order: Environment → tag ruleset → Trusted Publishers 10/10 → automatable
 security → read-back → **only then** `NPM_TRUSTED_PUBLISHING_READY=true` →
 final read-back. Idempotent: a second apply reports `NO CHANGES REQUIRED`.
 
-Require `gh` auth against **`hello-ai-company/ActionManifest`** and an
-official npm CLI `>= 11.15.0` (never `npm@latest`). Interactive maintainer
-auth is allowed when npm prompts. Drifted Trusted Publishers (wrong
-repo/workflow/env) **STOP** — no overwrite.
+Require `gh` auth against **`hello-ai-company/ActionManifest`**.
+`release:setup` uses the **exact pinned npm CLI 11.15.0**
+(`PINNED_NPM_CLI`), not the host global (a host `npm` 10.x must not
+decide Trusted Publisher discovery). The runner prefers
+`.release-tools/npm-cli/11.15.0` or `node_modules/npm@11.15.0`, else
+`npx --yes --package=npm@11.15.0` (this may download that exact version
+into the npx cache; it never installs `npm@latest` and never replaces
+the global CLI). Interactive maintainer auth is allowed when npm
+prompts. Bulk Trusted Publisher creates pass official `--yes` and wait
+~2s between packages so one 2FA session can cover the roster. Drifted
+Trusted Publishers (wrong repo/workflow/env) **STOP** — no overwrite.
+
+Package security “require 2FA and disallow tokens” is **not** automated:
+official `npm access set mfa=publish` is **not** documented as equivalent
+to that Settings control. Status is `MANUAL_REQUIRED` and **blocks READY**.
 
 ## 2. Break-glass UI (only if `--apply` cannot)
 

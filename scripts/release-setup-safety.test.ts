@@ -2,16 +2,19 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { PUBLIC_PACKAGE_NAMES } from "./release-identity.js";
+import { PINNED_NPM_CLI, PUBLIC_PACKAGE_NAMES } from "./release-identity.js";
 import { parseSetupArgs, runReleaseSetup, workflowReferencesNpmRelease, type SetupDeps } from "./release-setup.js";
 import type { GitHubControlPlaneClient } from "./release-setup-github.js";
 import { isForbiddenNpmArgv, parseTrustedPublisherList, npmVersionAtLeast } from "./release-setup-npm.js";
 import type { NpmTrustClient } from "./release-setup-npm.js";
+import { PINNED_NPM_PACKAGE_SPEC, isExactPinnedNpmSpec, resolvePinnedNpm } from "./release-setup-npm-runner.js";
 import {
+  DESIRED_RULESET_RULE_OBJECTS,
   RELEASE_ENVIRONMENT_NAME,
   RELEASE_REPO_SLUG,
   RELEASE_RULESET_NAME,
   containsForbiddenSecret,
+  emptyEnvironmentActual,
   type GitHubEnvironmentActual,
   type PackageSecurityActual,
   type ReadyVariableActual,
@@ -47,15 +50,20 @@ class MemoryGitHub implements GitHubControlPlaneClient {
       : { slug: "evil/fork", verified: false, status: "DRIFTED", notes: ["wrong repo"] };
   }
   async getEnvironment(): Promise<GitHubEnvironmentActual> {
-    return {
+    return emptyEnvironmentActual({
       exists: this.envExists,
       name: RELEASE_ENVIRONMENT_NAME,
       deploymentBranches: this.envBranches,
-      requiredReviewerCount: 0,
+      waitTimer: this.envExists ? 0 : null,
+      preventSelfReview: this.envExists ? false : null,
+      deploymentBranchPolicy: this.envExists
+        ? { protected_branches: false, custom_branch_policies: true }
+        : null,
       secretNames: [],
+      secretsReadStatus: this.envExists ? "OK" : "SKIPPED",
+      branchPoliciesReadStatus: this.envExists ? "OK" : "SKIPPED",
       status: this.envExists ? "OK" : "MISSING",
-      notes: [],
-    };
+    });
   }
   async listRulesets(): Promise<TagRulesetActual> {
     return {
@@ -93,6 +101,9 @@ class MemoryGitHub implements GitHubControlPlaneClient {
         enforcement: "active",
         include: ["refs/tags/v*"],
         rules: ["deletion", "update", "non_fast_forward"],
+        ruleObjects: DESIRED_RULESET_RULE_OBJECTS.map((rule) =>
+          rule.parameters ? { type: rule.type, parameters: { ...rule.parameters } } : { type: rule.type },
+        ),
       },
     ];
   }
@@ -106,6 +117,9 @@ class MemoryGitHub implements GitHubControlPlaneClient {
             enforcement: "active",
             include: ["refs/tags/v*"],
             rules: ["deletion", "update", "non_fast_forward"],
+            ruleObjects: DESIRED_RULESET_RULE_OBJECTS.map((rule) =>
+              rule.parameters ? { type: rule.type, parameters: { ...rule.parameters } } : { type: rule.type },
+            ),
           }
         : r,
     );
@@ -191,6 +205,7 @@ function deps(github: MemoryGitHub, npm: MemoryNpm): { deps: SetupDeps; logs: st
       npm,
       readWorkflow: () => "jobs:\n  stage:\n    environment: npm-release\n",
       log: (line) => logs.push(line),
+      paceTrustedPublisherWrites: async () => {},
     },
   };
 }
@@ -310,6 +325,18 @@ describe("npm / GitHub command safety (static + helpers)", () => {
     expect(npmVersionAtLeast("10.9.7", "11.15.0")).toBe(false);
   });
 
+  it("selects exact npm 11.15.0 even when host is 10.x", () => {
+    const resolved = resolvePinnedNpm({ hostNpmVersion: "10.9.7", env: {}, repoRoot: "/tmp/no-such-actionmanifest-root" });
+    expect(resolved.version).toBe(PINNED_NPM_CLI);
+    expect(resolved.version).toBe("11.15.0");
+    expect(resolved.spec).toBe(PINNED_NPM_PACKAGE_SPEC);
+    expect(isExactPinnedNpmSpec(resolved.spec)).toBe(true);
+    expect(resolved.spec).not.toContain("latest");
+    expect(resolved.source).toBe("npx-exact");
+    expect(resolved.argvPrefix.join(" ")).toContain(`--package=${PINNED_NPM_PACKAGE_SPEC}`);
+    expect(resolved.argvPrefix.join(" ")).not.toContain("npm@latest");
+  });
+
   it("source never contains npm publish / stage approve / gh release create / git tag", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     for (const file of [
@@ -324,6 +351,7 @@ describe("npm / GitHub command safety (static + helpers)", () => {
       expect(src, file).not.toMatch(/gh release create/);
       expect(src, file).not.toMatch(/git tag /);
       expect(src, file).not.toMatch(/npm@latest/);
+      expect(src, file).not.toMatch(/MANAGED_RULESET_RULES\.map\(\(type\)=>\(\{type\}\)\)/);
     }
   });
 

@@ -256,9 +256,13 @@ Expected Trusted Publisher fields (SoT = `PUBLIC_PACKAGE_NAMES`):
 | Environment | `npm-release` |
 | Allowed actions | `npm stage` (stage-only; no direct OIDC `npm publish`) |
 
-All fields are case-sensitive and must match exactly. `npm trust github`
-requires write access and account-level 2FA; `release:setup --apply` may
-prompt (human PoP). Do not run ad-hoc `npm trust`. The npmjs.com UI is
+All fields are case-sensitive and must match exactly. `release:setup`
+invokes exact `npm@11.15.0` (never the host 10.x CLI, never
+`npm@latest`). `npm trust github` requires write access and account-level
+2FA; `--apply` may prompt (human PoP) and uses official `--yes` with a
+~2s pace between packages. Package-level “require 2FA and disallow
+tokens” stays `MANUAL_REQUIRED` (not `npm access set mfa=publish`) and
+blocks READY. Do not run ad-hoc `npm trust`. The npmjs.com UI is
 break-glass. See [RELEASE_TRUSTED_PUBLISHING_SETUP.md](RELEASE_TRUSTED_PUBLISHING_SETUP.md)
 and [ADR 0010](adr/0010-release-control-plane.md).
 

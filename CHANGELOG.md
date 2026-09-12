@@ -7,6 +7,23 @@ All notable changes to this project are documented here. Schema version is indep
 Controller only. Package versions stay `0.9.0-rc.0`. No npm package
 release, no stage publish/approve, no git tag, no GitHub Release, no `rc.1`.
 
+### Review Round 1 (same Draft PR)
+
+- Security contract is a READY prerequisite: only `OK` satisfies.
+  `MANUAL_REQUIRED` / `UNSUPPORTED` / `UNKNOWN` / `AUTH_REQUIRED` /
+  `DRIFTED` / `MISSING` block READY. `READY=true` + `MANUAL_REQUIRED` is
+  CRITICAL. `npm access set mfa=publish` is **not** treated as the UI
+  “disallow tokens” control.
+- Managed ruleset REST bodies use explicit rule objects, including
+  `{ type: "update", parameters: { update_allows_fetch_and_merge: false } }`.
+  Compatible stronger extra rules are preserved.
+- Environment discovery captures wait timer, reviewers,
+  `prevent_self_review`, and branch policies. Secret / branch-policy
+  read failures fail closed. Adding `main` is a POST only (no wipe PUT).
+- `release:setup` always runs exact `npm@11.15.0` (project-local or
+  documented `npx --package=npm@11.15.0`); host 10.x is ignored.
+  Official `npm trust github --yes` + ~2s pace between packages.
+
 ### Added
 
 - **`pnpm release:setup --check|--apply`** (`scripts/release-setup.ts` +

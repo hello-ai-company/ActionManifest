@@ -21,6 +21,18 @@ export const TRUSTED_PUBLISHER_WORKFLOW = "release.yml";
 export const TRUSTED_PUBLISHER_PROVIDER = "github";
 export const MANAGED_RULESET_RULES = ["deletion", "update", "non_fast_forward"] as const;
 
+/** GitHub REST Rulesets: `update` requires `update_allows_fetch_and_merge`. */
+export interface RulesetRuleObject {
+  type: string;
+  parameters?: Record<string, unknown>;
+}
+
+export const DESIRED_RULESET_RULE_OBJECTS: readonly RulesetRuleObject[] = [
+  { type: "deletion" },
+  { type: "update", parameters: { update_allows_fetch_and_merge: false } },
+  { type: "non_fast_forward" },
+];
+
 export type ResourceStatus =
   | "OK"
   | "MISSING"
@@ -96,14 +108,53 @@ export function desiredControlPlane(): DesiredControlPlane {
   };
 }
 
+export interface EnvironmentReviewer {
+  type: "User" | "Team";
+  id: number;
+}
+
+export interface EnvironmentBranchPolicyMeta {
+  protected_branches: boolean;
+  custom_branch_policies: boolean;
+}
+
+export type EnvironmentSubreadStatus = "OK" | "AUTH_REQUIRED" | "UNKNOWN" | "SKIPPED";
+
 export interface GitHubEnvironmentActual {
   exists: boolean;
   name?: string;
   deploymentBranches: string[];
   requiredReviewerCount: number;
+  requiredReviewers: EnvironmentReviewer[];
+  waitTimer: number | null;
+  preventSelfReview: boolean | null;
+  deploymentBranchPolicy: EnvironmentBranchPolicyMeta | null;
+  protectionMetadataRepresentable: boolean;
   secretNames: string[];
+  secretsReadStatus: EnvironmentSubreadStatus;
+  branchPoliciesReadStatus: EnvironmentSubreadStatus;
   status: ResourceStatus;
   notes: string[];
+}
+
+export function emptyEnvironmentActual(
+  partial: Partial<GitHubEnvironmentActual> & Pick<GitHubEnvironmentActual, "exists" | "status">,
+): GitHubEnvironmentActual {
+  return {
+    name: RELEASE_ENVIRONMENT_NAME,
+    deploymentBranches: [],
+    requiredReviewerCount: 0,
+    requiredReviewers: [],
+    waitTimer: null,
+    preventSelfReview: null,
+    deploymentBranchPolicy: null,
+    protectionMetadataRepresentable: true,
+    secretNames: [],
+    secretsReadStatus: "SKIPPED",
+    branchPoliciesReadStatus: "SKIPPED",
+    notes: [],
+    ...partial,
+  };
 }
 
 export interface RulesetSnapshot {
@@ -113,6 +164,7 @@ export interface RulesetSnapshot {
   enforcement: string;
   include: string[];
   rules: string[];
+  ruleObjects: RulesetRuleObject[];
 }
 
 export interface TagRulesetActual {
@@ -236,19 +288,154 @@ export function environmentMatches(
   desired: DesiredEnvironment,
 ): boolean {
   if (!actual.exists || actual.status !== "OK") return false;
+  if (actual.secretsReadStatus !== "OK") return false;
+  if (actual.branchPoliciesReadStatus !== "OK") return false;
   if (actual.name !== desired.name) return false;
   return desired.deploymentBranches.every((b) => actual.deploymentBranches.includes(b));
 }
 
-export function rulesetMatches(snapshot: RulesetSnapshot, desired: DesiredRuleset): boolean {
-  if (snapshot.name !== desired.name) return false;
-  if (snapshot.target !== desired.target) return false;
-  if (snapshot.enforcement !== desired.enforcement) return false;
-  const includeOk = snapshot.include.some(
+export function includeMatchesDesired(include: string[], desired: DesiredRuleset): boolean {
+  return include.some(
     (p) => p === desired.include || p === RELEASE_TAG_PATTERN || p === `refs/tags/${RELEASE_TAG_PATTERN}`,
   );
-  if (!includeOk) return false;
-  return desired.rules.every((r) => snapshot.rules.includes(r));
+}
+
+export function desiredRulesetPayload(): {
+  name: typeof RELEASE_RULESET_NAME;
+  target: "tag";
+  enforcement: "active";
+  conditions: { ref_name: { include: string[]; exclude: string[] } };
+  rules: RulesetRuleObject[];
+} {
+  return {
+    name: RELEASE_RULESET_NAME,
+    target: "tag",
+    enforcement: "active",
+    conditions: {
+      ref_name: {
+        include: [RELEASE_TAG_INCLUDE],
+        exclude: [],
+      },
+    },
+    rules: DESIRED_RULESET_RULE_OBJECTS.map((r) =>
+      r.parameters ? { type: r.type, parameters: { ...r.parameters } } : { type: r.type },
+    ),
+  };
+}
+
+export function mergeManagedRulesetRules(
+  existing: RulesetRuleObject[],
+): { ok: true; rules: RulesetRuleObject[] } | { ok: false; reason: string } {
+  const byType = new Map<string, RulesetRuleObject>();
+  for (const rule of existing) {
+    if (!rule.type) {
+      return { ok: false, reason: "ruleset rule missing type — STOP / SECURITY REVIEW" };
+    }
+    byType.set(rule.type, {
+      type: rule.type,
+      ...(rule.parameters ? { parameters: { ...rule.parameters } } : {}),
+    });
+  }
+  for (const desired of DESIRED_RULESET_RULE_OBJECTS) {
+    const cur = byType.get(desired.type);
+    if (!cur) {
+      byType.set(
+        desired.type,
+        desired.parameters ? { type: desired.type, parameters: { ...desired.parameters } } : { type: desired.type },
+      );
+      continue;
+    }
+    if (desired.type !== "update") continue;
+    const params =
+      cur.parameters && typeof cur.parameters === "object" ? { ...cur.parameters } : {};
+    const flag = params.update_allows_fetch_and_merge;
+    if (flag === true) {
+      params.update_allows_fetch_and_merge = false;
+    } else if (flag === false) {
+      // already strongest required value — keep extra params
+    } else if (flag === undefined) {
+      params.update_allows_fetch_and_merge = false;
+    } else {
+      return {
+        ok: false,
+        reason: "update rule has ambiguous update_allows_fetch_and_merge — STOP / SECURITY REVIEW",
+      };
+    }
+    byType.set("update", { type: "update", parameters: params });
+  }
+  return { ok: true, rules: [...byType.values()] };
+}
+
+export type RulesetAssessment =
+  | { kind: "MATCH" }
+  | { kind: "STRENGTHEN"; diff: string[] }
+  | { kind: "STOP"; reason: string; diff: string[] };
+
+export function assessManagedRuleset(
+  snapshot: RulesetSnapshot,
+  desired: DesiredRuleset = desiredControlPlane().ruleset,
+): RulesetAssessment {
+  if (snapshot.target !== desired.target) {
+    return {
+      kind: "STOP",
+      reason: `managed name exists with target=${snapshot.target} (not tag) — STOP for security review`,
+      diff: rulesetDiff(snapshot, desired),
+    };
+  }
+  const objects =
+    snapshot.ruleObjects && snapshot.ruleObjects.length > 0
+      ? snapshot.ruleObjects
+      : snapshot.rules.map((type) => ({ type }));
+  if (objects.some((r) => !r.type)) {
+    return { kind: "STOP", reason: "ruleset contains untyped rules — STOP / SECURITY REVIEW", diff: [] };
+  }
+  const update = objects.find((r) => r.type === "update");
+  if (update && update.parameters != null && typeof update.parameters !== "object") {
+    return { kind: "STOP", reason: "update rule parameters unreadable — STOP / SECURITY REVIEW", diff: [] };
+  }
+  const merged = mergeManagedRulesetRules(objects);
+  if (!merged.ok) {
+    return { kind: "STOP", reason: merged.reason, diff: rulesetDiff(snapshot, desired) };
+  }
+  const includeOk = includeMatchesDesired(snapshot.include, desired);
+  const enforcementOk = snapshot.enforcement === desired.enforcement;
+  const requiredPresent = desired.rules.every((t) => objects.some((r) => r.type === t));
+  const updateOk = update?.parameters?.update_allows_fetch_and_merge === false;
+  if (includeOk && enforcementOk && requiredPresent && updateOk) {
+    return { kind: "MATCH" };
+  }
+  const diff = rulesetDiff(snapshot, desired);
+  if (update?.parameters?.update_allows_fetch_and_merge === true) {
+    diff.push("update_allows_fetch_and_merge: true → false (strengthen, never weaken)");
+  }
+  return { kind: "STRENGTHEN", diff };
+}
+
+export function managedRulesetUpdatePayload(snapshot: RulesetSnapshot): {
+  ok: true;
+  body: ReturnType<typeof desiredRulesetPayload>;
+} | { ok: false; reason: string } {
+  const merged = mergeManagedRulesetRules(snapshot.ruleObjects);
+  if (!merged.ok) return merged;
+  const base = desiredRulesetPayload();
+  const include = new Set<string>([RELEASE_TAG_INCLUDE, ...snapshot.include.filter(Boolean)]);
+  return {
+    ok: true,
+    body: {
+      ...base,
+      conditions: {
+        ref_name: {
+          include: [...include],
+          exclude: [],
+        },
+      },
+      rules: merged.rules,
+    },
+  };
+}
+
+export function rulesetMatches(snapshot: RulesetSnapshot, desired: DesiredRuleset): boolean {
+  return assessManagedRuleset(snapshot, desired).kind === "MATCH";
 }
 
 export function rulesetDiff(snapshot: RulesetSnapshot, desired: DesiredRuleset): string[] {
@@ -259,15 +446,17 @@ export function rulesetDiff(snapshot: RulesetSnapshot, desired: DesiredRuleset):
   if (snapshot.enforcement !== desired.enforcement) {
     diff.push(`enforcement: ${snapshot.enforcement} → ${desired.enforcement}`);
   }
-  const includeOk = snapshot.include.some(
-    (p) => p === desired.include || p === RELEASE_TAG_PATTERN,
-  );
+  const includeOk = includeMatchesDesired(snapshot.include, desired);
   if (!includeOk) {
     diff.push(`include: [${snapshot.include.join(", ")}] → ${desired.include}`);
   }
   const missingRules = desired.rules.filter((r) => !snapshot.rules.includes(r));
   if (missingRules.length > 0) {
     diff.push(`rules missing: ${missingRules.join(", ")}`);
+  }
+  const update = (snapshot.ruleObjects ?? []).find((r) => r.type === "update");
+  if (update && update.parameters?.update_allows_fetch_and_merge !== false) {
+    diff.push("update.parameters.update_allows_fetch_and_merge must be false");
   }
   return diff;
 }
@@ -336,13 +525,7 @@ export function evaluatePrerequisites(
   });
   const securityBlocksReady = desired.packages.some((name) => {
     const row = actual.packageSecurity.find((s) => s.packageName === name);
-    if (!row) return true;
-    return (
-      row.status === "AUTH_REQUIRED" ||
-      row.status === "UNKNOWN" ||
-      row.status === "DRIFTED" ||
-      row.status === "MISSING"
-    );
+    return securityStatusBlocksReady(row?.status);
   });
   const rulesetOk =
     actual.ruleset.managed.length === 1 &&
@@ -356,6 +539,15 @@ export function evaluatePrerequisites(
     trustedPublishersOk,
     securityBlocksReady,
   };
+}
+
+/**
+ * Security contract (2FA + disallow long-lived tokens + Trusted Publishing)
+ * is a READY prerequisite. Only status OK satisfies. MANUAL_REQUIRED and
+ * UNSUPPORTED are not PASS.
+ */
+export function securityStatusBlocksReady(status: ResourceStatus | undefined): boolean {
+  return status !== "OK";
 }
 
 export function prerequisitesPass(flags: PrerequisiteFlags): boolean {
@@ -520,6 +712,24 @@ export function planReleaseControlPlane(
         }),
       );
     }
+  } else if (
+    !actual.environment.protectionMetadataRepresentable &&
+    actual.environment.deploymentBranchPolicy?.custom_branch_policies !== true
+  ) {
+    blocked = true;
+    items.push(
+      item({
+        id: "environment",
+        resource: RELEASE_ENVIRONMENT_NAME,
+        action: "STOP",
+        status: "UNKNOWN",
+        reason:
+          actual.environment.notes[0] ??
+          "cannot represent Environment protection metadata safely — STOP (no overwrite)",
+        mutates: false,
+        order: 10,
+      }),
+    );
   } else {
     items.push(
       item({
@@ -580,7 +790,8 @@ export function planReleaseControlPlane(
     );
   } else {
     const snap = actual.ruleset.managed[0]!;
-    if (snap.target !== "tag") {
+    const assessment = assessManagedRuleset(snap, desired.ruleset);
+    if (assessment.kind === "STOP") {
       blocked = true;
       items.push(
         item({
@@ -588,20 +799,20 @@ export function planReleaseControlPlane(
           resource: RELEASE_RULESET_NAME,
           action: "STOP",
           status: "DRIFTED",
-          reason: `managed name exists with target=${snap.target} (not tag) — STOP for security review`,
+          reason: assessment.reason,
           mutates: false,
           order: 20,
-          diff: rulesetDiff(snap, desired.ruleset),
+          diff: assessment.diff,
         }),
       );
-    } else if (rulesetMatches(snap, desired.ruleset)) {
+    } else if (assessment.kind === "MATCH") {
       items.push(
         item({
           id: "ruleset",
           resource: RELEASE_RULESET_NAME,
           action: "NOOP",
           status: "OK",
-          reason: `ruleset ${RELEASE_RULESET_NAME} matches (pattern ${RELEASE_TAG_PATTERN}; delete/update protected)`,
+          reason: `ruleset ${RELEASE_RULESET_NAME} matches (pattern ${RELEASE_TAG_PATTERN}; delete/update protected; extra compatible rules preserved)`,
           mutates: false,
           order: 20,
         }),
@@ -613,10 +824,10 @@ export function planReleaseControlPlane(
           resource: RELEASE_RULESET_NAME,
           action: "UPDATE",
           status: "DRIFTED",
-          reason: `managed ruleset ${RELEASE_RULESET_NAME} differs from expected config`,
+          reason: `managed ruleset ${RELEASE_RULESET_NAME} can be strengthened without weakening extras`,
           mutates: true,
           order: 20,
-          diff: rulesetDiff(snap, desired.ruleset),
+          diff: assessment.diff,
         }),
       );
     }
@@ -772,11 +983,16 @@ export function planReleaseControlPlane(
     (i) => i.mutates && (i.action === "CREATE" || i.action === "UPDATE"),
   );
   const stopItems = items.filter((i) => i.action === "STOP");
-  const securityStops = items.some((i) => i.id.startsWith("security:") && i.action === "STOP");
+  const securityUnresolved = items.some((i) => {
+    if (!i.id.startsWith("security:")) return false;
+    if (i.action === "NOOP" && i.status === "OK") return false;
+    if (i.action === "UPDATE") return false;
+    return true;
+  });
   const wouldPassAfterApply =
     !blocked &&
     stopItems.length === 0 &&
-    !securityStops &&
+    !securityUnresolved &&
     items
       .filter((i) => i.id.startsWith("tp:") || i.id === "environment" || i.id === "ruleset")
       .every((i) => i.action === "NOOP" || i.action === "CREATE" || i.action === "UPDATE") &&

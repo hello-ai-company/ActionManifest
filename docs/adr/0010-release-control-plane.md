@@ -66,9 +66,23 @@ The optional report is gitignored and non-secret.
 
 GitHub: `gh api` REST only, after `gh` auth + repository identity
 `hello-ai-company/ActionManifest` (fail closed on any other repo).
-npm: official CLI only, after `npm --version` and `npm help trust|access|stage`.
-Write paths require npm `>= 11.15.0` (`PINNED_NPM_CLI`). Never `npm@latest`.
+npm: official CLI only, via the **exact pinned runner** `npm@11.15.0`
+(`PINNED_NPM_CLI` / `PINNED_NPM_PACKAGE_SPEC`). Host `npm` (often 10.x)
+does not determine correctness. Resolution is project-local
+(`.release-tools/npm-cli/11.15.0` or `node_modules/npm` at that exact
+version) or `npx --yes --package=npm@11.15.0` (documented download into
+the npx cache). Never `npm@latest`. Never a silent global replace.
 Never HTML scraping.
+
+Package security (2FA required + long-lived tokens disallowed + Trusted
+Publishing used) is a READY prerequisite. Only status `OK` satisfies.
+`MANUAL_REQUIRED` and `UNSUPPORTED` are **not** PASS and **block READY**.
+`npm access set mfa=publish` is the official CLI for package-level
+publish 2FA (`mfa=none|publish|automation`). Official npm docs do **not**
+equate that write with Settings → Publishing access “Require two-factor
+authentication and disallow tokens” (which additionally blocks granular
+tokens regardless of bypass-2FA). Therefore that control stays
+`MANUAL_REQUIRED` and is not automated.
 
 ### 7. Staged publishing only
 
@@ -119,6 +133,16 @@ tag, no `gh release create`, no version bump. Package versions stay
   official CLI requests it, and later `npm stage approve` (2FA).
 - Package-level “require 2FA and disallow tokens” is `MANUAL_REQUIRED` when
   it is not a safely documented official CLI write — never a fake `PASS`.
+  `MANUAL_REQUIRED` / `UNSUPPORTED` block `NPM_TRUSTED_PUBLISHING_READY`.
+- Managed tag ruleset create/update bodies are explicit GitHub REST rule
+  objects. `update` always includes
+  `parameters.update_allows_fetch_and_merge: false`. Compatible stronger
+  extra rules are preserved; weakening is refused; ambiguous rules STOP.
+- Environment updates merge/preserve `wait_timer`, required reviewers,
+  `prevent_self_review`, and existing custom branch policies. Secret or
+  deployment-branch-policy read failures are fail-closed (`AUTH_REQUIRED` /
+  `UNKNOWN`) — never treated as empty-OK. When only `main` is missing, the
+  controller POSTs that policy and does **not** PUT the Environment.
 
 ## Alternatives considered
 

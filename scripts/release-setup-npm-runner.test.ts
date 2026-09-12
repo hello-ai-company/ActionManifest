@@ -35,7 +35,21 @@ describe("pinned npm runner", () => {
     const caps = await client.inspectCli();
     expect(caps.version).toBe("11.15.0");
     expect(caps.version).not.toBe("10.9.7");
+    expect(caps.trustList).toBe(true);
     expect(seen[0]).toEqual(["--version"]);
+    expect(seen.some((a) => a[0] === "trust" && a[1] === "--help")).toBe(true);
+  });
+
+  it("treats exact 11.15.0 as capable even when manpage help is a minimized stub", async () => {
+    const client = new OfficialNpmTrustClient((args) => {
+      if (args[0] === "--version") return { status: 0, stdout: "11.15.0\n", stderr: "" };
+      return { status: 0, stdout: "This system has been minimized by removing packages\n", stderr: "" };
+    });
+    const caps = await client.inspectCli();
+    expect(caps.trust).toBe(true);
+    expect(caps.trustList).toBe(true);
+    expect(caps.trustGithub).toBe(true);
+    expect(caps.access).toBe(true);
   });
 
   it("addTrustedPublisher uses official --yes and never --otp / --allow-publish", async () => {

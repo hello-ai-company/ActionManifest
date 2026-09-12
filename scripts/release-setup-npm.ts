@@ -226,9 +226,11 @@ export class OfficialNpmTrustClient implements NpmTrustClient {
   async inspectCli(): Promise<NpmCliCapabilities> {
     const ver = this.exec(["--version"]);
     const version = (ver.stdout || "").trim();
-    const trust = this.exec(["help", "trust"]);
-    const access = this.exec(["help", "access"]);
-    const stage = this.exec(["help", "stage"]);
+    // Prefer `npm <cmd> --help` (built-in usage). `npm help <cmd>` needs manpages
+    // and returns a minimized-OS stub on some agents.
+    const trust = this.exec(["trust", "--help"]);
+    const access = this.exec(["access", "--help"]);
+    const stage = this.exec(["stage", "--help"]);
     const trustHelp = `${trust.stdout}\n${trust.stderr}`;
     const accessHelp = `${access.stdout}\n${access.stderr}`;
     const stageHelp = `${stage.stdout}\n${stage.stderr}`;
@@ -236,14 +238,18 @@ export class OfficialNpmTrustClient implements NpmTrustClient {
       `pinned npm runner ${PINNED_NPM_CLI} --version ${version || "UNKNOWN"} (host npm ignored)`,
     ];
     if (!version) notes.push("npm --version produced no output");
+    const pinned = npmVersionAtLeast(version, PINNED_NPM_CLI);
+    if (pinned) {
+      notes.push(`exact pin ${PINNED_NPM_CLI} implies official trust/access/stage surface`);
+    }
     return {
       version,
-      trust: helpMentions(trustHelp, "npm trust") && !helpMentions(trustHelp, "unknown command"),
-      trustList: helpMentions(trustHelp, "trust list"),
-      trustGithub: helpMentions(trustHelp, "trust github"),
-      access: helpMentions(accessHelp, "npm access") && !helpMentions(accessHelp, "unknown command"),
-      accessSetMfa: helpMentions(accessHelp, "set mfa"),
-      stage: helpMentions(stageHelp, "npm stage") && !helpMentions(stageHelp, "unknown command"),
+      trust: pinned || (helpMentions(trustHelp, "npm trust") && !helpMentions(trustHelp, "unknown command")),
+      trustList: pinned || helpMentions(trustHelp, "trust list"),
+      trustGithub: pinned || helpMentions(trustHelp, "trust github"),
+      access: pinned || (helpMentions(accessHelp, "npm access") && !helpMentions(accessHelp, "unknown command")),
+      accessSetMfa: helpMentions(accessHelp, "set mfa") || helpMentions(accessHelp, "mfa=none|publish|automation"),
+      stage: pinned || (helpMentions(stageHelp, "npm stage") && !helpMentions(stageHelp, "unknown command")),
       notes,
     };
   }

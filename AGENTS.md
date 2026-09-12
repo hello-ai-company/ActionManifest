@@ -1,30 +1,78 @@
 # AGENTS.md
 
-## Product
-Turn documents into verifiable actions (ActionManifest monorepo: packages/* + apps/*).
-Node >= 20, pnpm@11. Public packages / Trusted Publishing are out of band unless the brief says otherwise.
+## Product and toolchain
 
-## Do
+ActionManifest monorepo (`packages/*` + `apps/*`): turn documents into verifiable actions.
+
+- Package manager: `pnpm@11.23.0` (exact pin).
+- Consumer runtime: Node `>=20` for published packages in the normal path.
+- `adapter-xberg`: Node `>=22`.
+- Release / build tooling: Node 22+.
+- Do not assume every local or CI command runs under Node 20. Do not change `engines` fields unless the brief explicitly scopes that change.
+
+## Default operating rules
+
 - Implement only the scoped paths in the Cloud Agent brief.
 - Prefer one PR tip; one fix bundle for review comments.
-- Run the Verify commands that match the change size, and paste summaries into the Eng evidence path named in the brief.
-- Keep Draft PR unless the brief / President GO says undraft+merge.
+- Keep the PR Draft unless the brief explicitly permits undraft/merge **and** required checks / rulesets allow it.
+- Do not widen into unrelated repositories or products unless the brief explicitly includes cross-repository work.
+- Do not open parallel Cloud Agents for the same ENG.
+- Do not delete tests to make CI green.
+- Run the Verification commands that match the change size, and record non-secret summaries in the Eng evidence path named in the brief.
 
-## Do not
-- npm publish / tag / GitHub Release / Trusted Publisher / flip NPM_TRUSTED_PUBLISHING_READY
-- Widen into Otayori app UI (see docs/OTAYORI-BOUNDARY.md) unless the brief explicitly includes it
-- Delete tests to green CI; put secrets in logs or evidence
-- Open parallel Cloud Agents for the same ENG
+## Prohibited by default
 
-## Verify (pick by scope)
-- Always-ish: `pnpm docs:check` · `pnpm lint` · `pnpm typecheck` · `pnpm test`
-- Schema/API: also `pnpm schema:validate`
-- Release-shaped: `pnpm release:check:quick` (full `pnpm release:check` only when brief asks)
-- Integration: `pnpm integration:test` when touching adapters/integration
+Agents MUST NOT:
 
-## Evidence
-- Record command outcomes + PR URL under the ENG evidence path from CoS/03E.
-- Done = evidence gate, not "agent finished".
+- Bypass branch protection, required CI, or the FULL Release Check.
+- Publish outside the approved release workflow.
+- Create or delete protected release tags arbitrarily.
+- Weaken Trusted Publishing.
+- Introduce long-lived npm tokens.
+- Automate or bypass npm 2FA proof-of-presence / WebAuthn / security-key challenges.
+- Extract or store OTPs.
+- Mutate production or release infrastructure unless the brief explicitly authorizes that work.
+- Run ad-hoc `npm publish`, `npm unpublish`, `npm dist-tag add`, or `npm dist-tag rm`.
 
-## Approval boundary
-Merge / publish / tag / Release / prod = human GO only (L4 for publish path).
+## Explicitly authorized automation
+
+If the task brief explicitly names **release-control-plane** or release-infrastructure work, the Agent MAY implement or configure **only** the operations that brief authorizes (examples: GitHub Environment, ruleset, repository variable, Trusted Publisher configuration, release workflow configuration) — and only when those items are specifically included.
+
+Trusted Publishing and release-infrastructure changes are forbidden by default. They are allowed only when the brief explicitly scopes release-control-plane setup or maintenance.
+
+Do not flip `NPM_TRUSTED_PUBLISHING_READY` casually. Flip it only when an explicit release-control-plane task (1) verifies all prerequisites, (2) confirms configuration is complete, and (3) explicitly authorizes the readiness change. Keep Phase 2.4B fail-closed.
+
+## Release safety boundary
+
+Current production architecture (document only; this file does not implement it):
+
+canonical CI artifact → exact-SHA FULL Release Check → OIDC → npm stage publish → human 2FA approval → registry verification
+
+Release writes go only through that approved architecture, and only when the brief explicitly authorizes release execution. Do not weaken staged publishing.
+
+Agents MUST NOT bypass or simulate `npm stage approve`, 2FA challenge completion, or security-key / WebAuthn.
+
+This file and a typical documentation PR do **not** implement the Release Control Plane.
+
+## Verification
+
+Pick checks by scope. Do not run expensive full-release checks for a one-line documentation-only PR unless the brief asks or a release-readiness claim is being made.
+
+- Documentation-only: `pnpm docs:check`
+- Normal code: `pnpm lint` · `pnpm typecheck` · `pnpm test`
+- Schema / API: also `pnpm schema:validate`
+- Adapter / integration: also `pnpm integration:test`
+- Release-shaped: `pnpm release:check:quick`
+- Full release changes: `pnpm release:check` when explicitly requested, or before any release-readiness claim
+
+## Evidence and secrets
+
+Never put any of the following in logs, PR bodies, evidence, or committed files: npm token, GitHub token, OIDC token, OTP, WebAuthn credential, authId, cookie, `Authorization` header, or other private credential material.
+
+Evidence is non-secret identifiers and command results only. Done = evidence gate, not “agent finished”.
+
+## Merge / approval boundary
+
+Merge may be automated only when: the brief explicitly permits merge **and** required checks are green **and** branch / ruleset policy permits it. Otherwise remain Draft / unmerged. Never bypass protection.
+
+Operating model: default deny + explicit brief authorization + existing repository safety gates. This is **not** “everything always requires a human to execute the work.”

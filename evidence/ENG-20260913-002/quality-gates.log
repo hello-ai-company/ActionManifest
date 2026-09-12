@@ -1,0 +1,607 @@
+======== lint ========
++ pnpm lint
+$ eslint .
+RESULT lint: PASS (1789253908s elapsed 4s)
+======== docs:check ========
++ pnpm docs:check
+$ tsx scripts/docs-check.ts
+docs:check PASS (no forbidden npx/bin package-identity patterns; bootstrap runbook safety rules hold)
+RESULT docs:check: PASS (1789253913s elapsed 3s)
+======== typecheck ========
++ pnpm typecheck
+$ tsc -b --pretty && pnpm --filter @actionmanifest/reference-consumer run typecheck
+$ tsc --noEmit -p tsconfig.json
+RESULT typecheck: PASS (1789253921s elapsed 5s)
+======== schema:validate ========
++ pnpm schema:validate
+$ tsx scripts/validate-schema.ts
+schema: PASS (v0.1 + v0.2 action-manifest + canonical-document, immutability + identity + dialect + 2 frozen checksums)
+RESULT schema:validate: PASS (1789253925s elapsed 2s)
+======== test ========
++ pnpm test
+$ vitest run
+
+ RUN  v3.2.7 /workspace
+
+ ✓ scripts/release-setup-plan.test.ts (31 tests) 16ms
+ ✓ scripts/registry-truth.test.ts (17 tests) 195ms
+ ✓ scripts/release-setup-safety.test.ts (21 tests) 16ms
+ ✓ scripts/release-setup-github.test.ts (14 tests) 6ms
+ ✓ packages/adapters/src/docling.test.ts (20 tests) 10ms
+ ✓ packages/exporters/src/export-trust.test.ts (18 tests) 9ms
+ ✓ packages/verifier/src/per-action.test.ts (7 tests) 10ms
+ ✓ scripts/workflow-static.test.ts (19 tests) 8ms
+ ✓ scripts/bootstrap-release.test.ts (18 tests) 14ms
+ ✓ packages/adapter-xberg/src/mapper.test.ts (17 tests) 9ms
+ ✓ scripts/canonical-artifact.test.ts (11 tests) 45ms
+ ✓ scripts/docs-check.test.ts (24 tests) 8ms
+ ✓ packages/exporters/src/exporters.test.ts (8 tests) 6ms
+ ✓ packages/consumer/src/classify.test.ts (10 tests) 5ms
+ ✓ apps/cli/src/conformance.test.ts (6 tests) 152ms
+ ✓ packages/exporters/src/ics-safety.test.ts (13 tests) 6ms
+ ✓ packages/core/src/schema-versioning.test.ts (12 tests) 6ms
+ ✓ packages/core/src/canonical.test.ts (15 tests) 6ms
+ ✓ packages/core/src/validate.test.ts (10 tests) 6ms
+ ✓ scripts/sha256sums.test.ts (10 tests) 8ms
+ ✓ benchmark/adversarial.test.ts (9 tests) 120ms
+ ✓ packages/core/src/trust.test.ts (11 tests) 4ms
+ ✓ scripts/release-identity.test.ts (11 tests) 6ms
+ ✓ apps/cli/src/ics-semantic.test.ts (11 tests) 5ms
+ ✓ scripts/release-setup-npm-runner.test.ts (6 tests) 6ms
+ ✓ packages/verifier/src/verify.test.ts (6 tests) 9ms
+ ✓ scripts/release-tag.test.ts (8 tests) 74ms
+ ✓ packages/exporters/src/ics-utf8.test.ts (11 tests) 67ms
+ ✓ packages/verifier/src/evidence-source.test.ts (4 tests) 6ms
+ ✓ scripts/release-setup-attestation.test.ts (5 tests) 5ms
+ ✓ apps/cli/src/conformance-validate.test.ts (14 tests) 83ms
+ ✓ scripts/sbom-validate.test.ts (8 tests) 137ms
+ ✓ scripts/full-release-check.test.ts (7 tests) 3ms
+ ✓ packages/verifier/src/negation.test.ts (3 tests) 5ms
+ ✓ scripts/governance.test.ts (12 tests) 3ms
+ ✓ benchmark/synthetic-guard.test.ts (4 tests) 15ms
+ ✓ packages/extractor/src/golden.test.ts (3 tests) 10ms
+ ✓ packages/temporal/src/parse.test.ts (8 tests) 6ms
+ ✓ packages/adapters/src/extensibility.test.ts (2 tests) 2ms
+ ✓ packages/adapters/src/adapters.test.ts (5 tests) 5ms
+ ✓ packages/adapter-xberg/src/adapter.test.ts (4 tests) 4ms
+ ✓ scripts/release-reproducibility.test.ts (5 tests) 2497ms
+   ✓ release-reproducibility helpers (pure) > the running pnpm satisfies the deterministic-pack minimum  323ms
+   ✓ packed manifest dependency order stability (regression: pnpm#10167) > extractor and cli pack identical dependency key order across runs  2171ms
+ ✓ packages/temporal/src/modality.test.ts (7 tests) 4ms
+ ✓ packages/core/src/no-external-io.test.ts (1 test) 2ms
+ ✓ benchmark/benchmark.test.ts (2 tests) 63ms
+
+ Test Files  45 passed (45)
+      Tests  468 passed (468)
+   Start at  22:58:50
+   Duration  30.19s (transform 5.58s, setup 0ms, collect 27.77s, tests 3.68s, environment 5ms, prepare 3.77s)
+
+RESULT test: PASS (1789253960s elapsed 32s)
+======== integration:test ========
++ pnpm integration:test
+$ pnpm build && vitest run --config integration/vitest.config.ts
+$ pnpm -r --filter "./packages/*" --filter "./apps/*" run build
+Scope: 10 of 12 workspace projects
+packages/schema build$ tsc -b
+packages/schema build: Done
+packages/core build$ tsc -b
+packages/core build: Done
+packages/adapters build$ tsc -b
+packages/consumer build$ tsc -b
+packages/exporters build$ tsc -b
+packages/temporal build$ tsc -b
+packages/temporal build: Done
+packages/consumer build: Done
+packages/exporters build: Done
+packages/adapters build: Done
+packages/adapter-xberg build$ tsc -b
+packages/verifier build$ tsc -b
+packages/extractor build$ tsc -b
+packages/adapter-xberg build: Done
+packages/extractor build: Done
+packages/verifier build: Done
+apps/cli build$ tsc -b
+apps/cli build: Done
+
+ RUN  v3.2.7 /workspace/integration
+
+ ✓ reference-consumer/test/export-trust.test.ts (6 tests) 15ms
+ ✓ reference-consumer/test/round-trip.test.ts (6 tests) 21ms
+ ✓ reference-consumer/test/cross-parser.test.ts (3 tests) 27ms
+ ✓ reference-consumer/test/public-imports.test.ts (4 tests) 4ms
+ ✓ reference-consumer/test/golden-e2e.test.ts (1 test) 16ms
+
+ Test Files  5 passed (5)
+      Tests  20 passed (20)
+   Start at  22:59:36
+   Duration  7.33s (transform 275ms, setup 0ms, collect 1.48s, tests 83ms, environment 1ms, prepare 286ms)
+
+RESULT integration:test: PASS (1789253984s elapsed 18s)
+======== release:check:quick ========
++ pnpm release:check:quick
+$ pnpm docs:check && pnpm pack:check && pnpm docs:examples && pnpm release:dry-run && pnpm release:reproducibility --runs 2
+$ tsx scripts/docs-check.ts
+docs:check PASS (no forbidden npx/bin package-identity patterns; bootstrap runbook safety rules hold)
+$ pnpm build && tsx scripts/pack-check.ts
+$ pnpm -r --filter "./packages/*" --filter "./apps/*" run build
+Scope: 10 of 12 workspace projects
+packages/schema build$ tsc -b
+packages/schema build: Done
+packages/core build$ tsc -b
+packages/core build: Done
+packages/adapters build$ tsc -b
+packages/consumer build$ tsc -b
+packages/exporters build$ tsc -b
+packages/temporal build$ tsc -b
+packages/adapters build: Done
+packages/temporal build: Done
+packages/exporters build: Done
+packages/consumer build: Done
+packages/adapter-xberg build$ tsc -b
+packages/verifier build$ tsc -b
+packages/extractor build$ tsc -b
+packages/adapter-xberg build: Done
+packages/extractor build: Done
+packages/verifier build: Done
+apps/cli build$ tsc -b
+apps/cli build: Done
+  ✓ @actionmanifest/schema (actionmanifest-schema-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/core (actionmanifest-core-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/temporal (actionmanifest-temporal-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/adapters (actionmanifest-adapters-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/extractor (actionmanifest-extractor-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/verifier (actionmanifest-verifier-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/exporters (actionmanifest-exporters-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/consumer (actionmanifest-consumer-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/adapter-xberg (actionmanifest-adapter-xberg-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/cli (actionmanifest-cli-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/schema standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/core standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/temporal standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/adapters standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/extractor standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/verifier standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/exporters standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/consumer standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/adapter-xberg standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/cli installed from tarball (offline, foreign cwd): bin shim, extract/validate/conformance/benchmark, exit codes, no Xberg — OK
+pack:check PASS (10 packages packed, verified, runtime-smoked, type-deps declared, standalone matrix + CLI install smoke OK)
+$ tsc --noEmit -p docs/examples/tsconfig.json && tsx --tsconfig docs/examples/tsconfig.json docs/examples/library-quick-start.ts && tsx --tsconfig docs/examples/tsconfig.json docs/examples/per-action-verification.ts
+library-quick-start OK: 2 ready actions, ICS 394 bytes
+per-action-verification OK: 1 verified + exported, 1 failed + withheld
+$ pnpm build && tsx scripts/release-dry-run.ts
+$ pnpm -r --filter "./packages/*" --filter "./apps/*" run build
+Scope: 10 of 12 workspace projects
+packages/schema build$ tsc -b
+packages/schema build: Done
+packages/core build$ tsc -b
+packages/core build: Done
+packages/adapters build$ tsc -b
+packages/exporters build$ tsc -b
+packages/consumer build$ tsc -b
+packages/temporal build$ tsc -b
+packages/exporters build: Done
+packages/consumer build: Done
+packages/adapters build: Done
+packages/temporal build: Done
+packages/adapter-xberg build$ tsc -b
+packages/extractor build$ tsc -b
+packages/verifier build$ tsc -b
+packages/extractor build: Done
+packages/adapter-xberg build: Done
+packages/verifier build: Done
+apps/cli build$ tsc -b
+apps/cli build: Done
+release:dry-run WARN: working tree is dirty (recorded in manifest; CI would fail)
+  packed @actionmanifest/adapter-xberg@0.9.0-rc.0 (actionmanifest-adapter-xberg-0.9.0-rc.0.tgz, sha256 10e35fa12458…)
+  packed @actionmanifest/adapters@0.9.0-rc.0 (actionmanifest-adapters-0.9.0-rc.0.tgz, sha256 4f2263dab664…)
+  packed @actionmanifest/cli@0.9.0-rc.0 (actionmanifest-cli-0.9.0-rc.0.tgz, sha256 8bdb0c5761d0…)
+  packed @actionmanifest/consumer@0.9.0-rc.0 (actionmanifest-consumer-0.9.0-rc.0.tgz, sha256 c550625bcd8c…)
+  packed @actionmanifest/core@0.9.0-rc.0 (actionmanifest-core-0.9.0-rc.0.tgz, sha256 2b307f3f9ef8…)
+  packed @actionmanifest/exporters@0.9.0-rc.0 (actionmanifest-exporters-0.9.0-rc.0.tgz, sha256 42b93ce1bbfd…)
+  packed @actionmanifest/extractor@0.9.0-rc.0 (actionmanifest-extractor-0.9.0-rc.0.tgz, sha256 ef2478af2431…)
+  packed @actionmanifest/schema@0.9.0-rc.0 (actionmanifest-schema-0.9.0-rc.0.tgz, sha256 8241f8d4dbcd…)
+  packed @actionmanifest/temporal@0.9.0-rc.0 (actionmanifest-temporal-0.9.0-rc.0.tgz, sha256 eb9e78c9a353…)
+  packed @actionmanifest/verifier@0.9.0-rc.0 (actionmanifest-verifier-0.9.0-rc.0.tgz, sha256 4a3698a4a00d…)
+  ✓ sbom.cdx.json validates against the official CycloneDX 1.5 JSON Schema (offline)
+  ✓ @actionmanifest/cli installed from tarball (offline, foreign cwd): bin shim, extract/validate/conformance/benchmark, exit codes, no Xberg — OK
+release:dry-run PASS — 10 tarballs, SHA256SUMS, release-manifest.json, sbom.cdx.json (14 external components), publish order: @actionmanifest/schema → @actionmanifest/core → @actionmanifest/adapters → @actionmanifest/consumer → @actionmanifest/exporters → @actionmanifest/temporal → @actionmanifest/adapter-xberg → @actionmanifest/extractor → @actionmanifest/verifier → @actionmanifest/cli
+artifacts: /workspace/release-artifacts
+$ tsx scripts/release-reproducibility.ts --runs 2
+@actionmanifest/schema
+  2/2 identical  sha256 8241f8d4dbcd…
+@actionmanifest/core
+  2/2 identical  sha256 2b307f3f9ef8…
+@actionmanifest/temporal
+  2/2 identical  sha256 eb9e78c9a353…
+@actionmanifest/adapters
+  2/2 identical  sha256 4f2263dab664…
+@actionmanifest/extractor
+  2/2 identical  sha256 ef2478af2431…
+@actionmanifest/verifier
+  2/2 identical  sha256 4a3698a4a00d…
+@actionmanifest/exporters
+  2/2 identical  sha256 42b93ce1bbfd…
+@actionmanifest/consumer
+  2/2 identical  sha256 c550625bcd8c…
+@actionmanifest/adapter-xberg
+  2/2 identical  sha256 10e35fa12458…
+@actionmanifest/cli
+  2/2 identical  sha256 8bdb0c5761d0…
+
+REPRODUCIBLE — 10 packages × 2 runs, byte-identical per package (pnpm 11.23.0)
+RESULT release:check:quick: PASS (elapsed 56s)
+======== release:check ========
++ pnpm release:check
+$ pnpm governance:validate && pnpm lint && pnpm docs:check && pnpm typecheck && pnpm schema:validate && pnpm test && pnpm integration:test && pnpm conformance && pnpm conformance:reference && pnpm benchmark:smoke && pnpm benchmark && pnpm pack:check && pnpm docs:examples && pnpm release:dry-run && pnpm release:reproducibility
+$ tsx scripts/governance.ts
+governance: PASS (base origin/main; 9 changed path(s); frozen schemas intact; suite_version 0.2.0)
+$ eslint .
+$ tsx scripts/docs-check.ts
+docs:check PASS (no forbidden npx/bin package-identity patterns; bootstrap runbook safety rules hold)
+$ tsc -b --pretty && pnpm --filter @actionmanifest/reference-consumer run typecheck
+$ tsc --noEmit -p tsconfig.json
+$ tsx scripts/validate-schema.ts
+schema: PASS (v0.1 + v0.2 action-manifest + canonical-document, immutability + identity + dialect + 2 frozen checksums)
+$ vitest run
+
+ RUN  v3.2.7 /workspace
+
+ ✓ scripts/registry-truth.test.ts (17 tests) 193ms
+ ✓ apps/cli/src/conformance.test.ts (6 tests) 114ms
+ ✓ scripts/release-reproducibility.test.ts (5 tests) 2451ms
+   ✓ release-reproducibility helpers (pure) > the running pnpm satisfies the deterministic-pack minimum  318ms
+   ✓ packed manifest dependency order stability (regression: pnpm#10167) > extractor and cli pack identical dependency key order across runs  2129ms
+ ✓ apps/cli/src/conformance-validate.test.ts (14 tests) 77ms
+ ✓ scripts/sbom-validate.test.ts (8 tests) 163ms
+ ✓ scripts/release-tag.test.ts (8 tests) 74ms
+ ✓ benchmark/adversarial.test.ts (9 tests) 160ms
+ ✓ packages/exporters/src/ics-utf8.test.ts (11 tests) 61ms
+ ✓ scripts/canonical-artifact.test.ts (11 tests) 44ms
+ ✓ benchmark/benchmark.test.ts (2 tests) 72ms
+ ✓ scripts/release-setup-safety.test.ts (21 tests) 16ms
+ ✓ scripts/release-setup-plan.test.ts (31 tests) 16ms
+ ✓ benchmark/synthetic-guard.test.ts (4 tests) 11ms
+ ✓ scripts/bootstrap-release.test.ts (18 tests) 7ms
+ ✓ packages/verifier/src/per-action.test.ts (7 tests) 12ms
+ ✓ packages/adapters/src/docling.test.ts (20 tests) 10ms
+ ✓ packages/extractor/src/golden.test.ts (3 tests) 9ms
+ ✓ packages/exporters/src/export-trust.test.ts (18 tests) 9ms
+ ✓ packages/verifier/src/verify.test.ts (6 tests) 8ms
+ ✓ packages/adapter-xberg/src/mapper.test.ts (17 tests) 9ms
+ ✓ scripts/sha256sums.test.ts (10 tests) 8ms
+ ✓ scripts/docs-check.test.ts (24 tests) 6ms
+ ✓ scripts/workflow-static.test.ts (19 tests) 7ms
+ ✓ scripts/release-setup-github.test.ts (14 tests) 6ms
+ ✓ packages/core/src/schema-versioning.test.ts (12 tests) 8ms
+ ✓ packages/exporters/src/ics-safety.test.ts (13 tests) 6ms
+ ✓ packages/core/src/validate.test.ts (10 tests) 8ms
+ ✓ scripts/release-identity.test.ts (11 tests) 6ms
+ ✓ packages/verifier/src/evidence-source.test.ts (4 tests) 6ms
+ ✓ packages/temporal/src/parse.test.ts (8 tests) 6ms
+ ✓ packages/core/src/canonical.test.ts (15 tests) 6ms
+ ✓ packages/exporters/src/exporters.test.ts (8 tests) 6ms
+ ✓ scripts/release-setup-npm-runner.test.ts (6 tests) 5ms
+ ✓ apps/cli/src/ics-semantic.test.ts (11 tests) 5ms
+ ✓ packages/verifier/src/negation.test.ts (3 tests) 5ms
+ ✓ scripts/release-setup-attestation.test.ts (5 tests) 5ms
+ ✓ packages/consumer/src/classify.test.ts (10 tests) 6ms
+ ✓ packages/temporal/src/modality.test.ts (7 tests) 4ms
+ ✓ packages/adapters/src/adapters.test.ts (5 tests) 5ms
+ ✓ scripts/governance.test.ts (12 tests) 3ms
+ ✓ packages/adapter-xberg/src/adapter.test.ts (4 tests) 4ms
+ ✓ packages/core/src/trust.test.ts (11 tests) 4ms
+ ✓ scripts/full-release-check.test.ts (7 tests) 3ms
+ ✓ packages/core/src/no-external-io.test.ts (1 test) 2ms
+ ✓ packages/adapters/src/extensibility.test.ts (2 tests) 2ms
+
+ Test Files  45 passed (45)
+      Tests  468 passed (468)
+   Start at  23:01:00
+   Duration  31.42s (transform 1.46s, setup 0ms, collect 17.73s, tests 3.65s, environment 5ms, prepare 3.84s)
+
+$ pnpm build && vitest run --config integration/vitest.config.ts
+$ pnpm -r --filter "./packages/*" --filter "./apps/*" run build
+Scope: 10 of 12 workspace projects
+packages/schema build$ tsc -b
+packages/schema build: Done
+packages/core build$ tsc -b
+packages/core build: Done
+packages/adapters build$ tsc -b
+packages/consumer build$ tsc -b
+packages/exporters build$ tsc -b
+packages/temporal build$ tsc -b
+packages/adapters build: Done
+packages/temporal build: Done
+packages/consumer build: Done
+packages/exporters build: Done
+packages/adapter-xberg build$ tsc -b
+packages/extractor build$ tsc -b
+packages/verifier build$ tsc -b
+packages/adapter-xberg build: Done
+packages/extractor build: Done
+packages/verifier build: Done
+apps/cli build$ tsc -b
+apps/cli build: Done
+
+ RUN  v3.2.7 /workspace/integration
+
+ ✓ reference-consumer/test/golden-e2e.test.ts (1 test) 15ms
+ ✓ reference-consumer/test/round-trip.test.ts (6 tests) 21ms
+ ✓ reference-consumer/test/cross-parser.test.ts (3 tests) 27ms
+ ✓ reference-consumer/test/export-trust.test.ts (6 tests) 16ms
+ ✓ reference-consumer/test/public-imports.test.ts (4 tests) 4ms
+
+ Test Files  5 passed (5)
+      Tests  20 passed (20)
+   Start at  23:01:36
+   Duration  3.05s (transform 234ms, setup 0ms, collect 1.52s, tests 83ms, environment 1ms, prepare 274ms)
+
+$ tsx apps/cli/src/index.ts conformance
+ActionManifest Universal Conformance (suite 0.2.0)
+trust                 11/11 PASS
+temporal              12/12 PASS
+ics                   12/12 PASS
+canonical-document    13/13 PASS
+evidence               6/6 PASS
+schema                11/11 PASS
+TOTAL                 65/65 PASS
+Critical false exported: 0 (MUST be 0)
+CONFORMANT
+$ tsx apps/cli/src/index.ts conformance --reference
+ActionManifest Universal Conformance (suite 0.2.0)
+trust                 11/11 PASS
+temporal              12/12 PASS
+ics                   12/12 PASS
+canonical-document    13/13 PASS
+evidence               6/6 PASS
+schema                11/11 PASS
+TOTAL                 65/65 PASS
+Critical false exported: 0 (MUST be 0)
+CONFORMANT
+
+Reference Serialization (TypeScript regression only — NOT universal conformance): 4/4 PASS
+$ tsx apps/cli/src/index.ts benchmark --smoke
+Action Manifest benchmark
+fixtures: 11 (JP 10 / EN 1, adversarial 10)
+Action Recall:      100.0%
+Action Precision:   77.3%
+Deadline Accuracy:  100.0%
+Actor Accuracy:     97.0%
+Modality Accuracy:  90.9%
+Evidence Match:     100.0%
+Hallucination Rate: 4.5%  ← lower is better
+Ambiguity Preserve: 90.9%  ← higher is better
+Verifier pass rate: 90.9%
+Action verify rate: 90.9%  ← verified actions / total actions
+-- adversarial reliability --
+False Verified Rate: 0.0%  ← forbidden actions that got verified / forbidden extracted (lower is better)
+Forbidden Action:    9.1%  ← lower is better
+Stale Action Rate:   0.0%  ← lower is better
+Duplicate Action:    0.0%  ← lower is better
+Correction Resolve:  100.0%  ← higher is better
+Negation Preserve:   100.0%  ← higher is better
+Conditional Preserve:100.0%  ← higher is better
+Critical false-verified: 0  ← MUST be 0
+Golden fixture:     PASS
+Adversarial golden: PASS
+
+- adv-en-cancellation [en/cancellation] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-cancellation [ja/cancellation] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-correction-date [ja/correction-notice] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-cross-sentence-cancellation [ja/cancellation] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-cross-sentence-negation [ja/negation] R=100.0% P=50.0% H=50.0% A=0.0% fbid=1 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-deadline-extension [ja/deadline-extension] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-negation-no-submit [ja/negation] R=100.0% P=0.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-quoted-old [ja/quoted-old-instruction] R=100.0% P=0.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-reference-only [ja/reference-only] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-reverse-correction [ja/correction-notice] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- school-golden-excursion [ja/school] R=100.0% P=100.0% H=0.0% A=100.0% GOLDEN PASS
+$ tsx apps/cli/src/index.ts benchmark
+Action Manifest benchmark
+fixtures: 74 (JP 47 / EN 27, adversarial 40)
+Action Recall:      87.8%
+Action Precision:   72.1%
+Deadline Accuracy:  86.5%
+Actor Accuracy:     96.8%
+Modality Accuracy:  80.4%
+Evidence Match:     100.0%
+Hallucination Rate: 3.4%  ← lower is better
+Ambiguity Preserve: 97.3%  ← higher is better
+Verifier pass rate: 94.6%
+Action verify rate: 96.0%  ← verified actions / total actions
+-- adversarial reliability --
+False Verified Rate: 0.0%  ← forbidden actions that got verified / forbidden extracted (lower is better)
+Forbidden Action:    4.0%  ← lower is better
+Stale Action Rate:   0.0%  ← lower is better
+Duplicate Action:    2.0%  ← lower is better
+Correction Resolve:  100.0%  ← higher is better
+Negation Preserve:   100.0%  ← higher is better
+Conditional Preserve:100.0%  ← higher is better
+Critical false-verified: 0  ← MUST be 0
+Golden fixture:     PASS
+Adversarial golden: PASS
+
+- adv-en-approximate [en/approximate-date] R=0.0% P=0.0% H=0.0% A=0.0% fbid=0 fbverified=0 crit=0
+- adv-en-cancellation [en/cancellation] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-en-conditional [en/conditional-eligibility] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-en-correction [en/correction-notice] R=0.0% P=0.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-en-correction-from-to [en/correction-notice] R=0.0% P=0.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-en-correction-revised [en/correction-notice] R=0.0% P=0.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-en-cross-sentence-cancellation [en/cancellation] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-en-cross-sentence-negation [en/negation] R=100.0% P=50.0% H=50.0% A=100.0% fbid=1 fbverified=0 crit=0
+- adv-en-extension [en/deadline-extension] R=0.0% P=0.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-en-history [en/multiple-dates] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-en-modality-scale [en/modality-scale] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-en-multi-submit-negation [en/negation] R=100.0% P=50.0% H=50.0% A=100.0% fbid=1 fbverified=0 crit=0
+- adv-en-negation [en/negation] R=100.0% P=0.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-en-postmark [en/postmark-vs-arrival] R=0.0% P=0.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-en-previously [en/reference-only] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-en-reverse-correction [en/correction-notice] R=0.0% P=0.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-approximate [ja/approximate-date] R=100.0% P=50.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-cancellation [ja/cancellation] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-conditional-date-rain [ja/conditional-date] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-conditional-eligibility [ja/conditional-eligibility] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-correction-date [ja/correction-notice] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-correction-from-to [ja/correction-notice] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-correction-gerund [ja/correction-notice] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-cross-action [ja/cross-action] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-cross-sentence-cancellation [ja/cancellation] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-cross-sentence-negation [ja/negation] R=100.0% P=50.0% H=50.0% A=0.0% fbid=1 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-deadline-correction-earlier [ja/deadline-extension] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-deadline-extension [ja/deadline-extension] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-exemption-health [ja/exemption] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-history-dates [ja/multiple-dates] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-modality-scale [ja/modality-scale] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-multi-event-cancellation [ja/cancellation] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-multi-submit-negation [ja/negation] R=100.0% P=50.0% H=50.0% A=100.0% fbid=1 fbverified=0 crit=0
+- adv-jp-negation-no-submit [ja/negation] R=100.0% P=0.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-ocr-noise [ja/ocr-noise] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-postmark-vs-arrival [ja/postmark-vs-arrival] R=0.0% P=0.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-quoted-old [ja/quoted-old-instruction] R=100.0% P=0.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-reference-only [ja/reference-only] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- adv-jp-repeated-action [ja/repeated-action] R=100.0% P=50.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0
+- adv-jp-reverse-correction [ja/correction-notice] R=100.0% P=100.0% H=0.0% A=100.0% fbid=0 fbverified=0 crit=0 ADV-GOLDEN PASS
+- contract-sign-en [en/contract] R=100.0% P=100.0% H=0.0% A=100.0%
+- en-around-october [en/workplace] R=100.0% P=100.0% H=0.0% A=100.0%
+- event-collect-on-day [ja/event] R=100.0% P=100.0% H=0.0% A=100.0%
+- event-participants-only [ja/event] R=0.0% P=100.0% H=0.0% A=100.0%
+- event-rsvp-en [en/event] R=100.0% P=100.0% H=0.0% A=100.0%
+- gov-must-arrive [ja/government] R=100.0% P=100.0% H=0.0% A=100.0%
+- gov-no-submit-needed [ja/government] R=100.0% P=100.0% H=0.0% A=100.0%
+- gov-postmark-valid [ja/government] R=100.0% P=50.0% H=0.0% A=100.0%
+- gov-tax-postmark-en [en/government] R=100.0% P=33.3% H=0.0% A=100.0%
+- housing-contract-jp [ja/housing] R=100.0% P=50.0% H=0.0% A=100.0%
+- housing-inspection-en [en/housing] R=100.0% P=50.0% H=0.0% A=100.0%
+- insurance-claim-en [en/insurance] R=100.0% P=50.0% H=0.0% A=100.0%
+- insurance-review-jp [ja/insurance] R=100.0% P=50.0% H=0.0% A=100.0%
+- invoice-pay-jp [ja/invoice] R=100.0% P=100.0% H=0.0% A=100.0%
+- invoice-payment-en [en/invoice] R=100.0% P=50.0% H=0.0% A=100.0%
+- mixed-community-notice [ja/mixed-validity] R=100.0% P=100.0% H=0.0% A=100.0%
+- open-house-en [en/optional-eligibility] R=100.0% P=100.0% H=0.0% A=100.0%
+- reading-log-en [en/approximate-vs-hallucinated] R=100.0% P=100.0% H=0.0% A=100.0%
+- school-already-submitted [ja/school] R=100.0% P=50.0% H=50.0% A=100.0%
+- school-applicants-only [ja/school] R=100.0% P=50.0% H=0.0% A=100.0%
+- school-around-october [ja/school] R=100.0% P=100.0% H=0.0% A=100.0%
+- school-backup-date [ja/event] R=100.0% P=50.0% H=0.0% A=100.0%
+- school-bring-own [ja/school] R=100.0% P=100.0% H=0.0% A=100.0%
+- school-deadline-until [ja/school] R=100.0% P=100.0% H=0.0% A=100.0%
+- school-early-october [ja/school] R=100.0% P=50.0% H=0.0% A=100.0%
+- school-golden-excursion [ja/school] R=100.0% P=100.0% H=0.0% A=100.0% GOLDEN PASS
+- school-guardian-signature [ja/actor-explicit] R=100.0% P=100.0% H=0.0% A=100.0%
+- school-rain-postponement [ja/school] R=100.0% P=100.0% H=0.0% A=100.0%
+- school-reiwa-date [ja/school] R=100.0% P=100.0% H=0.0% A=100.0%
+- sports-day-exemption [ja/conditional-negation-exemption] R=100.0% P=100.0% H=0.0% A=100.0%
+- university-application-en [en/university] R=100.0% P=50.0% H=0.0% A=100.0%
+- university-deadline-jp [ja/university] R=100.0% P=100.0% H=0.0% A=100.0%
+- workplace-meeting-en [en/workplace] R=100.0% P=100.0% H=0.0% A=100.0%
+- workplace-submit-later [ja/workplace] R=100.0% P=50.0% H=0.0% A=100.0%
+$ pnpm build && tsx scripts/pack-check.ts
+$ pnpm -r --filter "./packages/*" --filter "./apps/*" run build
+Scope: 10 of 12 workspace projects
+packages/schema build$ tsc -b
+packages/schema build: Done
+packages/core build$ tsc -b
+packages/core build: Done
+packages/adapters build$ tsc -b
+packages/consumer build$ tsc -b
+packages/exporters build$ tsc -b
+packages/temporal build$ tsc -b
+packages/adapters build: Done
+packages/temporal build: Done
+packages/consumer build: Done
+packages/exporters build: Done
+packages/adapter-xberg build$ tsc -b
+packages/extractor build$ tsc -b
+packages/verifier build$ tsc -b
+packages/adapter-xberg build: Done
+packages/extractor build: Done
+packages/verifier build: Done
+apps/cli build$ tsc -b
+apps/cli build: Done
+  ✓ @actionmanifest/schema (actionmanifest-schema-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/core (actionmanifest-core-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/temporal (actionmanifest-temporal-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/adapters (actionmanifest-adapters-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/extractor (actionmanifest-extractor-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/verifier (actionmanifest-verifier-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/exporters (actionmanifest-exporters-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/consumer (actionmanifest-consumer-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/adapter-xberg (actionmanifest-adapter-xberg-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/cli (actionmanifest-cli-0.9.0-rc.0.tgz)
+  ✓ @actionmanifest/schema standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/core standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/temporal standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/adapters standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/extractor standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/verifier standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/exporters standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/consumer standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/adapter-xberg standalone consumer (declared deps only): tsc + runtime OK
+  ✓ @actionmanifest/cli installed from tarball (offline, foreign cwd): bin shim, extract/validate/conformance/benchmark, exit codes, no Xberg — OK
+pack:check PASS (10 packages packed, verified, runtime-smoked, type-deps declared, standalone matrix + CLI install smoke OK)
+$ tsc --noEmit -p docs/examples/tsconfig.json && tsx --tsconfig docs/examples/tsconfig.json docs/examples/library-quick-start.ts && tsx --tsconfig docs/examples/tsconfig.json docs/examples/per-action-verification.ts
+library-quick-start OK: 2 ready actions, ICS 394 bytes
+per-action-verification OK: 1 verified + exported, 1 failed + withheld
+$ pnpm build && tsx scripts/release-dry-run.ts
+$ pnpm -r --filter "./packages/*" --filter "./apps/*" run build
+Scope: 10 of 12 workspace projects
+packages/schema build$ tsc -b
+packages/schema build: Done
+packages/core build$ tsc -b
+packages/core build: Done
+packages/adapters build$ tsc -b
+packages/consumer build$ tsc -b
+packages/exporters build$ tsc -b
+packages/temporal build$ tsc -b
+packages/exporters build: Done
+packages/consumer build: Done
+packages/adapters build: Done
+packages/temporal build: Done
+packages/adapter-xberg build$ tsc -b
+packages/extractor build$ tsc -b
+packages/verifier build$ tsc -b
+packages/verifier build: Done
+packages/extractor build: Done
+packages/adapter-xberg build: Done
+apps/cli build$ tsc -b
+apps/cli build: Done
+release:dry-run WARN: working tree is dirty (recorded in manifest; CI would fail)
+  packed @actionmanifest/adapter-xberg@0.9.0-rc.0 (actionmanifest-adapter-xberg-0.9.0-rc.0.tgz, sha256 10e35fa12458…)
+  packed @actionmanifest/adapters@0.9.0-rc.0 (actionmanifest-adapters-0.9.0-rc.0.tgz, sha256 4f2263dab664…)
+  packed @actionmanifest/cli@0.9.0-rc.0 (actionmanifest-cli-0.9.0-rc.0.tgz, sha256 8bdb0c5761d0…)
+  packed @actionmanifest/consumer@0.9.0-rc.0 (actionmanifest-consumer-0.9.0-rc.0.tgz, sha256 c550625bcd8c…)
+  packed @actionmanifest/core@0.9.0-rc.0 (actionmanifest-core-0.9.0-rc.0.tgz, sha256 2b307f3f9ef8…)
+  packed @actionmanifest/exporters@0.9.0-rc.0 (actionmanifest-exporters-0.9.0-rc.0.tgz, sha256 42b93ce1bbfd…)
+  packed @actionmanifest/extractor@0.9.0-rc.0 (actionmanifest-extractor-0.9.0-rc.0.tgz, sha256 ef2478af2431…)
+  packed @actionmanifest/schema@0.9.0-rc.0 (actionmanifest-schema-0.9.0-rc.0.tgz, sha256 8241f8d4dbcd…)
+  packed @actionmanifest/temporal@0.9.0-rc.0 (actionmanifest-temporal-0.9.0-rc.0.tgz, sha256 eb9e78c9a353…)
+  packed @actionmanifest/verifier@0.9.0-rc.0 (actionmanifest-verifier-0.9.0-rc.0.tgz, sha256 4a3698a4a00d…)
+  ✓ sbom.cdx.json validates against the official CycloneDX 1.5 JSON Schema (offline)
+  ✓ @actionmanifest/cli installed from tarball (offline, foreign cwd): bin shim, extract/validate/conformance/benchmark, exit codes, no Xberg — OK
+release:dry-run PASS — 10 tarballs, SHA256SUMS, release-manifest.json, sbom.cdx.json (14 external components), publish order: @actionmanifest/schema → @actionmanifest/core → @actionmanifest/adapters → @actionmanifest/consumer → @actionmanifest/exporters → @actionmanifest/temporal → @actionmanifest/adapter-xberg → @actionmanifest/extractor → @actionmanifest/verifier → @actionmanifest/cli
+artifacts: /workspace/release-artifacts
+$ tsx scripts/release-reproducibility.ts
+@actionmanifest/schema
+  10/10 identical  sha256 8241f8d4dbcd…
+@actionmanifest/core
+  10/10 identical  sha256 2b307f3f9ef8…
+@actionmanifest/temporal
+  10/10 identical  sha256 eb9e78c9a353…
+@actionmanifest/adapters
+  10/10 identical  sha256 4f2263dab664…
+@actionmanifest/extractor
+  10/10 identical  sha256 ef2478af2431…
+@actionmanifest/verifier
+  10/10 identical  sha256 4a3698a4a00d…
+@actionmanifest/exporters
+  10/10 identical  sha256 42b93ce1bbfd…
+@actionmanifest/consumer
+  10/10 identical  sha256 c550625bcd8c…
+@actionmanifest/adapter-xberg
+  10/10 identical  sha256 10e35fa12458…
+@actionmanifest/cli
+  10/10 identical  sha256 8bdb0c5761d0…
+
+REPRODUCIBLE — 10 packages × 10 runs, byte-identical per package (pnpm 11.23.0)
+RESULT release:check: PASS (elapsed 156s)

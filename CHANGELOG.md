@@ -7,6 +7,19 @@ All notable changes to this project are documented here. Schema version is indep
 Controller only. Package versions stay `0.9.0-rc.0`. No npm package
 release, no stage publish/approve, no git tag, no GitHub Release, no `rc.1`.
 
+### Review Round 2 (same Draft PR)
+
+- Package security `MANUAL_REQUIRED` / `UNSUPPORTED` still block READY by
+  default (R1 preserved). `--attest-manual-security` is an explicit,
+  auditable escape hatch: a non-secret record (who / when / packages /
+  what was verified in the npm Settings UI) may unblock READY only after
+  other prerequisites pass. Status is never rewritten to `OK`. Empty or
+  placeholder records fail closed. Official `npm access set mfa=publish`
+  is still not treated as the UI “disallow tokens” control.
+- Every `release:setup` npm path asserts live `npm --version` is exactly
+  `11.15.0` before any `trust` / `access` call. Host 10.x and newer CLIs
+  fail closed. Never `npm@latest`.
+
 ### Review Round 1 (same Draft PR)
 
 - Security contract is a READY prerequisite: only `OK` satisfies.

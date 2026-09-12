@@ -3,7 +3,8 @@
  *
  * NEVER runs registry publish / staged publish / staged approve / unpublish /
  * deprecate / dist-tag. NEVER stores or logs OTP / tokens / cookies.
- * Write paths require npm >= 11.15.0 (PINNED_NPM_CLI) — never a floating latest CLI.
+ * Write paths require npm --version exactly PINNED_NPM_CLI (11.15.0) —
+ * never host npm, never a floating latest spec, never a newer-or-older substitute.
  */
 import { spawnSync, type SpawnSyncOptions } from "node:child_process";
 import { PINNED_NPM_CLI } from "./release-identity.js";
@@ -83,10 +84,23 @@ export function npmVersionAtLeast(actual: string, min: string): boolean {
   return true;
 }
 
-export function defaultNpmExec(args: string[], options?: { inheritStdio?: boolean }): NpmExecResult {
-  if (isForbiddenNpmArgv(args)) {
-    return { status: 2, stdout: "", stderr: `refusing forbidden npm argv: ${args[0] ?? ""}` };
+/** release:setup accepts only the exact pin (trim). Newer is still fail-closed. */
+export function npmVersionIsExactPinned(actual: string, expected = PINNED_NPM_CLI): boolean {
+  return actual.trim() === expected;
+}
+
+export function assertExactPinnedNpmVersion(actual: string, expected = PINNED_NPM_CLI): void {
+  const version = actual.trim();
+  if (version !== expected) {
+    throw new Error(
+      `FAIL-CLOSED: npm --version is ${version || "empty"}, required exactly ${expected} (never host npm, never a floating latest spec)`,
+    );
   }
+}
+
+let cachedLivePinnedVersion: string | undefined;
+
+function spawnPinnedNpm(args: string[], options?: { inheritStdio?: boolean }): NpmExecResult {
   const invocation = pinnedNpmInvocation(args, resolvePinnedNpm());
   const spawnOpts: SpawnSyncOptions = {
     encoding: "utf8",
@@ -107,6 +121,38 @@ export function defaultNpmExec(args: string[], options?: { inheritStdio?: boolea
     stdout: typeof r.stdout === "string" ? r.stdout : "",
     stderr: typeof r.stderr === "string" ? r.stderr : "",
   };
+}
+
+/** Probe the resolved pinned binary before any trust/access call. */
+export function assertLivePinnedNpmBinary(): string {
+  if (cachedLivePinnedVersion !== undefined) {
+    assertExactPinnedNpmVersion(cachedLivePinnedVersion);
+    return cachedLivePinnedVersion;
+  }
+  const probed = spawnPinnedNpm(["--version"]);
+  const version = (probed.stdout || "").trim();
+  if (probed.status !== 0) {
+    throw new Error(
+      `FAIL-CLOSED: pinned npm --version failed (status ${probed.status ?? "?"}): ${(probed.stderr || "").trim() || "no stderr"}`,
+    );
+  }
+  assertExactPinnedNpmVersion(version);
+  cachedLivePinnedVersion = version;
+  return version;
+}
+
+export function defaultNpmExec(args: string[], options?: { inheritStdio?: boolean }): NpmExecResult {
+  if (isForbiddenNpmArgv(args)) {
+    return { status: 2, stdout: "", stderr: `refusing forbidden npm argv: ${args[0] ?? ""}` };
+  }
+  if (args[0] !== "--version") {
+    assertLivePinnedNpmBinary();
+  }
+  const result = spawnPinnedNpm(args, options);
+  if (args[0] === "--version" && result.status === 0) {
+    assertExactPinnedNpmVersion((result.stdout || "").trim());
+  }
+  return result;
 }
 
 export function helpMentions(help: string, token: string): boolean {
@@ -225,7 +271,13 @@ export class OfficialNpmTrustClient implements NpmTrustClient {
 
   async inspectCli(): Promise<NpmCliCapabilities> {
     const ver = this.exec(["--version"]);
+    if (ver.status !== 0) {
+      throw new Error(
+        `FAIL-CLOSED: npm --version failed (status ${ver.status ?? "?"}) — refusing trust/access without exact ${PINNED_NPM_CLI}`,
+      );
+    }
     const version = (ver.stdout || "").trim();
+    assertExactPinnedNpmVersion(version);
     // Prefer `npm <cmd> --help` (built-in usage). `npm help <cmd>` needs manpages
     // and returns a minimized-OS stub on some agents.
     const trust = this.exec(["trust", "--help"]);
@@ -235,21 +287,18 @@ export class OfficialNpmTrustClient implements NpmTrustClient {
     const accessHelp = `${access.stdout}\n${access.stderr}`;
     const stageHelp = `${stage.stdout}\n${stage.stderr}`;
     const notes: string[] = [
-      `pinned npm runner ${PINNED_NPM_CLI} --version ${version || "UNKNOWN"} (host npm ignored)`,
+      `pinned npm runner ${PINNED_NPM_CLI} --version ${version} (host npm ignored; exact pin asserted before trust/access)`,
+      `exact pin ${PINNED_NPM_CLI} implies official trust/access/stage surface`,
+      `help exits trust=${trust.status} access=${access.status} stage=${stage.status} trustHelpChars=${trustHelp.length} stageHelpChars=${stageHelp.length}`,
     ];
-    if (!version) notes.push("npm --version produced no output");
-    const pinned = npmVersionAtLeast(version, PINNED_NPM_CLI);
-    if (pinned) {
-      notes.push(`exact pin ${PINNED_NPM_CLI} implies official trust/access/stage surface`);
-    }
     return {
       version,
-      trust: pinned || (helpMentions(trustHelp, "npm trust") && !helpMentions(trustHelp, "unknown command")),
-      trustList: pinned || helpMentions(trustHelp, "trust list"),
-      trustGithub: pinned || helpMentions(trustHelp, "trust github"),
-      access: pinned || (helpMentions(accessHelp, "npm access") && !helpMentions(accessHelp, "unknown command")),
+      trust: true,
+      trustList: true,
+      trustGithub: true,
+      access: true,
       accessSetMfa: helpMentions(accessHelp, "set mfa") || helpMentions(accessHelp, "mfa=none|publish|automation"),
-      stage: pinned || (helpMentions(stageHelp, "npm stage") && !helpMentions(stageHelp, "unknown command")),
+      stage: true,
       notes,
     };
   }
@@ -337,9 +386,9 @@ export class OfficialNpmTrustClient implements NpmTrustClient {
 
   async addTrustedPublisher(packageName: string): Promise<void> {
     const caps = await this.inspectCli();
-    if (!caps.trustGithub || !npmVersionAtLeast(caps.version, PINNED_NPM_CLI)) {
+    if (!caps.trustGithub || !npmVersionIsExactPinned(caps.version)) {
       throw new Error(
-        `refusing Trusted Publisher write: official npm CLI must be >= ${PINNED_NPM_CLI} with \`npm trust github\` (got ${caps.version || "UNKNOWN"}; never a floating latest CLI)`,
+        `refusing Trusted Publisher write: official npm CLI must be exactly ${PINNED_NPM_CLI} with \`npm trust github\` (got ${caps.version || "UNKNOWN"}; never a floating latest CLI)`,
       );
     }
     const args = [

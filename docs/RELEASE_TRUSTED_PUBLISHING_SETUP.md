@@ -66,7 +66,29 @@ Trusted Publishers (wrong repo/workflow/env) **STOP** — no overwrite.
 
 Package security “require 2FA and disallow tokens” is **not** automated:
 official `npm access set mfa=publish` is **not** documented as equivalent
-to that Settings control. Status is `MANUAL_REQUIRED` and **blocks READY**.
+to that Settings control (re-checked: no official CLI sets the
+“disallow tokens” radio). Status is `MANUAL_REQUIRED` and **blocks READY**
+by default.
+
+To converge READY after a maintainer has verified the npm UI control,
+pass an explicit attestation (not a silent PASS, never tokens/OTP):
+
+```bash
+pnpm release:setup --check --attest-manual-security
+pnpm release:setup --apply --attest-manual-security[=<path>]
+```
+
+Default path: `docs/evidence/manual-package-security-attestation.json`.
+Copy `docs/evidence/manual-package-security-attestation.example.json`
+and fill who / when / which packages / what was verified in npm Settings
+(“Require two-factor authentication and disallow tokens”). Optional local
+`release-manual-security-attestation.json` is gitignored. The example
+placeholders fail validation on purpose. Status stays `MANUAL_REQUIRED`
+(not rewritten to `OK`). Invalid or missing attestation still blocks.
+`READY=true` + `MANUAL_REQUIRED` without a valid attestation is CRITICAL.
+
+Every `release:setup` npm path asserts the live binary prints
+`11.15.0` before `trust` / `access` (never host npm, never `npm@latest`).
 
 ## 2. Break-glass UI (only if `--apply` cannot)
 

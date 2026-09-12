@@ -71,18 +71,24 @@ npm: official CLI only, via the **exact pinned runner** `npm@11.15.0`
 does not determine correctness. Resolution is project-local
 (`.release-tools/npm-cli/11.15.0` or `node_modules/npm` at that exact
 version) or `npx --yes --package=npm@11.15.0` (documented download into
-the npx cache). Never `npm@latest`. Never a silent global replace.
+the npx cache). Before any `trust` / `access` call the runner asserts
+`npm --version` stdout trims to exactly `11.15.0` (fail closed on empty,
+10.x, or newer). `ACTIONMANIFEST_NPM_CLI` is probed, not trusted by path
+alone. Never `npm@latest`. Never a silent global replace.
 Never HTML scraping.
 
 Package security (2FA required + long-lived tokens disallowed + Trusted
-Publishing used) is a READY prerequisite. Only status `OK` satisfies.
-`MANUAL_REQUIRED` and `UNSUPPORTED` are **not** PASS and **block READY**.
+Publishing used) is a READY prerequisite. Only status `OK` satisfies by
+default. `MANUAL_REQUIRED` and `UNSUPPORTED` are **not** PASS and **block
+READY** unless an explicit `--attest-manual-security` escape hatch is
+used (see Decision 11). Empty reads never become `OK`.
 `npm access set mfa=publish` is the official CLI for package-level
 publish 2FA (`mfa=none|publish|automation`). Official npm docs do **not**
 equate that write with Settings → Publishing access “Require two-factor
 authentication and disallow tokens” (which additionally blocks granular
-tokens regardless of bypass-2FA). Therefore that control stays
-`MANUAL_REQUIRED` and is not automated.
+tokens regardless of bypass-2FA). Re-checked 2026-09-12: no official CLI
+flag sets that radio. Therefore that control stays `MANUAL_REQUIRED` and
+is not automated.
 
 ### 7. Staged publishing only
 
@@ -122,6 +128,35 @@ No `npm publish`, no dist-tag mutation, no unpublish, no deprecate, no git
 tag, no `gh release create`, no version bump. Package versions stay
 `0.9.0-rc.0` until a later, separately authorized release.
 
+### 11. Auditable security attestation (READY is not permanently deadlocked)
+
+`MANUAL_REQUIRED` / `UNSUPPORTED` still block READY by default (R1).
+READY must remain solvable without faking `OK` from empty CLI reads.
+
+The only escape hatch is explicit and auditable:
+
+```bash
+pnpm release:setup --check --attest-manual-security
+pnpm release:setup --apply --attest-manual-security[=<path>]
+```
+
+- The flag is required. A file on disk is **not** applied silently.
+- Default path: `docs/evidence/manual-package-security-attestation.json`
+  (human-committed break-glass evidence). Optional local
+  `release-manual-security-attestation.json` is gitignored.
+- Kind must be `actionmanifest-manual-package-security-attestation`.
+- Record is non-secret: who (`attestedBy`), when (`attestedAt` ISO-8601),
+  which packages, and what was verified in the npm Settings UI
+  (`verifiedInNpmUi` must name two-factor / 2FA **and** disallow tokens).
+- Tokens / OTP / Authorization / cookies are refused.
+- Placeholders (`_EXAMPLE_DO_NOT_USE`, empty packages) fail validation.
+  The committed `.example.json` cannot unblock READY.
+- Status stays `MANUAL_REQUIRED` / `UNSUPPORTED` (never rewritten to `OK`).
+- Valid attestation covering every such package may allow READY **only
+  after** other prerequisites pass. Invalid / missing / partial
+  attestation still blocks. `READY=true` + `MANUAL_REQUIRED` without a
+  valid attestation is CRITICAL.
+
 ## Consequences
 
 - `pnpm release:setup --check` is the preferred audit. The npmjs.com /
@@ -133,7 +168,8 @@ tag, no `gh release create`, no version bump. Package versions stay
   official CLI requests it, and later `npm stage approve` (2FA).
 - Package-level “require 2FA and disallow tokens” is `MANUAL_REQUIRED` when
   it is not a safely documented official CLI write — never a fake `PASS`.
-  `MANUAL_REQUIRED` / `UNSUPPORTED` block `NPM_TRUSTED_PUBLISHING_READY`.
+  `MANUAL_REQUIRED` / `UNSUPPORTED` block `NPM_TRUSTED_PUBLISHING_READY`
+  unless `--attest-manual-security` loads a valid non-secret attestation.
 - Managed tag ruleset create/update bodies are explicit GitHub REST rule
   objects. `update` always includes
   `parameters.update_allows_fetch_and_merge: false`. Compatible stronger

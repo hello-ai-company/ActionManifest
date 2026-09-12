@@ -262,7 +262,9 @@ invokes exact `npm@11.15.0` (never the host 10.x CLI, never
 2FA; `--apply` may prompt (human PoP) and uses official `--yes` with a
 ~2s pace between packages. Package-level “require 2FA and disallow
 tokens” stays `MANUAL_REQUIRED` (not `npm access set mfa=publish`) and
-blocks READY. Do not run ad-hoc `npm trust`. The npmjs.com UI is
+blocks READY unless `--attest-manual-security` loads a valid non-secret
+attestation (who/when/packages/npm UI control; never tokens/OTP).
+Do not run ad-hoc `npm trust`. The npmjs.com UI is
 break-glass. See [RELEASE_TRUSTED_PUBLISHING_SETUP.md](RELEASE_TRUSTED_PUBLISHING_SETUP.md)
 and [ADR 0010](adr/0010-release-control-plane.md).
 

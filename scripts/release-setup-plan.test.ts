@@ -24,6 +24,7 @@ import {
   redactSecrets,
   securityStatusBlocksReady,
   type ActualControlPlane,
+  type SecurityAttestationApplication,
   type GitHubEnvironmentActual,
   type PackageSecurityActual,
   type ReadyVariableActual,
@@ -369,6 +370,29 @@ describe("planReleaseControlPlane", () => {
   });
 });
 
+function validSecurityAttestation(
+  packages: readonly string[] = PUBLIC_PACKAGE_NAMES,
+): SecurityAttestationApplication {
+  return {
+    requested: true,
+    applied: true,
+    coveredPackages: [...packages],
+    attestedBy: "release-maintainer",
+    attestedAt: "2026-09-12T05:00:00Z",
+  };
+}
+
+function manualSecurity() {
+  return PUBLIC_PACKAGE_NAMES.map((n) => ({
+    packageName: n,
+    twoFactorRequired: "UNKNOWN" as const,
+    longLivedTokensDisallowed: "UNKNOWN" as const,
+    trustedPublishingUsed: true as const,
+    status: "MANUAL_REQUIRED" as const,
+    notes: ["UI break-glass"],
+  }));
+}
+
 describe("security contract blocks READY unless OK", () => {
   it("MANUAL_REQUIRED is not PASS and does not SET_READY", () => {
     expect(securityStatusBlocksReady("MANUAL_REQUIRED")).toBe(true);
@@ -436,6 +460,89 @@ describe("security contract blocks READY unless OK", () => {
     expect(plan.verdict).toBe("BLOCKED");
     expect(plan.items.find((i) => i.id === "ready")?.action).toBe("STOP");
     expect(plan.items.find((i) => i.id === "ready")?.mutates).toBe(false);
+  });
+
+  it("valid attestation may SET_READY only after other prereqs are OK", () => {
+    const attested = validSecurityAttestation();
+    const readyNow = planReleaseControlPlane(
+      actual({
+        packageSecurity: manualSecurity(),
+        readyVariable: readyVar(null),
+      }),
+      "check",
+      desired,
+      attested,
+    );
+    expect(readyNow.items.find((i) => i.id === "ready")?.action).toBe("SET_READY");
+    expect(prerequisitesPass(evaluatePrerequisites(actual({
+      packageSecurity: manualSecurity(),
+    }), desired, attested))).toBe(true);
+
+    const stillMissing = planReleaseControlPlane(
+      actual({
+        environment: missingEnv(),
+        ruleset: missingRuleset(),
+        trustedPublishers: PUBLIC_PACKAGE_NAMES.map(missingTp),
+        packageSecurity: manualSecurity(),
+        readyVariable: readyVar(null),
+      }),
+      "check",
+      desired,
+      attested,
+    );
+    expect(stillMissing.items.find((i) => i.id === "environment")?.action).toBe("CREATE");
+    expect(evaluatePrerequisites(actual({
+      environment: missingEnv(),
+      packageSecurity: manualSecurity(),
+    }), desired, attested).environmentOk).toBe(false);
+    expect(prerequisitesPass(evaluatePrerequisites(actual({
+      environment: missingEnv(),
+      packageSecurity: manualSecurity(),
+    }), desired, attested))).toBe(false);
+  });
+
+  it("invalid or partial attestation still blocks READY", () => {
+    const invalid = planReleaseControlPlane(
+      actual({
+        packageSecurity: manualSecurity(),
+        readyVariable: readyVar(null),
+      }),
+      "check",
+      desired,
+      { requested: true, applied: false, coveredPackages: [], error: "missing file" },
+    );
+    expect(invalid.items.find((i) => i.id === "ready")?.action).not.toBe("SET_READY");
+    expect(invalid.verdict).toBe("BLOCKED");
+    expect(invalid.critical.join(" ")).toMatch(/attest-manual-security/);
+
+    const partial = planReleaseControlPlane(
+      actual({
+        packageSecurity: manualSecurity(),
+        readyVariable: readyVar(null),
+      }),
+      "check",
+      desired,
+      validSecurityAttestation([PUBLIC_PACKAGE_NAMES[0]!]),
+    );
+    expect(partial.items.find((i) => i.id === "ready")?.action).not.toBe("SET_READY");
+    expect(prerequisitesPass(evaluatePrerequisites(actual({
+      packageSecurity: manualSecurity(),
+    }), desired, validSecurityAttestation([PUBLIC_PACKAGE_NAMES[0]!])))).toBe(false);
+  });
+
+  it("READY=true + MANUAL_REQUIRED with valid attestation is not CRITICAL", () => {
+    const plan = planReleaseControlPlane(
+      actual({
+        packageSecurity: manualSecurity(),
+        readyVariable: readyVar("true"),
+      }),
+      "check",
+      desired,
+      validSecurityAttestation(),
+    );
+    expect(plan.critical.join(" ")).not.toMatch(/CRITICAL/);
+    expect(plan.verdict).toBe("READY");
+    expect(plan.items.find((i) => i.id === "ready")?.action).toBe("NOOP");
   });
 });
 

@@ -3,9 +3,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { PINNED_NPM_CLI, PUBLIC_PACKAGE_NAMES } from "./release-identity.js";
-import { parseSetupArgs, runReleaseSetup, workflowReferencesNpmRelease, type SetupDeps } from "./release-setup.js";
+import { parseSetupArgs, parseSetupCli, runReleaseSetup, workflowReferencesNpmRelease, type SetupDeps } from "./release-setup.js";
 import type { GitHubControlPlaneClient } from "./release-setup-github.js";
-import { isForbiddenNpmArgv, parseTrustedPublisherList, npmVersionAtLeast } from "./release-setup-npm.js";
+import { isForbiddenNpmArgv, parseTrustedPublisherList, npmVersionAtLeast, npmVersionIsExactPinned } from "./release-setup-npm.js";
 import type { NpmTrustClient } from "./release-setup-npm.js";
 import { PINNED_NPM_PACKAGE_SPEC, isExactPinnedNpmSpec, resolvePinnedNpm } from "./release-setup-npm-runner.js";
 import {
@@ -218,6 +218,27 @@ describe("parseSetupArgs", () => {
   });
 });
 
+describe("parseSetupCli attestation flag", () => {
+  it("does not silently attest without the explicit flag", () => {
+    expect(parseSetupCli([]).attestManualSecurity).toBe(false);
+    expect(parseSetupCli(["--check"]).attestationPath).toBeNull();
+    expect(parseSetupCli(["--apply"]).attestManualSecurity).toBe(false);
+  });
+
+  it("requires an explicit path or the documented default evidence file", () => {
+    const bare = parseSetupCli(["--check", "--attest-manual-security"]);
+    expect(bare.mode).toBe("check");
+    expect(bare.attestManualSecurity).toBe(true);
+    expect(bare.attestationPath).toBe("docs/evidence/manual-package-security-attestation.json");
+    const eq = parseSetupCli(["--attest-manual-security=release-manual-security-attestation.json"]);
+    expect(eq.attestManualSecurity).toBe(true);
+    expect(eq.attestationPath).toBe("release-manual-security-attestation.json");
+    const next = parseSetupCli(["--apply", "--attest-manual-security", "./attested.json"]);
+    expect(next.mode).toBe("apply");
+    expect(next.attestationPath).toBe("./attested.json");
+  });
+});
+
 describe("check / apply write guards", () => {
   it("--check performs zero writes even when everything is missing", async () => {
     const github = new MemoryGitHub();
@@ -304,6 +325,87 @@ describe("check / apply write guards", () => {
     expect(github.writes.indexOf("createEnvironment")).toBeLessThan(github.writes.indexOf("setReadyVariable"));
     expect(github.writes.indexOf("createRuleset")).toBeLessThan(github.writes.indexOf("setReadyVariable"));
   });
+
+  it("MANUAL_REQUIRED without attestation never sets READY; valid attestation may after other prereqs", async () => {
+    const github = new MemoryGitHub();
+    const npm = new MemoryNpm();
+    for (const name of PUBLIC_PACKAGE_NAMES) {
+      npm.security.set(name, {
+        packageName: name,
+        twoFactorRequired: "UNKNOWN",
+        longLivedTokensDisallowed: "UNKNOWN",
+        trustedPublishingUsed: true,
+        status: "MANUAL_REQUIRED",
+        notes: [],
+      });
+    }
+    const blocked = await runReleaseSetup("apply", deps(github, npm).deps);
+    expect(github.writes.includes("setReadyVariable")).toBe(false);
+    expect(blocked.plan.items.find((i) => i.id === "ready")?.action).not.toBe("SET_READY");
+
+    const github2 = new MemoryGitHub();
+    const npm2 = new MemoryNpm();
+    for (const name of PUBLIC_PACKAGE_NAMES) {
+      npm2.security.set(name, {
+        packageName: name,
+        twoFactorRequired: "UNKNOWN",
+        longLivedTokensDisallowed: "UNKNOWN",
+        trustedPublishingUsed: true,
+        status: "MANUAL_REQUIRED",
+        notes: [],
+      });
+    }
+    const attested = await runReleaseSetup("apply", deps(github2, npm2).deps, {
+      attestation: {
+        requested: true,
+        applied: true,
+        coveredPackages: [...PUBLIC_PACKAGE_NAMES],
+        attestedBy: "release-maintainer",
+        attestedAt: "2026-09-12T05:00:00Z",
+      },
+    });
+    expect(github2.writes.at(-1)).toBe("setReadyVariable");
+    expect(attested.plan.verdict).toBe("READY");
+
+    const github3 = new MemoryGitHub();
+    github3.ready = "true";
+    github3.envExists = true;
+    github3.envBranches = ["main"];
+    github3.rulesets = [
+      {
+        id: 1,
+        name: RELEASE_RULESET_NAME,
+        target: "tag",
+        enforcement: "active",
+        include: ["refs/tags/v*"],
+        rules: ["deletion", "update", "non_fast_forward"],
+        ruleObjects: DESIRED_RULESET_RULE_OBJECTS.map((rule) =>
+          rule.parameters ? { type: rule.type, parameters: { ...rule.parameters } } : { type: rule.type },
+        ),
+      },
+    ];
+    const npm3 = new MemoryNpm();
+    for (const name of PUBLIC_PACKAGE_NAMES) {
+      npm3.publishers.set(name, {
+        packageName: name,
+        exists: true,
+        publisher: { ...expectedPublisher },
+        status: "OK",
+        notes: [],
+      });
+      npm3.security.set(name, {
+        packageName: name,
+        twoFactorRequired: "UNKNOWN",
+        longLivedTokensDisallowed: "UNKNOWN",
+        trustedPublishingUsed: true,
+        status: "MANUAL_REQUIRED",
+        notes: [],
+      });
+    }
+    const critical = await runReleaseSetup("check", deps(github3, npm3).deps);
+    expect(critical.plan.verdict).toBe("BLOCKED");
+    expect(critical.plan.critical.join(" ")).toMatch(/CRITICAL/);
+  });
 });
 
 describe("npm / GitHub command safety (static + helpers)", () => {
@@ -323,6 +425,9 @@ describe("npm / GitHub command safety (static + helpers)", () => {
     expect(npmVersionAtLeast("11.15.0", "11.15.0")).toBe(true);
     expect(npmVersionAtLeast("11.14.1", "11.15.0")).toBe(false);
     expect(npmVersionAtLeast("10.9.7", "11.15.0")).toBe(false);
+    expect(npmVersionIsExactPinned("11.15.0")).toBe(true);
+    expect(npmVersionIsExactPinned("11.16.0")).toBe(false);
+    expect(npmVersionIsExactPinned("10.9.7")).toBe(false);
   });
 
   it("selects exact npm 11.15.0 even when host is 10.x", () => {
@@ -344,6 +449,8 @@ describe("npm / GitHub command safety (static + helpers)", () => {
       "release-setup-github.ts",
       "release-setup-npm.ts",
       "release-setup-plan.ts",
+      "release-setup-npm-runner.ts",
+      "release-setup-attestation.ts",
     ]) {
       const src = readFileSync(join(here, file), "utf8");
       expect(src, file).not.toMatch(/npm publish /);

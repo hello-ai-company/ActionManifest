@@ -11,6 +11,12 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PUBLIC_PACKAGE_NAMES } from "./release-identity.js";
+import {
+  DEFAULT_MANUAL_SECURITY_ATTESTATION_RELATIVE,
+  loadManualSecurityAttestation,
+  resolveAttestationPath,
+  toAttestationApplication,
+} from "./release-setup-attestation.js";
 import { GhControlPlaneClient, readOnlyGitHub, type GitHubControlPlaneClient } from "./release-setup-github.js";
 import {
   OfficialNpmTrustClient,
@@ -33,6 +39,7 @@ import {
   redactSecrets,
   type ActualControlPlane,
   type PlanItem,
+  type SecurityAttestationApplication,
   type SetupMode,
   type SetupPlan,
   type SetupVerdict,
@@ -71,6 +78,16 @@ export interface SetupResult {
   report: ControlPlaneReport;
   writes: string[];
   actual: ActualControlPlane;
+}
+
+export interface SetupCli {
+  mode: SetupMode;
+  attestManualSecurity: boolean;
+  attestationPath: string | null;
+}
+
+export interface SetupRunOptions {
+  attestation?: SecurityAttestationApplication | null;
 }
 
 function fail(message: string, code = 1): never {
@@ -165,6 +182,7 @@ function buildReport(
       ...plan.notes,
       `unrelated environments/rulesets preserved (managed ruleset name=${RELEASE_RULESET_NAME})`,
       "direct OIDC registry publish is not enabled (stage-only Trusted Publisher)",
+      "MANUAL_REQUIRED/UNSUPPORTED still block READY unless --attest-manual-security loads a valid non-secret attestation (never silent PASS, never stored credentials)",
     ],
   };
   assertNoSecrets(JSON.stringify(report), "control-plane report");
@@ -218,10 +236,14 @@ async function applyMutations(
   }
 }
 
-async function maybeSetReady(deps: SetupDeps, writes: string[]): Promise<void> {
+async function maybeSetReady(
+  deps: SetupDeps,
+  writes: string[],
+  attestation?: SecurityAttestationApplication | null,
+): Promise<void> {
   deps.log("read-back after mutations (READY still unset)…");
   const after = await discoverActual(deps);
-  const flags = evaluatePrerequisites(after);
+  const flags = evaluatePrerequisites(after, desiredControlPlane(), attestation);
   if (!prerequisitesPass(flags)) {
     deps.log("read-back: prerequisites incomplete — READY not set");
     return;
@@ -235,19 +257,24 @@ async function maybeSetReady(deps: SetupDeps, writes: string[]): Promise<void> {
   writes.push("ready");
 }
 
-export async function runReleaseSetup(mode: SetupMode, deps: SetupDeps): Promise<SetupResult> {
+export async function runReleaseSetup(
+  mode: SetupMode,
+  deps: SetupDeps,
+  options?: SetupRunOptions,
+): Promise<SetupResult> {
   for (const tokenVar of ["NPM_TOKEN", "NODE_AUTH_TOKEN"]) {
     if (process.env[tokenVar]) {
       throw new Error(`${tokenVar} must not be present — release:setup is credential-env-free`);
     }
   }
+  const attestation = options?.attestation ?? null;
   const github = mode === "check" ? readOnlyGitHub(deps.github) : deps.github;
   const npm = mode === "check" ? readOnlyNpm(deps.npm) : deps.npm;
   const guarded: SetupDeps = { ...deps, github, npm };
 
   deps.log(`release:setup ${mode} — discovering ${RELEASE_REPO_SLUG} (read first)…`);
   const actual = await discoverActual(guarded);
-  const plan = planReleaseControlPlane(actual, mode);
+  const plan = planReleaseControlPlane(actual, mode, desiredControlPlane(), attestation);
   printPlan(plan, deps.log);
 
   const writes: string[] = [];
@@ -257,17 +284,20 @@ export async function runReleaseSetup(mode: SetupMode, deps: SetupDeps): Promise
     } else {
       await applyMutations(plan, actual, guarded, writes);
       if (!applyBlocked(plan)) {
-        await maybeSetReady(guarded, writes);
+        await maybeSetReady(guarded, writes, attestation);
       }
     }
   }
 
   const finalActual = mode === "apply" && writes.length > 0 ? await discoverActual(guarded) : actual;
-  const finalPlan = mode === "apply" && writes.length > 0 ? planReleaseControlPlane(finalActual, mode) : plan;
+  const finalPlan =
+    mode === "apply" && writes.length > 0
+      ? planReleaseControlPlane(finalActual, mode, desiredControlPlane(), attestation)
+      : plan;
   if (mode === "apply" && writes.length > 0) {
     deps.log("final read-back:");
     printPlan(finalPlan, deps.log);
-    const flags = evaluatePrerequisites(finalActual);
+    const flags = evaluatePrerequisites(finalActual, desiredControlPlane(), attestation);
     if (finalActual.readyVariable.value === "true" && !prerequisitesPass(flags)) {
       throw new Error(
         "CRITICAL: READY=true after apply but prerequisites failed read-back — fail loudly",
@@ -292,6 +322,31 @@ export function parseSetupArgs(argv: string[]): SetupMode {
   if (apply) return "apply";
   if (check) return "check";
   return "check";
+}
+
+export function parseSetupCli(argv: string[]): SetupCli {
+  const mode = parseSetupArgs(argv);
+  let attestManualSecurity = false;
+  let attestationPath: string | null = null;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!;
+    if (arg === "--attest-manual-security") {
+      attestManualSecurity = true;
+      const next = argv[i + 1];
+      if (next && !next.startsWith("-")) {
+        attestationPath = next;
+        i += 1;
+      }
+    } else if (arg.startsWith("--attest-manual-security=")) {
+      attestManualSecurity = true;
+      const value = arg.slice("--attest-manual-security=".length).trim();
+      if (value) attestationPath = value;
+    }
+  }
+  if (attestManualSecurity && !attestationPath) {
+    attestationPath = DEFAULT_MANUAL_SECURITY_ATTESTATION_RELATIVE;
+  }
+  return { mode, attestManualSecurity, attestationPath };
 }
 
 async function defaultPaceTrustedPublisherWrites(ms: number): Promise<void> {
@@ -320,16 +375,21 @@ function main(): void {
   if (argv.some((a) => /^(publish|unpublish|deprecate)$/i.test(a))) {
     fail("refusing argv that names a registry publish operation", 2);
   }
-  let mode: SetupMode;
+  let cli: SetupCli;
   try {
-    mode = parseSetupArgs(argv);
+    cli = parseSetupCli(argv);
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error), 2);
   }
   if (!existsSync(join(root, ".github/workflows/release.yml"))) {
     fail("release.yml missing — Phase 2.4B contract is required", 2);
   }
-  runReleaseSetup(mode, liveDeps())
+  const loaded = loadManualSecurityAttestation({
+    requested: cli.attestManualSecurity,
+    path: cli.attestationPath ? resolveAttestationPath(root, cli.attestationPath) : null,
+  });
+  const attestation = toAttestationApplication(loaded);
+  runReleaseSetup(cli.mode, liveDeps(), { attestation })
     .then((result) => {
       if (result.plan.verdict === "BLOCKED") process.exit(2);
       if (result.plan.verdict === "NOT_READY") process.exit(1);

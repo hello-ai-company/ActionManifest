@@ -4,7 +4,7 @@
  * Host `npm` (often 10.x) must NOT determine Trusted Publisher / security
  * correctness. This module always selects npm@PINNED_NPM_CLI (11.15.0).
  *
- * Resolution order (never npm@latest, never a silent global replace):
+ * Resolution order (never a floating latest spec, never a silent global replace):
  *   1. ACTIONMANIFEST_NPM_CLI — project-provided binary, must --version exact
  *   2. <repo>/.release-tools/npm-cli/<version>/  (local cache; gitignored)
  *   3. <repo>/node_modules/npm  when that package is exactly the pin
@@ -67,6 +67,8 @@ export function resolvePinnedNpm(opts?: {
 
   const fromEnv = env.ACTIONMANIFEST_NPM_CLI?.trim();
   if (fromEnv) {
+    // Intended pin only. Live paths must assert `npm --version` === PINNED_NPM_CLI
+    // before trust/access (see assertLivePinnedNpmBinary / inspectCli).
     return {
       command: fromEnv,
       argvPrefix: [],

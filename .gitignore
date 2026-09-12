@@ -33,3 +33,6 @@ release-control-plane-report.json
 
 # Exact pinned npm CLI cache used by release:setup (never a floating latest)
 .release-tools/
+
+# Optional local (uncommitted) package-security attestation — never tokens/OTP
+release-manual-security-attestation.json

@@ -508,9 +508,32 @@ export interface PrerequisiteFlags {
   securityBlocksReady: boolean;
 }
 
+/**
+ * Explicit --attest-manual-security application. Status is never rewritten to
+ * OK. When applied, MANUAL_REQUIRED / UNSUPPORTED packages listed in
+ * coveredPackages may stop blocking READY. requested && !applied is fail-closed.
+ */
+export interface SecurityAttestationApplication {
+  requested: boolean;
+  applied: boolean;
+  coveredPackages: readonly string[];
+  error?: string;
+  attestedBy?: string;
+  attestedAt?: string;
+  path?: string;
+}
+
+export function attestationCoversPackage(
+  attestation: SecurityAttestationApplication | null | undefined,
+  packageName: string,
+): boolean {
+  return Boolean(attestation?.applied && attestation.coveredPackages.includes(packageName));
+}
+
 export function evaluatePrerequisites(
   actual: ActualControlPlane,
   desired: DesiredControlPlane = desiredControlPlane(),
+  attestation?: SecurityAttestationApplication | null,
 ): PrerequisiteFlags {
   const byName = new Map(actual.trustedPublishers.map((t) => [t.packageName, t]));
   const trustedPublishersOk = desired.packages.every((name) => {
@@ -525,7 +548,7 @@ export function evaluatePrerequisites(
   });
   const securityBlocksReady = desired.packages.some((name) => {
     const row = actual.packageSecurity.find((s) => s.packageName === name);
-    return securityStatusBlocksReady(row?.status);
+    return securityStatusBlocksReady(row?.status, { packageName: name, attestation });
   });
   const rulesetOk =
     actual.ruleset.managed.length === 1 &&
@@ -543,11 +566,23 @@ export function evaluatePrerequisites(
 
 /**
  * Security contract (2FA + disallow long-lived tokens + Trusted Publishing)
- * is a READY prerequisite. Only status OK satisfies. MANUAL_REQUIRED and
- * UNSUPPORTED are not PASS.
+ * is a READY prerequisite. Only status OK satisfies by default.
+ * MANUAL_REQUIRED / UNSUPPORTED stay blocking unless an explicit, valid
+ * attestation covers that package. Status is never treated as OK.
  */
-export function securityStatusBlocksReady(status: ResourceStatus | undefined): boolean {
-  return status !== "OK";
+export function securityStatusBlocksReady(
+  status: ResourceStatus | undefined,
+  opts?: { packageName?: string; attestation?: SecurityAttestationApplication | null },
+): boolean {
+  if (status === "OK") return false;
+  if (
+    (status === "MANUAL_REQUIRED" || status === "UNSUPPORTED") &&
+    opts?.packageName &&
+    attestationCoversPackage(opts.attestation, opts.packageName)
+  ) {
+    return false;
+  }
+  return true;
 }
 
 export function prerequisitesPass(flags: PrerequisiteFlags): boolean {
@@ -572,11 +607,21 @@ export function planReleaseControlPlane(
   actual: ActualControlPlane,
   mode: SetupMode = "check",
   desired: DesiredControlPlane = desiredControlPlane(),
+  attestation?: SecurityAttestationApplication | null,
 ): SetupPlan {
   const items: PlanItem[] = [];
   const critical: string[] = [];
   const notes: string[] = [...HUMAN_BOUNDARY_NOTES];
   let blocked = false;
+  if (attestation?.requested && !attestation.applied) {
+    blocked = true;
+    const msg = `CRITICAL: --attest-manual-security was set but the attestation is invalid or missing — ${attestation.error ?? "READY stays blocked"}`;
+    critical.push(msg);
+  } else if (attestation?.applied) {
+    notes.push(
+      `manual package-security attestation applied (who=${attestation.attestedBy ?? "unknown"} when=${attestation.attestedAt ?? "unknown"} packages=${attestation.coveredPackages.join(",")}) — status stays MANUAL_REQUIRED/UNSUPPORTED (not OK); never stored credentials`,
+    );
+  }
 
   if (!actual.repo.verified || actual.repo.status === "AUTH_REQUIRED") {
     blocked = true;
@@ -977,7 +1022,7 @@ export function planReleaseControlPlane(
     if (row.status === "AUTH_REQUIRED") blocked = true;
   });
 
-  const flags = evaluatePrerequisites(actual, desired);
+  const flags = evaluatePrerequisites(actual, desired, attestation);
   const prereqsNow = prerequisitesPass(flags);
   const plannedCreatesOrUpdates = items.filter(
     (i) => i.mutates && (i.action === "CREATE" || i.action === "UPDATE"),
@@ -987,6 +1032,13 @@ export function planReleaseControlPlane(
     if (!i.id.startsWith("security:")) return false;
     if (i.action === "NOOP" && i.status === "OK") return false;
     if (i.action === "UPDATE") return false;
+    const pkg = i.id.slice("security:".length);
+    if (
+      (i.status === "MANUAL_REQUIRED" || i.status === "UNSUPPORTED") &&
+      attestationCoversPackage(attestation, pkg)
+    ) {
+      return false;
+    }
     return true;
   });
   const wouldPassAfterApply =

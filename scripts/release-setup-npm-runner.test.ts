@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { PINNED_NPM_CLI } from "./release-identity.js";
-import { OfficialNpmTrustClient } from "./release-setup-npm.js";
+import { OfficialNpmTrustClient, assertExactPinnedNpmVersion, npmVersionIsExactPinned } from "./release-setup-npm.js";
 import {
   isExactPinnedNpmSpec,
   pinnedNpmInvocation,
@@ -67,5 +70,35 @@ describe("pinned npm runner", () => {
     expect(captured).not.toContain("--allow-publish");
     expect(captured[0]).toBe("trust");
     expect(captured[1]).toBe("github");
+  });
+
+  it("assert fails closed when the live binary is not exactly 11.15.0", async () => {
+    expect(npmVersionIsExactPinned("11.15.0")).toBe(true);
+    expect(npmVersionIsExactPinned("11.15.0\n")).toBe(true);
+    expect(npmVersionIsExactPinned("10.9.7")).toBe(false);
+    expect(npmVersionIsExactPinned("11.16.0")).toBe(false);
+    expect(() => assertExactPinnedNpmVersion("10.9.7")).toThrow(/exactly 11\.15\.0/);
+    expect(() => assertExactPinnedNpmVersion("11.16.0")).toThrow(/exactly 11\.15\.0/);
+    expect(() => assertExactPinnedNpmVersion("")).toThrow(/empty/);
+    const seen: string[][] = [];
+    const client = new OfficialNpmTrustClient((args) => {
+      seen.push(args);
+      if (args[0] === "--version") return { status: 0, stdout: "10.9.7\n", stderr: "" };
+      return { status: 0, stdout: "npm trust\n", stderr: "" };
+    });
+    await expect(client.inspectCli()).rejects.toThrow(/exactly 11\.15\.0/);
+    expect(seen).toEqual([["--version"]]);
+  });
+
+  it("write-path sources never mention npm@latest", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    for (const file of [
+      "release-setup-npm.ts",
+      "release-setup-npm-runner.ts",
+      "release-setup.ts",
+    ]) {
+      const src = readFileSync(join(here, file), "utf8");
+      expect(src, file).not.toMatch(/npm@latest/);
+    }
   });
 });

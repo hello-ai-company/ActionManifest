@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## Phase 2.4C — Release Control Plane (no version bump)
+
+Controller only. Package versions stay `0.9.0-rc.0`. No npm package
+release, no stage publish/approve, no git tag, no GitHub Release, no `rc.1`.
+
+### Added
+
+- **`pnpm release:setup --check|--apply`** (`scripts/release-setup.ts` +
+  pure planner `release-setup-plan.ts`). Default deny: check is read-only;
+  apply is explicit, prints the plan, is idempotent, and sets
+  `NPM_TRUSTED_PUBLISHING_READY=true` **last** after read-back.
+  GitHub Environment `npm-release`, managed tag ruleset
+  `actionmanifest-release-tags`, Trusted Publishers 10/10 (SoT =
+  `PUBLIC_PACKAGE_NAMES`, stage-only). Drifted Trusted Publishers STOP
+  (no overwrite). Unrelated envs/rulesets preserved.
+- **ADR 0010** — release control plane decisions (default-deny, official
+  API only, no scraping, human 2FA PoP, optional GitHub reviewers, no
+  direct/stable publish).
+
+### Changed
+
+- `docs/RELEASE_TRUSTED_PUBLISHING_SETUP.md` and `docs/RELEASING.md`:
+  `release:setup` is preferred; UI is break-glass. Remaining human
+  boundary: npm auth/2FA when requested; `npm stage approve` (2FA).
+
 ## Phase 2.4B — Production release hardening (no version bump)
 
 Hardening only. Package versions stay `0.9.0-rc.0`. No npm write, no tag, no

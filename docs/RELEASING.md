@@ -44,8 +44,9 @@ Next        — version PR → main CI → Release Check (canonical tarballs
 ```
 
 See [evidence/RC0_BOOTSTRAP_RELEASE_2026-09-11.md](evidence/RC0_BOOTSTRAP_RELEASE_2026-09-11.md)
-and [RELEASE_TRUSTED_PUBLISHING_SETUP.md](RELEASE_TRUSTED_PUBLISHING_SETUP.md).
-This phase does **not** bump off `0.9.0-rc.0`.
+and [RELEASE_TRUSTED_PUBLISHING_SETUP.md](RELEASE_TRUSTED_PUBLISHING_SETUP.md)
+(`pnpm release:setup --check` / `--apply` is the preferred control plane;
+the UI is break-glass). This phase does **not** bump off `0.9.0-rc.0`.
 
 All 10 packages share one version (**lockstep / fixed versioning**) — one
 coherent `@actionmanifest/*` line, one changelog entry, one tag. Trade-off:
@@ -238,8 +239,14 @@ Hard rules for the bootstrap:
 
 ### 6.2 Trusted Publisher configuration (after bootstrap only)
 
-Once — and only once — all 10 packages exist on npm, configure each package
-on npmjs.com (or via `npm trust github`, npm CLI ≥ 11.15):
+All 10 packages exist on npm. Preferred, auditable, idempotent path:
+
+```bash
+pnpm release:setup --check    # read-only discovery + diff
+pnpm release:setup --apply    # explicit; READY last; no package release
+```
+
+Expected Trusted Publisher fields (SoT = `PUBLIC_PACKAGE_NAMES`):
 
 | Field | Value |
 | --- | --- |
@@ -247,20 +254,22 @@ on npmjs.com (or via `npm trust github`, npm CLI ≥ 11.15):
 | Repository | `ActionManifest` |
 | Workflow filename | `release.yml` (must exist under `.github/workflows/`) |
 | Environment | `npm-release` |
-| Allowed actions | `npm stage` (stage-only) |
+| Allowed actions | `npm stage` (stage-only; no direct OIDC `npm publish`) |
 
-All fields are case-sensitive and must match exactly. `npm trust` requires
-write access to the package and account-level 2FA. Agents never run it.
+All fields are case-sensitive and must match exactly. `npm trust github`
+requires write access and account-level 2FA; `release:setup --apply` may
+prompt (human PoP). Do not run ad-hoc `npm trust`. The npmjs.com UI is
+break-glass. See [RELEASE_TRUSTED_PUBLISHING_SETUP.md](RELEASE_TRUSTED_PUBLISHING_SETUP.md)
+and [ADR 0010](adr/0010-release-control-plane.md).
 
 ### 6.3 OIDC release workflow (Phase 2.4B — file present, not yet armed)
 
 `.github/workflows/release.yml` is the real workflow: **manual
 `workflow_dispatch` only** (`stage` | `verify`). It never runs on tag push.
 The `stage` job fails loudly unless `vars.NPM_TRUSTED_PUBLISHING_READY`
-is exactly `true`. That variable is **not** set in this change — a human
-must finish [RELEASE_TRUSTED_PUBLISHING_SETUP.md](RELEASE_TRUSTED_PUBLISHING_SETUP.md)
-**after** this workflow file is on `main` (npm Trusted Publisher matches
-the filename on the default branch).
+is exactly `true`. Set that variable only via `pnpm release:setup --apply`
+after prerequisites pass read-back (or the break-glass UI). Never from CI.
+npm Trusted Publisher matches the workflow **filename** on the default branch.
 
 Invariants:
 
@@ -275,9 +284,11 @@ Invariants:
 
 ### 6.4 Status
 
-`0.9.0-rc.0` is on npm (10/10). **No git tag, no GitHub Release, no
-Trusted Publisher, no `NPM_TRUSTED_PUBLISHING_READY`.** Merge `release.yml`
-before configuring Trusted Publishers. Do not bump the version in this phase.
+`0.9.0-rc.0` is on npm (10/10). **No git tag, no GitHub Release.**
+Phase 2.4C adds `pnpm release:setup` (check/apply). Do not bump the
+version in this phase. Do not treat this documentation PR as a package
+release. Remaining human boundary: npm auth/2FA when requested;
+`npm stage approve` (2FA) after a later `release.yml` mode=`stage`.
 
 ## 7. Tag & publish ordering (unified, tag-triggered)
 
@@ -392,11 +403,15 @@ Also verify provenance attestations are visible on npmjs.com
   publish ran (tag-triggered, §7) and is never moved or deleted. Retry the
   workflow on the same tag, or cut the next RC tag.
 
-## 11. What Phase 2.4B deliberately does NOT do
+## 11. What Phase 2.4C deliberately does NOT do
 
 - No version bump off `0.9.0-rc.0`. No `rc.1`. No merge of this PR by the agent.
-- No npm write: no publish / stage / approve / reject / dist-tag / unpublish
-  / deprecate / trust / access.
-- No git tag. No GitHub Release. No Trusted Publisher configuration.
-- `NPM_TRUSTED_PUBLISHING_READY` is **not** set.
+- No package release: no `npm publish`, no `npm stage publish`, no
+  `npm stage approve`, no dist-tag / unpublish / deprecate.
+- No git tag. No GitHub Release.
+- `pnpm release:setup --check` is read-only. `--apply` writes only approved
+  control-plane settings (Environment, managed tag ruleset, Trusted
+  Publishers, READY last) when explicitly invoked — not as part of tests
+  or `release:check`.
+- Direct OIDC `npm publish` is never enabled.
 - `pnpm release:check` / `pnpm release:dry-run` remain verification-only.

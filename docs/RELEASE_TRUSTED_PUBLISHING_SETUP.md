@@ -1,34 +1,76 @@
-# Trusted Publishing setup (human checklist)
+# Trusted Publishing setup
 
-This is a **maintainer** checklist. Agents and CI must not set repository
-variables, create the GitHub Environment, or run `npm trust`.
+Preferred controller: **`pnpm release:setup`**. The GitHub / npmjs.com UI is
+**break-glass** only (use it when the official CLI/API cannot express a
+setting). CI workflows still must not set repository variables.
 
-`0.9.0-rc.0` already exists on npm (10/10). Trusted Publishers can now be
-attached. They **cannot** be configured until `.github/workflows/release.yml`
-is on the default branch — npm matches the workflow **filename** exactly.
+`0.9.0-rc.0` already exists on npm (10/10). `.github/workflows/release.yml`
+is on `main` (Phase 2.4B). Trusted Publishers match that **filename**
+exactly. This phase does **not** bump off `0.9.0-rc.0`.
 
-## 0. Merge `release.yml` first
+Human proof-of-presence is **not** automated: npm login / account 2FA /
+WebAuthn / security key / OTP when the official CLI requests it, and later
+`npm stage approve` (2FA). `release:setup` never runs `npm publish`,
+`npm stage publish`, or `npm stage approve`.
 
-1. Merge the Phase 2.4B PR so `.github/workflows/release.yml` exists on `main`.
-2. Confirm the file is named exactly `release.yml` (not `.template`).
-3. Only then open npm Trusted Publisher settings. Configuring them against a
-   filename that is not on `main` will fail every OIDC exchange.
+## 0. Audit (read-only)
 
-## 1. GitHub Environment `npm-release`
+```bash
+pnpm release:setup --check
+```
 
-In the GitHub repo **Settings → Environments**:
+Completely read-only. Zero mutations. Inspects:
 
-- [ ] Create environment named exactly `npm-release`
-- [ ] Required reviewers: at least one release-role maintainer
-- [ ] Deployment branches: `main` only (restrict)
-- [ ] No `NPM_TOKEN` / `NODE_AUTH_TOKEN` secrets on this environment (or anywhere)
+1. GitHub Environment `npm-release` (exists; deployment branch `main`;
+   required reviewers **optional** — npm staged approval + 2FA is the
+   mandatory human gate). `release.yml` must keep `environment: npm-release`.
+2. Tag ruleset managed name `actionmanifest-release-tags`, pattern `v*`
+   (protect unauthorized delete/update). Unrelated rulesets are left alone.
+3. Repository variable `NPM_TRUSTED_PUBLISHING_READY` (read only here).
+   `READY=true` with incomplete prerequisites is **CRITICAL**.
+4. npm Trusted Publishers for all 10 names in `PUBLIC_PACKAGE_NAMES`
+   (SoT — do not duplicate the roster): GitHub Actions,
+   `hello-ai-company/ActionManifest`, workflow `release.yml`, environment
+   `npm-release`, **stage publish only**. Direct OIDC `npm publish` must
+   not be enabled.
+5. Package security (2FA required, long-lived publish tokens disallowed,
+   Trusted Publishing used). If not safely readable via the official CLI
+   the status is `MANUAL_REQUIRED` / `UNSUPPORTED` / `UNKNOWN` — never a
+   fake `PASS`.
 
-The workflow’s `stage` job sets `environment: npm-release`. Approval of that
-environment is **not** a substitute for npm’s 2FA stage approve.
+Verdict: `READY` / `NOT_READY` / `BLOCKED`. Optional local
+`release-control-plane-report.json` (gitignored, non-secret).
 
-## 2. npm Trusted Publisher (stage-only) — all 10 packages
+## 1. Converge (explicit apply)
 
-For each package, on npmjs.com (or `npm trust github`, CLI ≥ 11.15, account 2FA):
+```bash
+pnpm release:setup --apply
+```
+
+Prints the plan, then writes **only** approved control-plane settings, in
+order: Environment → tag ruleset → Trusted Publishers 10/10 → automatable
+security → read-back → **only then** `NPM_TRUSTED_PUBLISHING_READY=true` →
+final read-back. Idempotent: a second apply reports `NO CHANGES REQUIRED`.
+
+Require `gh` auth against **`hello-ai-company/ActionManifest`** and an
+official npm CLI `>= 11.15.0` (never `npm@latest`). Interactive maintainer
+auth is allowed when npm prompts. Drifted Trusted Publishers (wrong
+repo/workflow/env) **STOP** — no overwrite.
+
+## 2. Break-glass UI (only if `--apply` cannot)
+
+### GitHub Environment `npm-release`
+
+Settings → Environments:
+
+- [ ] Name exactly `npm-release`
+- [ ] Deployment branches: `main` (restrict)
+- [ ] Required reviewers: optional
+- [ ] No `NPM_TOKEN` / `NODE_AUTH_TOKEN` secrets
+
+### npm Trusted Publisher (stage-only) — all 10 packages
+
+On npmjs.com (or official `npm trust github`, CLI ≥ 11.15, account 2FA):
 
 | Field | Value |
 | --- | --- |
@@ -36,50 +78,44 @@ For each package, on npmjs.com (or `npm trust github`, CLI ≥ 11.15, account 2F
 | Repository | `ActionManifest` |
 | Workflow filename | `release.yml` |
 | Environment | `npm-release` |
-| Allowed actions | **`npm stage` only** (do not allow live `npm publish` if the UI lets you restrict) |
+| Allowed actions | **`npm stage` only** (do not enable live `npm publish`) |
 
-Packages (all must be configured):
+Packages come from `PUBLIC_PACKAGE_NAMES` (`@actionmanifest/schema`, `core`,
+`temporal`, `adapters`, `extractor`, `verifier`, `exporters`, `consumer`,
+`adapter-xberg`, `cli`). All fields are case-sensitive.
 
-- `@actionmanifest/schema`
-- `@actionmanifest/core`
-- `@actionmanifest/temporal`
-- `@actionmanifest/adapters`
-- `@actionmanifest/extractor`
-- `@actionmanifest/verifier`
-- `@actionmanifest/exporters`
-- `@actionmanifest/consumer`
-- `@actionmanifest/adapter-xberg`
-- `@actionmanifest/cli`
+Do not run ad-hoc `npm trust` except via `pnpm release:setup --apply` or this
+break-glass path.
 
-All fields are case-sensitive. Agents never run `npm trust`.
-
-## 3. 2FA and token policy
+### 2FA and token policy
 
 - [ ] Maintainer account 2FA enabled (required for `npm stage approve`)
 - [ ] Granular / classic automation tokens **disallowed** for publish
-      (org or package setting: require Trusted Publisher / 2FA, no
-      `NPM_TOKEN` publish)
-- [ ] Confirm CI has no `NPM_TOKEN` / `NODE_AUTH_TOKEN` secrets
+      (package Settings → require 2FA and disallow tokens) when the CLI
+      cannot set this — `MANUAL_REQUIRED`
+- [ ] CI has no `NPM_TOKEN` / `NODE_AUTH_TOKEN` secrets
 - [ ] The release workflow already fails closed if those env vars are non-empty
 
-## 4. Tag protection
+### Tag protection
 
-- [ ] Protect `v*` tags (immutable; no force-push, no delete)
+- [ ] Ruleset `actionmanifest-release-tags` on `v*` (immutable; no force-push, no delete)
 - [ ] Only the release role may create version tags
 - [ ] Tags are created **by a human after** main CI + Release Check are green
-      on the exact SHA — never by this workflow
+      on the exact SHA — never by `release.yml`
 
-## 5. Repository variable (last)
+## 3. Repository variable (last)
 
-Only after steps 1–4 are done:
+`pnpm release:setup --apply` sets `NPM_TRUSTED_PUBLISHING_READY=true`
+**only after** prerequisites pass read-back. Break-glass:
 
-- [ ] Set Actions variable `NPM_TRUSTED_PUBLISHING_READY` = `true`
-      (Settings → Secrets and variables → Actions → Variables)
+- [ ] Settings → Secrets and variables → Actions → Variables
+      `NPM_TRUSTED_PUBLISHING_READY` = `true`
 
 Until that variable is exactly `true`, `release.yml` mode=`stage` **fails
-loudly**. Do not set it from a workflow. Do not set it in this PR.
+loudly**. Do not set it from a workflow. Do not set it if Trusted
+Publishers / Environment / tag ruleset are incomplete.
 
-## 6. What CI still will not do
+## 4. What CI still will not do
 
 After setup, `workflow_dispatch` mode=`stage` will:
 
@@ -90,4 +126,4 @@ After setup, `workflow_dispatch` mode=`stage` will:
 
 A **human** later runs `npm stage approve` (2FA) out of band. Then someone
 dispatches mode=`verify`. GitHub Release is a later, separate human step —
-not this workflow.
+not this workflow and not `release:setup`.

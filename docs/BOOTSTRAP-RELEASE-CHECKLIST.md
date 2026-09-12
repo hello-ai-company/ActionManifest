@@ -87,7 +87,8 @@ For each of the 10 packages:
 
 ## Trusted Publisher configuration (after ALL 10 exist)
 
-Per package, on npmjs.com (or `npm trust github`, npm CLI ≥ 11.15, 2FA):
+Preferred: `pnpm release:setup --check` then `--apply` (ADR 0010).
+Break-glass: per package, on npmjs.com (or `npm trust github`, npm CLI ≥ 11.15, 2FA):
 
 - [ ] Organization/user: `hello-ai-company`
 - [ ] Repository: `ActionManifest`

@@ -27,3 +27,6 @@ apps/cli/benchmark/
 # Release dry-run artifacts (scripts/release-dry-run.ts)
 release-artifacts/
 .tmp/
+
+# Local optional release-control-plane report (non-secret; never commit)
+release-control-plane-report.json

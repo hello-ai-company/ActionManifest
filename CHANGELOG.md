@@ -7,6 +7,15 @@ All notable changes to this project are documented here. Schema version is indep
 Controller only. Package versions stay `0.9.0-rc.0`. No npm package
 release, no stage publish/approve, no git tag, no GitHub Release, no `rc.1`.
 
+### Hotfix — tag ruleset read-back (PA-20260913-002)
+
+- Tag-target MATCH no longer requires
+  `update.parameters.update_allows_fetch_and_merge === false` on GitHub
+  REST read-back (production omits that object). `update` must still
+  exist; `deletion` + `non_fast_forward` + `active` + `refs/tags/v*`
+  still required. Branch-target assessment stays strict. Write payloads
+  still send the parameter.
+
 ### Review Round 2 (same Draft PR)
 
 - Package security `MANUAL_REQUIRED` / `UNSUPPORTED` still block READY by

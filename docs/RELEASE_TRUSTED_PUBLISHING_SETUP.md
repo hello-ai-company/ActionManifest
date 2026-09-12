@@ -26,6 +26,10 @@ Completely read-only. Zero mutations. Inspects:
    mandatory human gate). `release.yml` must keep `environment: npm-release`.
 2. Tag ruleset managed name `actionmanifest-release-tags`, pattern `v*`
    (protect unauthorized delete/update). Unrelated rulesets are left alone.
+   GitHub REST read-back may omit `update.parameters`; that is MATCH for
+   tag-target (the `update` rule must still exist). Create/update writes
+   still send `update_allows_fetch_and_merge: false`. Branch-target
+   assessment, if used later, stays strict on that parameter.
 3. Repository variable `NPM_TRUSTED_PUBLISHING_READY` (read only here).
    `READY=true` with incomplete prerequisites is **CRITICAL**.
 4. npm Trusted Publishers for all 10 names in `PUBLIC_PACKAGE_NAMES`

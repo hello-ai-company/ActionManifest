@@ -618,6 +618,11 @@ export class GhControlPlaneClient implements GitHubControlPlaneClient {
   }
 }
 
+/**
+ * Normalize a GitHub REST ruleset detail body.
+ * Tag-target `update` rules often omit `parameters` on read-back; keep that
+ * shape. Writers still send `update_allows_fetch_and_merge: false`.
+ */
 export function parseRulesetDetail(id: number, name: string, json: unknown): RulesetSnapshot {
   const body = json && typeof json === "object" ? (json as Record<string, unknown>) : {};
   const conditions = body.conditions && typeof body.conditions === "object"

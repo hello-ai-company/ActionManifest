@@ -25,6 +25,19 @@ import {
   type TrustedPublisherRecord,
 } from "./release-setup-plan.js";
 
+/** Production GitHub REST tag ruleset read-back omits update.parameters. */
+function productionReadbackTagRuleset(id: number): RulesetSnapshot {
+  return {
+    id,
+    name: RELEASE_RULESET_NAME,
+    target: "tag",
+    enforcement: "active",
+    include: ["refs/tags/v*"],
+    rules: ["deletion", "update", "non_fast_forward"],
+    ruleObjects: [{ type: "deletion" }, { type: "update" }, { type: "non_fast_forward" }],
+  };
+}
+
 const expectedPublisher: TrustedPublisherRecord = {
   provider: "github",
   org: "hello-ai-company",
@@ -93,36 +106,11 @@ class MemoryGitHub implements GitHubControlPlaneClient {
   }
   async createRuleset(): Promise<void> {
     this.writes.push("createRuleset");
-    this.rulesets = [
-      {
-        id: 1,
-        name: RELEASE_RULESET_NAME,
-        target: "tag",
-        enforcement: "active",
-        include: ["refs/tags/v*"],
-        rules: ["deletion", "update", "non_fast_forward"],
-        ruleObjects: DESIRED_RULESET_RULE_OBJECTS.map((rule) =>
-          rule.parameters ? { type: rule.type, parameters: { ...rule.parameters } } : { type: rule.type },
-        ),
-      },
-    ];
+    this.rulesets = [productionReadbackTagRuleset(1)];
   }
   async updateRuleset(id: number): Promise<void> {
     this.writes.push(`updateRuleset:${id}`);
-    this.rulesets = this.rulesets.map((r) =>
-      r.id === id
-        ? {
-            ...r,
-            target: "tag",
-            enforcement: "active",
-            include: ["refs/tags/v*"],
-            rules: ["deletion", "update", "non_fast_forward"],
-            ruleObjects: DESIRED_RULESET_RULE_OBJECTS.map((rule) =>
-              rule.parameters ? { type: rule.type, parameters: { ...rule.parameters } } : { type: rule.type },
-            ),
-          }
-        : r,
-    );
+    this.rulesets = this.rulesets.map((r) => (r.id === id ? productionReadbackTagRuleset(id) : r));
   }
   async setReadyVariable(): Promise<void> {
     this.writes.push("setReadyVariable");
@@ -308,6 +296,26 @@ describe("check / apply write guards", () => {
     expect(npm.writes).toEqual(npmBefore);
     expect(second.plan.verdict).toBe("READY");
     expect(first.logs.join("\n")).toMatch(/NO CHANGES REQUIRED|planned writes/);
+  });
+
+  it("production-shape tag read-back does not loop UPDATE (NOOP ruleset)", async () => {
+    const github = new MemoryGitHub();
+    github.envExists = true;
+    github.envBranches = ["main"];
+    github.rulesets = [productionReadbackTagRuleset(11)];
+    const npm = new MemoryNpm();
+    for (const name of PUBLIC_PACKAGE_NAMES) {
+      npm.publishers.set(name, {
+        packageName: name,
+        exists: true,
+        publisher: { ...expectedPublisher },
+        status: "OK",
+        notes: [],
+      });
+    }
+    const result = await runReleaseSetup("apply", deps(github, npm).deps);
+    expect(github.writes.filter((w) => w.startsWith("updateRuleset") || w === "createRuleset")).toEqual([]);
+    expect(result.plan.items.find((i) => i.id === "ruleset")?.action).toBe("NOOP");
   });
 
   it("unrelated env/ruleset names never appear in writes", async () => {

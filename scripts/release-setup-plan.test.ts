@@ -8,6 +8,7 @@ import {
   RELEASE_ENVIRONMENT_NAME,
   RELEASE_REPO_SLUG,
   RELEASE_RULESET_NAME,
+  assessManagedRuleset,
   applyBlocked,
   assertNoSecrets,
   containsForbiddenSecret,
@@ -23,6 +24,7 @@ import {
   publisherMatches,
   redactSecrets,
   securityStatusBlocksReady,
+  updateRuleSatisfiesReadback,
   type ActualControlPlane,
   type SecurityAttestationApplication,
   type GitHubEnvironmentActual,
@@ -543,6 +545,103 @@ describe("security contract blocks READY unless OK", () => {
     expect(plan.critical.join(" ")).not.toMatch(/CRITICAL/);
     expect(plan.verdict).toBe("READY");
     expect(plan.items.find((i) => i.id === "ready")?.action).toBe("NOOP");
+  });
+});
+
+function productionTagRulesetSnapshot(id = 42): RulesetSnapshot {
+  return {
+    id,
+    name: RELEASE_RULESET_NAME,
+    target: "tag",
+    enforcement: "active",
+    include: ["refs/tags/v*"],
+    rules: ["deletion", "update", "non_fast_forward"],
+    ruleObjects: [{ type: "deletion" }, { type: "update" }, { type: "non_fast_forward" }],
+  };
+}
+
+describe("tag ruleset GitHub REST read-back assessment", () => {
+  it("production-shape tag ruleset (update without parameters) is MATCH / NOOP", () => {
+    const snap = productionTagRulesetSnapshot();
+    expect(assessManagedRuleset(snap).kind).toBe("MATCH");
+    expect(updateRuleSatisfiesReadback(snap.ruleObjects.find((r) => r.type === "update"), "tag")).toBe(
+      true,
+    );
+    const plan = planReleaseControlPlane(
+      actual({
+        ruleset: { managed: [snap], unrelated: [{ id: 7, name: "some-other-branch-ruleset" }], status: "OK", notes: [] },
+      }),
+    );
+    expect(plan.items.find((i) => i.id === "ruleset")?.action).toBe("NOOP");
+    expect(plan.items.find((i) => i.id === "ruleset")?.status).toBe("OK");
+  });
+
+  it("missing update rule is STRENGTHEN / UPDATE", () => {
+    const snap: RulesetSnapshot = {
+      ...productionTagRulesetSnapshot(),
+      rules: ["deletion", "non_fast_forward"],
+      ruleObjects: [{ type: "deletion" }, { type: "non_fast_forward" }],
+    };
+    expect(assessManagedRuleset(snap).kind).toBe("STRENGTHEN");
+    expect(updateRuleSatisfiesReadback(undefined, "tag")).toBe(false);
+    const plan = planReleaseControlPlane(
+      actual({
+        ruleset: { managed: [snap], unrelated: [], status: "OK", notes: [] },
+      }),
+    );
+    expect(plan.items.find((i) => i.id === "ruleset")?.action).toBe("UPDATE");
+    expect(plan.items.find((i) => i.id === "ruleset")?.status).toBe("DRIFTED");
+  });
+
+  it("branch-target assessment stays strict on update_allows_fetch_and_merge", () => {
+    const branchDesired = { ...desired.ruleset, target: "branch" as const };
+    const missingParams: RulesetSnapshot = {
+      ...okRulesetSnapshot(),
+      target: "branch",
+      ruleObjects: [{ type: "deletion" }, { type: "update" }, { type: "non_fast_forward" }],
+    };
+    expect(updateRuleSatisfiesReadback(missingParams.ruleObjects[1], "branch")).toBe(false);
+    expect(assessManagedRuleset(missingParams, branchDesired).kind).toBe("STRENGTHEN");
+
+    const flagTrue: RulesetSnapshot = {
+      ...okRulesetSnapshot(),
+      target: "branch",
+      ruleObjects: [
+        { type: "deletion" },
+        { type: "update", parameters: { update_allows_fetch_and_merge: true } },
+        { type: "non_fast_forward" },
+      ],
+    };
+    expect(updateRuleSatisfiesReadback(flagTrue.ruleObjects[1], "branch")).toBe(false);
+    expect(assessManagedRuleset(flagTrue, branchDesired).kind).toBe("STRENGTHEN");
+
+    const flagFalse: RulesetSnapshot = {
+      ...okRulesetSnapshot(),
+      target: "branch",
+    };
+    expect(updateRuleSatisfiesReadback(flagFalse.ruleObjects[1], "branch")).toBe(true);
+    expect(assessManagedRuleset(flagFalse, branchDesired).kind).toBe("MATCH");
+  });
+
+  it("write payload still includes update_allows_fetch_and_merge=false", () => {
+    const body = desiredRulesetPayload();
+    expect(body.rules.find((r) => r.type === "update")?.parameters?.update_allows_fetch_and_merge).toBe(
+      false,
+    );
+    const merged = mergeManagedRulesetRules(productionTagRulesetSnapshot().ruleObjects);
+    expect(merged.ok).toBe(true);
+    if (merged.ok) {
+      expect(merged.rules.find((r) => r.type === "update")?.parameters?.update_allows_fetch_and_merge).toBe(
+        false,
+      );
+    }
+    const update = managedRulesetUpdatePayload(productionTagRulesetSnapshot());
+    expect(update.ok).toBe(true);
+    if (update.ok) {
+      expect(update.body.rules.find((r) => r.type === "update")?.parameters?.update_allows_fetch_and_merge).toBe(
+        false,
+      );
+    }
   });
 });
 

@@ -58,7 +58,7 @@ export interface DesiredTrustedPublisher {
 
 export interface DesiredRuleset {
   name: typeof RELEASE_RULESET_NAME;
-  target: "tag";
+  target: "tag" | "branch";
   enforcement: "active";
   include: typeof RELEASE_TAG_INCLUDE;
   rules: readonly string[];
@@ -366,6 +366,23 @@ export function mergeManagedRulesetRules(
   return { ok: true, rules: [...byType.values()] };
 }
 
+/**
+ * Tag-target GitHub REST read-back often returns `{ type: "update" }`
+ * without `parameters`. Existence of the update rule is MATCH.
+ * Branch-target assessment stays strict: the write-schema flag must be
+ * exactly false. `true` never matches (strengthen, never weaken).
+ */
+export function updateRuleSatisfiesReadback(
+  update: RulesetRuleObject | undefined,
+  target: string,
+): boolean {
+  if (!update || update.type !== "update") return false;
+  const flag = update.parameters?.update_allows_fetch_and_merge;
+  if (flag === true) return false;
+  if (target === "tag") return true;
+  return flag === false;
+}
+
 export type RulesetAssessment =
   | { kind: "MATCH" }
   | { kind: "STRENGTHEN"; diff: string[] }
@@ -378,7 +395,7 @@ export function assessManagedRuleset(
   if (snapshot.target !== desired.target) {
     return {
       kind: "STOP",
-      reason: `managed name exists with target=${snapshot.target} (not tag) — STOP for security review`,
+      reason: `managed name exists with target=${snapshot.target} (not ${desired.target}) — STOP for security review`,
       diff: rulesetDiff(snapshot, desired),
     };
   }
@@ -400,7 +417,7 @@ export function assessManagedRuleset(
   const includeOk = includeMatchesDesired(snapshot.include, desired);
   const enforcementOk = snapshot.enforcement === desired.enforcement;
   const requiredPresent = desired.rules.every((t) => objects.some((r) => r.type === t));
-  const updateOk = update?.parameters?.update_allows_fetch_and_merge === false;
+  const updateOk = updateRuleSatisfiesReadback(update, snapshot.target);
   if (includeOk && enforcementOk && requiredPresent && updateOk) {
     return { kind: "MATCH" };
   }
@@ -455,7 +472,11 @@ export function rulesetDiff(snapshot: RulesetSnapshot, desired: DesiredRuleset):
     diff.push(`rules missing: ${missingRules.join(", ")}`);
   }
   const update = (snapshot.ruleObjects ?? []).find((r) => r.type === "update");
-  if (update && update.parameters?.update_allows_fetch_and_merge !== false) {
+  if (snapshot.target === "branch") {
+    if (!update || update.parameters?.update_allows_fetch_and_merge !== false) {
+      diff.push("update.parameters.update_allows_fetch_and_merge must be false");
+    }
+  } else if (update?.parameters?.update_allows_fetch_and_merge === true) {
     diff.push("update.parameters.update_allows_fetch_and_merge must be false");
   }
   return diff;

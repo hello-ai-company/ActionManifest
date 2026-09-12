@@ -12,6 +12,7 @@ import {
   DESIRED_RULESET_RULE_OBJECTS,
   RELEASE_ENVIRONMENT_NAME,
   RELEASE_RULESET_NAME,
+  assessManagedRuleset,
   desiredRulesetPayload,
   emptyEnvironmentActual,
 } from "./release-setup-plan.js";
@@ -255,6 +256,22 @@ describe("parseRulesetDetail", () => {
       rules: DESIRED_RULESET_RULE_OBJECTS,
     });
     expect(snap.ruleObjects.find((r) => r.type === "update")?.parameters?.update_allows_fetch_and_merge).toBe(
+      false,
+    );
+  });
+
+  it("production-shape tag read-back omits update.parameters and still MATCH / write still sends param", () => {
+    const snap = parseRulesetDetail(1, RELEASE_RULESET_NAME, {
+      name: RELEASE_RULESET_NAME,
+      target: "tag",
+      enforcement: "active",
+      conditions: { ref_name: { exclude: [], include: ["refs/tags/v*"] } },
+      rules: [{ type: "deletion" }, { type: "update" }, { type: "non_fast_forward" }],
+    });
+    expect(snap.ruleObjects.find((r) => r.type === "update")).toEqual({ type: "update" });
+    expect(snap.ruleObjects.find((r) => r.type === "update")?.parameters).toBeUndefined();
+    expect(assessManagedRuleset(snap).kind).toBe("MATCH");
+    expect(desiredRulesetPayload().rules.find((r) => r.type === "update")?.parameters?.update_allows_fetch_and_merge).toBe(
       false,
     );
   });

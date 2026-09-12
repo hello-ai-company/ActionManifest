@@ -174,6 +174,11 @@ pnpm release:setup --apply --attest-manual-security[=<path>]
   objects. `update` always includes
   `parameters.update_allows_fetch_and_merge: false`. Compatible stronger
   extra rules are preserved; weakening is refused; ambiguous rules STOP.
+  GitHub REST read-back for tag-target `update` often omits `parameters`.
+  Assessment MATCH requires the `update` rule to exist (plus `deletion`,
+  `non_fast_forward`, `active`, `refs/tags/v*`) — missing parameters are
+  not drift. Branch-target assessment stays strict:
+  `update.parameters.update_allows_fetch_and_merge === false`.
 - Environment updates merge/preserve `wait_timer`, required reviewers,
   `prevent_self_review`, and existing custom branch policies. Secret or
   deployment-branch-policy read failures are fail-closed (`AUTH_REQUIRED` /

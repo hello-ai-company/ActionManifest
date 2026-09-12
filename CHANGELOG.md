@@ -2,6 +2,61 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## Phase 2.4C — Release Control Plane (no version bump)
+
+Controller only. Package versions stay `0.9.0-rc.0`. No npm package
+release, no stage publish/approve, no git tag, no GitHub Release, no `rc.1`.
+
+### Review Round 2 (same Draft PR)
+
+- Package security `MANUAL_REQUIRED` / `UNSUPPORTED` still block READY by
+  default (R1 preserved). `--attest-manual-security` is an explicit,
+  auditable escape hatch: a non-secret record (who / when / packages /
+  what was verified in the npm Settings UI) may unblock READY only after
+  other prerequisites pass. Status is never rewritten to `OK`. Empty or
+  placeholder records fail closed. Official `npm access set mfa=publish`
+  is still not treated as the UI “disallow tokens” control.
+- Every `release:setup` npm path asserts live `npm --version` is exactly
+  `11.15.0` before any `trust` / `access` call. Host 10.x and newer CLIs
+  fail closed. Never `npm@latest`.
+
+### Review Round 1 (same Draft PR)
+
+- Security contract is a READY prerequisite: only `OK` satisfies.
+  `MANUAL_REQUIRED` / `UNSUPPORTED` / `UNKNOWN` / `AUTH_REQUIRED` /
+  `DRIFTED` / `MISSING` block READY. `READY=true` + `MANUAL_REQUIRED` is
+  CRITICAL. `npm access set mfa=publish` is **not** treated as the UI
+  “disallow tokens” control.
+- Managed ruleset REST bodies use explicit rule objects, including
+  `{ type: "update", parameters: { update_allows_fetch_and_merge: false } }`.
+  Compatible stronger extra rules are preserved.
+- Environment discovery captures wait timer, reviewers,
+  `prevent_self_review`, and branch policies. Secret / branch-policy
+  read failures fail closed. Adding `main` is a POST only (no wipe PUT).
+- `release:setup` always runs exact `npm@11.15.0` (project-local or
+  documented `npx --package=npm@11.15.0`); host 10.x is ignored.
+  Official `npm trust github --yes` + ~2s pace between packages.
+
+### Added
+
+- **`pnpm release:setup --check|--apply`** (`scripts/release-setup.ts` +
+  pure planner `release-setup-plan.ts`). Default deny: check is read-only;
+  apply is explicit, prints the plan, is idempotent, and sets
+  `NPM_TRUSTED_PUBLISHING_READY=true` **last** after read-back.
+  GitHub Environment `npm-release`, managed tag ruleset
+  `actionmanifest-release-tags`, Trusted Publishers 10/10 (SoT =
+  `PUBLIC_PACKAGE_NAMES`, stage-only). Drifted Trusted Publishers STOP
+  (no overwrite). Unrelated envs/rulesets preserved.
+- **ADR 0010** — release control plane decisions (default-deny, official
+  API only, no scraping, human 2FA PoP, optional GitHub reviewers, no
+  direct/stable publish).
+
+### Changed
+
+- `docs/RELEASE_TRUSTED_PUBLISHING_SETUP.md` and `docs/RELEASING.md`:
+  `release:setup` is preferred; UI is break-glass. Remaining human
+  boundary: npm auth/2FA when requested; `npm stage approve` (2FA).
+
 ## Phase 2.4B — Production release hardening (no version bump)
 
 Hardening only. Package versions stay `0.9.0-rc.0`. No npm write, no tag, no

@@ -94,14 +94,14 @@ before trusting this table. No tag / GitHub Release / Trusted Publisher yet.
 | # | Item | Status |
 | --- | --- | --- |
 | 42 | Version bump to `0.9.0-rc.0` across all 10 packages | PASS (published; this phase does not bump) |
-| 43 | npm Trusted Publishing configured on npmjs.com | NOT READY (human; after `release.yml` is on main — see RELEASE_TRUSTED_PUBLISHING_SETUP.md) |
+| 43 | npm Trusted Publishing configured (`pnpm release:setup`) | NOT READY until `--apply` + read-back; controller is implemented — see RELEASE_TRUSTED_PUBLISHING_SETUP.md |
 | 44 | Live OIDC **stage** workflow (`.github/workflows/release.yml`) | READY (workflow_dispatch stage\|verify; not armed — READY var unset) |
 | 45 | Tag + GitHub Release | NOT READY (rc.0 has neither; not created in this phase) |
 | 46 | Registry verifier (`pnpm release:registry-verify`) | PASS (read-only tool; rc.0 latest observation documented, not mutated) |
 
 ## Merge-recommendation preconditions (Meeting Round-2, locked)
 
-Current cycle: **Phase 2.4B / production-release-hardening PR**.
+Current cycle: **Phase 2.4C / release-control-plane PR**.
 
 | # | Item | Status |
 | --- | --- | --- |

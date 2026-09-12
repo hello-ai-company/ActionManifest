@@ -1,0 +1,8 @@
+{
+  "kind": "actionmanifest-manual-package-security-attestation",
+  "attestedBy": "_EXAMPLE_DO_NOT_USE",
+  "attestedAt": "REPLACE_WITH_ISO8601",
+  "packages": [],
+  "verifiedInNpmUi": "REPLACE_WITH_WHAT_WAS_VERIFIED_IN_NPM_SETTINGS_UI",
+  "notes": "Copy to docs/evidence/manual-package-security-attestation.json or pass --attest-manual-security=<path>. Record who/when/which packages and what was verified in the npmjs Settings UI (Require two-factor authentication and disallow tokens). Never commit tokens or OTP. Placeholder fields fail validation on purpose so this example cannot unblock READY."
+}

@@ -1,0 +1,104 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { PINNED_NPM_CLI } from "./release-identity.js";
+import { OfficialNpmTrustClient, assertExactPinnedNpmVersion, npmVersionIsExactPinned } from "./release-setup-npm.js";
+import {
+  isExactPinnedNpmSpec,
+  pinnedNpmInvocation,
+  resolvePinnedNpm,
+} from "./release-setup-npm-runner.js";
+
+describe("pinned npm runner", () => {
+  it("never selects host 10.x and never uses a floating latest spec", () => {
+    const resolved = resolvePinnedNpm({
+      hostNpmVersion: "10.9.7",
+      env: {},
+      repoRoot: "/tmp/does-not-contain-actionmanifest-npm",
+    });
+    expect(resolved.version).toBe("11.15.0");
+    expect(resolved.version).toBe(PINNED_NPM_CLI);
+    expect(resolved.spec).toBe("npm@11.15.0");
+    expect(isExactPinnedNpmSpec(resolved.spec)).toBe(true);
+    expect(resolved.spec.includes("latest")).toBe(false);
+    const invocation = pinnedNpmInvocation(["--version"], resolved);
+    expect(invocation.command).toBe("npx");
+    expect(invocation.args).toEqual(["--yes", "--package=npm@11.15.0", "--", "npm", "--version"]);
+    expect(invocation.args.join(" ")).not.toContain("npm@latest");
+  });
+
+  it("OfficialNpmTrustClient --version is the pinned runner, not host 10.x", async () => {
+    const seen: string[][] = [];
+    const client = new OfficialNpmTrustClient((args) => {
+      seen.push(args);
+      if (args[0] === "--version") return { status: 0, stdout: "11.15.0\n", stderr: "" };
+      return { status: 0, stdout: "npm trust\ntrust list\ntrust github\n", stderr: "" };
+    });
+    const caps = await client.inspectCli();
+    expect(caps.version).toBe("11.15.0");
+    expect(caps.version).not.toBe("10.9.7");
+    expect(caps.trustList).toBe(true);
+    expect(seen[0]).toEqual(["--version"]);
+    expect(seen.some((a) => a[0] === "trust" && a[1] === "--help")).toBe(true);
+  });
+
+  it("treats exact 11.15.0 as capable even when manpage help is a minimized stub", async () => {
+    const client = new OfficialNpmTrustClient((args) => {
+      if (args[0] === "--version") return { status: 0, stdout: "11.15.0\n", stderr: "" };
+      return { status: 0, stdout: "This system has been minimized by removing packages\n", stderr: "" };
+    });
+    const caps = await client.inspectCli();
+    expect(caps.trust).toBe(true);
+    expect(caps.trustList).toBe(true);
+    expect(caps.trustGithub).toBe(true);
+    expect(caps.access).toBe(true);
+  });
+
+  it("addTrustedPublisher uses official --yes and never --otp / --allow-publish", async () => {
+    let captured: string[] = [];
+    const client = new OfficialNpmTrustClient((args) => {
+      captured = args;
+      if (args[0] === "--version") return { status: 0, stdout: "11.15.0\n", stderr: "" };
+      if (args[0] === "help") return { status: 0, stdout: "npm trust\ntrust list\ntrust github\n", stderr: "" };
+      return { status: 0, stdout: "", stderr: "" };
+    });
+    await client.addTrustedPublisher("@actionmanifest/core");
+    expect(captured).toContain("--yes");
+    expect(captured).toContain("--allow-stage-publish");
+    expect(captured).not.toContain("--otp");
+    expect(captured).not.toContain("--allow-publish");
+    expect(captured[0]).toBe("trust");
+    expect(captured[1]).toBe("github");
+  });
+
+  it("assert fails closed when the live binary is not exactly 11.15.0", async () => {
+    expect(npmVersionIsExactPinned("11.15.0")).toBe(true);
+    expect(npmVersionIsExactPinned("11.15.0\n")).toBe(true);
+    expect(npmVersionIsExactPinned("10.9.7")).toBe(false);
+    expect(npmVersionIsExactPinned("11.16.0")).toBe(false);
+    expect(() => assertExactPinnedNpmVersion("10.9.7")).toThrow(/exactly 11\.15\.0/);
+    expect(() => assertExactPinnedNpmVersion("11.16.0")).toThrow(/exactly 11\.15\.0/);
+    expect(() => assertExactPinnedNpmVersion("")).toThrow(/empty/);
+    const seen: string[][] = [];
+    const client = new OfficialNpmTrustClient((args) => {
+      seen.push(args);
+      if (args[0] === "--version") return { status: 0, stdout: "10.9.7\n", stderr: "" };
+      return { status: 0, stdout: "npm trust\n", stderr: "" };
+    });
+    await expect(client.inspectCli()).rejects.toThrow(/exactly 11\.15\.0/);
+    expect(seen).toEqual([["--version"]]);
+  });
+
+  it("write-path sources never mention npm@latest", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    for (const file of [
+      "release-setup-npm.ts",
+      "release-setup-npm-runner.ts",
+      "release-setup.ts",
+    ]) {
+      const src = readFileSync(join(here, file), "utf8");
+      expect(src, file).not.toMatch(/npm@latest/);
+    }
+  });
+});

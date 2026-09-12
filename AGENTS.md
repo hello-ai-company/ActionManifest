@@ -40,7 +40,14 @@ If the task brief explicitly names **release-control-plane** or release-infrastr
 
 Trusted Publishing and release-infrastructure changes are forbidden by default. They are allowed only when the brief explicitly scopes release-control-plane setup or maintenance.
 
-Do not flip `NPM_TRUSTED_PUBLISHING_READY` casually. Flip it only when an explicit release-control-plane task (1) verifies all prerequisites, (2) confirms configuration is complete, and (3) explicitly authorizes the readiness change. Keep Phase 2.4B fail-closed.
+When authorized, use `pnpm release:setup --check` (read-only) and
+`pnpm release:setup --apply` (explicit, idempotent, READY last). Do not
+ad-hoc `gh` / `npm trust` / UI clicks. Do not flip
+`NPM_TRUSTED_PUBLISHING_READY` casually. Flip it only when an explicit
+release-control-plane task (1) verifies all prerequisites, (2) confirms
+configuration is complete, and (3) explicitly authorizes the readiness
+change. Keep Phase 2.4B fail-closed. Never automate `npm stage approve`
+or 2FA / WebAuthn / security-key proof-of-presence.
 
 ## Release safety boundary
 

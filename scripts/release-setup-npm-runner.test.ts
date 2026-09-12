@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { PINNED_NPM_CLI } from "./release-identity.js";
 import { OfficialNpmTrustClient } from "./release-setup-npm.js";
 import {
-  PINNED_NPM_PACKAGE_SPEC,
   isExactPinnedNpmSpec,
   pinnedNpmInvocation,
   resolvePinnedNpm,

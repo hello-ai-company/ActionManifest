@@ -54,6 +54,8 @@ describe("parseEnvironmentDiscovery fail-closed", () => {
     expect(actual.status).toBe("AUTH_REQUIRED");
     expect(actual.secretsReadStatus).toBe("AUTH_REQUIRED");
     expect(actual.secretNames).toEqual([]);
+    expect(actual.deploymentBranches).toEqual(["main"]);
+    expect(actual.branchPoliciesReadStatus).toBe("OK");
     expect(planEnvironmentWrite(actual).kind).toBe("STOP");
   });
 

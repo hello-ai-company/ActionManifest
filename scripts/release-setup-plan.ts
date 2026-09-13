@@ -335,6 +335,32 @@ export function environmentMatches(
   return desired.deploymentBranches.every((b) => actual.deploymentBranches.includes(b));
 }
 
+/**
+ * Agent Check verifies Environment existence + deployment-branch policy.
+ * Secret listing is best-effort: integration tokens often 403 that API.
+ * Unread secrets never become a fake empty-OK for live apply (status stays
+ * AUTH_REQUIRED on the discovery object). Agent matching does not require
+ * the secret list, and does not emit AUTH_REQUIRED when existence+branches
+ * are representable.
+ */
+export function environmentMatchesAgent(
+  actual: GitHubEnvironmentActual,
+  desired: DesiredEnvironment,
+): boolean {
+  if (!actual.exists) return false;
+  if (actual.name !== desired.name) return false;
+  if (actual.branchPoliciesReadStatus !== "OK") return false;
+  if (!desired.deploymentBranches.every((b) => actual.deploymentBranches.includes(b))) {
+    return false;
+  }
+  if (actual.secretsReadStatus === "OK" || actual.status === "OK") return true;
+  return (
+    actual.secretsReadStatus === "AUTH_REQUIRED" ||
+    actual.secretsReadStatus === "UNKNOWN" ||
+    actual.secretsReadStatus === "SKIPPED"
+  );
+}
+
 export function includeMatchesDesired(include: string[], desired: DesiredRuleset): boolean {
   return include.some(
     (p) => p === desired.include || p === RELEASE_TAG_PATTERN || p === `refs/tags/${RELEASE_TAG_PATTERN}`,
@@ -1315,33 +1341,23 @@ export function planAgentControlPlaneCheck(
     );
   }
 
-  if (actual.environment.status === "AUTH_REQUIRED" || actual.environment.status === "UNKNOWN") {
+  if (!actual.environment.exists || actual.environment.status === "MISSING") {
     blocked = true;
     items.push(
       item({
         id: "environment",
         resource: RELEASE_ENVIRONMENT_NAME,
         action: "STOP",
-        status: actual.environment.status,
-        reason: actual.environment.notes[0] ?? "cannot read GitHub Environment npm-release",
+        status: actual.environment.exists ? "DRIFTED" : "MISSING",
+        reason:
+          actual.environment.status === "MISSING" || !actual.environment.exists
+            ? actual.environment.notes[0] ?? "GitHub Environment npm-release is missing"
+            : actual.environment.notes[0] ?? "cannot read GitHub Environment npm-release",
         mutates: false,
         order: 10,
       }),
     );
-  } else if (!actual.environment.exists || actual.environment.status === "MISSING") {
-    blocked = true;
-    items.push(
-      item({
-        id: "environment",
-        resource: RELEASE_ENVIRONMENT_NAME,
-        action: "STOP",
-        status: "MISSING",
-        reason: "GitHub Environment npm-release is missing",
-        mutates: false,
-        order: 10,
-      }),
-    );
-  } else if (environmentMatches(actual.environment, desired.environment)) {
+  } else if (environmentMatchesAgent(actual.environment, desired.environment)) {
     const secretHits = actual.environment.secretNames.filter((n) => /NPM_TOKEN|NODE_AUTH_TOKEN/i.test(n));
     if (secretHits.length > 0) {
       blocked = true;
@@ -1360,14 +1376,16 @@ export function planAgentControlPlaneCheck(
         }),
       );
     } else {
+      const secretsUnread = actual.environment.secretsReadStatus !== "OK";
       items.push(
         item({
           id: "environment",
           resource: RELEASE_ENVIRONMENT_NAME,
           action: "NOOP",
           status: "OK",
-          reason:
-            actual.environment.requiredReviewerCount > 0
+          reason: secretsUnread
+            ? "exists; main deployment branch; environment secrets not listed (agent token)"
+            : actual.environment.requiredReviewerCount > 0
               ? `exists; main deployment branch; ${actual.environment.requiredReviewerCount} reviewer(s) preserved (optional)`
               : "exists; main deployment branch; required reviewers optional and absent",
           mutates: false,
@@ -1382,7 +1400,7 @@ export function planAgentControlPlaneCheck(
         id: "environment",
         resource: RELEASE_ENVIRONMENT_NAME,
         action: "STOP",
-        status: actual.environment.status === "OK" ? "DRIFTED" : actual.environment.status,
+        status: actual.environment.status === "OK" ? "DRIFTED" : "DRIFTED",
         reason: actual.environment.notes[0] ?? "Environment npm-release drifted from desired deployment-branch policy",
         mutates: false,
         order: 10,

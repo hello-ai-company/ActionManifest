@@ -268,31 +268,14 @@ export function parseEnvironmentDiscovery(
         : null;
   if (policy && deploymentBranchPolicy === null) representable = false;
 
+  const secretNames: string[] = [];
+  let secretsReadStatus: GitHubEnvironmentActual["secretsReadStatus"] = "OK";
+  let secretsBlockStatus: GitHubEnvironmentActual["status"] | null = null;
   if (!secretsRes || !secretsRes.ok) {
     const status = classifyGhReadFailure(secretsRes?.status ?? null);
-    return emptyEnvironmentActual({
-      exists: true,
-      name: body.name ?? name,
-      waitTimer,
-      preventSelfReview,
-      requiredReviewers: reviewers,
-      requiredReviewerCount: reviewers.length,
-      deploymentBranchPolicy,
-      protectionMetadataRepresentable: representable,
-      secretNames: [],
-      secretsReadStatus: status,
-      branchPoliciesReadStatus: "SKIPPED",
-      status,
-      notes: [
-        status === "AUTH_REQUIRED"
-          ? "cannot read environment secrets (401/403) — fail closed"
-          : "cannot read environment secrets — fail closed",
-      ],
-    });
-  }
-
-  const secretNames: string[] = [];
-  if (secretsRes.json && typeof secretsRes.json === "object") {
+    secretsReadStatus = status;
+    secretsBlockStatus = status;
+  } else if (secretsRes.json && typeof secretsRes.json === "object") {
     const payload = secretsRes.json as { secrets?: { name?: string }[] };
     for (const s of payload.secrets ?? []) {
       if (s.name) secretNames.push(s.name);
@@ -311,9 +294,9 @@ export function parseEnvironmentDiscovery(
       deploymentBranchPolicy,
       protectionMetadataRepresentable: representable,
       secretNames,
-      secretsReadStatus: "OK",
+      secretsReadStatus,
       branchPoliciesReadStatus: status,
-      status,
+      status: secretsBlockStatus ?? status,
       notes: [
         status === "AUTH_REQUIRED"
           ? "cannot read deployment branch policies (401/403) — fail closed"
@@ -328,6 +311,29 @@ export function parseEnvironmentDiscovery(
     for (const p of payload.branch_policies ?? []) {
       if (p.name) branchNames.push(p.name);
     }
+  }
+
+  if (secretsBlockStatus) {
+    return emptyEnvironmentActual({
+      exists: true,
+      name: body.name ?? name,
+      deploymentBranches: branchNames,
+      requiredReviewers: reviewers,
+      requiredReviewerCount: reviewers.length,
+      waitTimer,
+      preventSelfReview,
+      deploymentBranchPolicy,
+      protectionMetadataRepresentable: representable,
+      secretNames: [],
+      secretsReadStatus,
+      branchPoliciesReadStatus: "OK",
+      status: secretsBlockStatus,
+      notes: [
+        secretsBlockStatus === "AUTH_REQUIRED"
+          ? "cannot read environment secrets (401/403) — fail closed"
+          : "cannot read environment secrets — fail closed",
+      ],
+    });
   }
 
   return emptyEnvironmentActual({

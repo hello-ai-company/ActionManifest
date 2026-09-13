@@ -293,6 +293,41 @@ describe("planAgentControlPlaneCheck", () => {
     );
   });
 
+  it("environment secrets unread (agent token) is NOOP, not AUTH_REQUIRED", () => {
+    const env = emptyEnvironmentActual({
+      exists: true,
+      name: RELEASE_ENVIRONMENT_NAME,
+      deploymentBranches: ["main"],
+      deploymentBranchPolicy: { protected_branches: false, custom_branch_policies: true },
+      secretsReadStatus: "AUTH_REQUIRED",
+      branchPoliciesReadStatus: "OK",
+      status: "AUTH_REQUIRED",
+      notes: ["cannot read environment secrets (401/403) — fail closed"],
+    });
+    const plan = planAgentControlPlaneCheck(agentActual({ environment: env }), matchCtx());
+    expect(plan.items.find((i) => i.id === "environment")?.action).toBe("NOOP");
+    expect(plan.items.find((i) => i.id === "environment")?.status).toBe("OK");
+    expect(plan.items.some((i) => i.status === "AUTH_REQUIRED")).toBe(false);
+    expect(plan.verdict).toBe("PASS");
+  });
+
+  it("READY unreadable is LIVE AUDIT REQUIRED, not AUTH_REQUIRED", () => {
+    const plan = planAgentControlPlaneCheck(
+      agentActual({
+        readyVariable: {
+          exists: false,
+          value: null,
+          status: "AUTH_REQUIRED",
+          notes: ["cannot read repository variable"],
+        },
+      }),
+      matchCtx(),
+    );
+    expect(plan.verdict).toBe("LIVE_AUDIT_REQUIRED");
+    expect(plan.items.find((i) => i.id === "ready")?.status).toBe("LIVE_AUDIT_REQUIRED");
+    expect(plan.items.some((i) => i.status === "AUTH_REQUIRED")).toBe(false);
+  });
+
   it("GitHub drift (missing environment) → BLOCKED", () => {
     const plan = planAgentControlPlaneCheck(
       agentActual({

@@ -1,0 +1,27 @@
+======== pnpm release:setup --check-agent (production, read-only) ========
+date=2026-09-13T00:07:52Z
+FORBIDDEN: not running --apply or --audit-live
+exit=1
+
+release:setup check-agent — discovering hello-ai-company/ActionManifest (read first)…
+NPM LIVE GOVERNANCE: NOT QUERIED
+release:setup plan (check-agent) verdict=LIVE_AUDIT_REQUIRED
+  [NOOP] hello-ai-company/ActionManifest OK — gh auth + repository identity verified
+  [NOOP] release.yml OK — release.yml stage job references environment: npm-release
+  [NOOP] npm-release OK — exists; main deployment branch; environment secrets not listed (agent token)
+  [NOOP] actionmanifest-release-tags OK — ruleset actionmanifest-release-tags matches (PR#13 tag read-back; pattern v*; delete/update protected)
+  [NOOP] npm Trusted Publisher + package security NOT_QUERIED — NPM LIVE GOVERNANCE: NOT QUERIED
+  [NOOP] CONTROL_PLANE_CONFIG_SHA256 CACHED_OK — fingerprint matches (CONTROL_PLANE_CONFIG_SHA256=c86593550ee2b66efc6c727c342703ac5ed9bb4fb8c23b7ec83569bf948cc904)
+  [LIVE_AUDIT] NPM_TRUSTED_PUBLISHING_READY LIVE_AUDIT_REQUIRED — LIVE AUDIT REQUIRED
+  NO CHANGES REQUIRED
+report: check-agent verdict=LIVE_AUDIT_REQUIRED writes=0
+NPM LIVE GOVERNANCE: NOT_QUERIED
+
+--- counters (items / report) ---
+npm live queries: 0
+AUTH_REQUIRED items: 0
+writes: 0
+fingerprint match: true
+tag ruleset: NOOP (PR#13)
+READY variable: unreadable by this GitHub integration token (403 Resource not accessible by integration)
+  → LIVE AUDIT REQUIRED (fail-closed; not faked PASS)

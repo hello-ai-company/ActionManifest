@@ -14,7 +14,8 @@ OTP, cookies, or Authorization material. See
 | Base | `6b1a1d231f5617f1e2494023a1e4216fdf47032b` (`main`, PR#13) |
 | Hosted CI (first tip) | [`34727194435`](https://github.com/hello-ai-company/ActionManifest/actions/runs/34727194435) SUCCESS |
 | Hosted Release Check (first tip) | [`34727194450`](https://github.com/hello-ai-company/ActionManifest/actions/runs/34727194450) SUCCESS |
-| Status | DRAFT — no merge; no production writes |
+| R1 HEAD | `9799a1ac37b660a69018d6f7e01f1b1d8e744a09` |
+| Status | DRAFT — R1 in review; no merge; no production writes |
 
 ## Bans honored
 
@@ -34,6 +35,11 @@ Production verification: **`pnpm release:setup --check-agent` only**.
 - GitHub: repo / `release.yml` / Environment `npm-release` + `main` / tag ruleset `actionmanifest-release-tags` → **NOOP** (PR#13 tag read-back)
 - Fingerprint: **CACHED_OK** (`CONTROL_PLANE_CONFIG_SHA256=c86593550ee2b66efc6c727c342703ac5ed9bb4fb8c23b7ec83569bf948cc904`)
 - Verdict: `LIVE_AUDIT_REQUIRED` because this GitHub integration token cannot read Actions variable `NPM_TRUSTED_PUBLISHING_READY` (403). Fail-closed; not faked as PASS.
+
+## R1 (ChatGPT MERGE NO-GO)
+
+- P1-1: fingerprint now includes full SHA-256 of `.github/workflows/release.yml`.
+- P1-2: secrets 403/UNKNOWN fail-closed; Agent Check must not PASS.
 
 ## Contents
 

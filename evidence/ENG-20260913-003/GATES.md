@@ -6,15 +6,15 @@ Local + hosted gates. No tokens, OTP, cookies, or Authorization material.
 
 | Command | Status | Notes |
 | --- | --- | --- |
-| `pnpm lint` | PENDING | fill after run |
-| `pnpm docs:check` | PENDING | |
-| `pnpm typecheck` | PENDING | |
-| `pnpm test` | PENDING | |
-| `pnpm schema:validate` | PENDING | |
-| `pnpm integration:test` | PENDING | |
-| `pnpm release:check:quick` | PENDING | |
-| `pnpm release:check` | PENDING | |
-| `pnpm release:setup --check-agent` (production, read-only) | PENDING | expect GitHub OK, tag NOOP, npm live NOT QUERIED, AUTH_REQUIRED 0, writes 0 |
+| `pnpm lint` | PASS | |
+| `pnpm docs:check` | PASS | |
+| `pnpm typecheck` | PASS | |
+| `pnpm test` | PASS | 487 tests |
+| `pnpm schema:validate` | PASS | |
+| `pnpm integration:test` | PASS | |
+| `pnpm release:check:quick` | PASS | |
+| `pnpm release:check` | PASS | HEAD `4bc9ab1ec2ebeb592c6edd930773cf971e630f51` |
+| `pnpm release:setup --check-agent` (production, read-only) | PASS (layer) | GitHub env/ruleset/workflow/fingerprint NOOP; npm live queries 0; AUTH_REQUIRED items 0; writes 0. Verdict `LIVE_AUDIT_REQUIRED` because this GitHub integration token cannot read Actions variable `NPM_TRUSTED_PUBLISHING_READY` (403). Not faked as PASS. |
 
 ## Forbidden (not run)
 

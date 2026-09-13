@@ -40,11 +40,52 @@ export type ResourceStatus =
   | "MANUAL_REQUIRED"
   | "AUTH_REQUIRED"
   | "UNKNOWN"
-  | "UNSUPPORTED";
+  | "UNSUPPORTED"
+  | "NOT_QUERIED"
+  | "LIVE_AUDIT_REQUIRED"
+  | "CACHED_OK";
 
-export type PlanAction = "CREATE" | "UPDATE" | "NOOP" | "STOP" | "MANUAL" | "SET_READY";
-export type SetupVerdict = "READY" | "NOT_READY" | "BLOCKED";
-export type SetupMode = "check" | "apply";
+export type PlanAction =
+  | "CREATE"
+  | "UPDATE"
+  | "NOOP"
+  | "STOP"
+  | "MANUAL"
+  | "SET_READY"
+  | "LIVE_AUDIT";
+export type SetupVerdict = "READY" | "NOT_READY" | "BLOCKED" | "PASS" | "CACHED_OK" | "LIVE_AUDIT_REQUIRED";
+export type SetupMode = "check" | "check-agent" | "audit-live" | "apply";
+
+export type AgentFingerprintDrift =
+  | "PACKAGE_SET_CHANGED"
+  | "PUBLISHER_CONFIG_CHANGED"
+  | "WORKFLOW_CHANGED"
+  | "CONFIG_DRIFT";
+
+/** Precomputed fingerprint comparison — planner stays I/O-free. */
+export interface AgentCheckContext {
+  fingerprintSha256: string;
+  expectedSha256: string | null;
+  fingerprintMatch: boolean;
+  drift: AgentFingerprintDrift | null;
+  driftReason: string;
+}
+
+export function isAgentCheckMode(mode: SetupMode): boolean {
+  return mode === "check-agent";
+}
+
+export function isLiveAuditMode(mode: SetupMode): boolean {
+  return mode === "check" || mode === "audit-live";
+}
+
+export function isReadOnlySetupMode(mode: SetupMode): boolean {
+  return mode === "check" || mode === "check-agent" || mode === "audit-live";
+}
+
+export function queriesNpmLive(mode: SetupMode): boolean {
+  return mode === "check" || mode === "audit-live" || mode === "apply";
+}
 
 export interface DesiredTrustedPublisher {
   provider: "github";
@@ -630,6 +671,9 @@ export function planReleaseControlPlane(
   desired: DesiredControlPlane = desiredControlPlane(),
   attestation?: SecurityAttestationApplication | null,
 ): SetupPlan {
+  if (mode === "check-agent") {
+    throw new Error("internal: use planAgentControlPlaneCheck for --check-agent");
+  }
   const items: PlanItem[] = [];
   const critical: string[] = [];
   const notes: string[] = [...HUMAN_BOUNDARY_NOTES];
@@ -1172,6 +1216,380 @@ export function planReleaseControlPlane(
     notes,
   };
   assertNoSecrets(JSON.stringify(plan), "setup plan");
+  return plan;
+}
+
+/**
+ * Agent-safe planner. GitHub + local desired config + cached READY/fingerprint.
+ * Never plans npm live queries. CREATE/UPDATE become STOP (read-only).
+ * READY=true is not enough — fingerprint / package set / TP desired /
+ * workflow identity must match. GitHub drift → BLOCKED.
+ */
+export function planAgentControlPlaneCheck(
+  actual: ActualControlPlane,
+  ctx: AgentCheckContext,
+  desired: DesiredControlPlane = desiredControlPlane(),
+  attestation?: SecurityAttestationApplication | null,
+): SetupPlan {
+  const items: PlanItem[] = [];
+  const critical: string[] = [];
+  const notes: string[] = [
+    "NPM LIVE GOVERNANCE: NOT QUERIED",
+    `CONTROL_PLANE_CONFIG_SHA256=${ctx.fingerprintSha256}`,
+    "READY is a cached governance assertion — not live npm security proof",
+    "attestation file is never treated as live npm security proof",
+  ];
+  let blocked = false;
+  if (attestation?.requested && !attestation.applied) {
+    blocked = true;
+    critical.push(
+      `CRITICAL: --attest-manual-security was set but the attestation is invalid or missing — ${attestation.error ?? "READY stays blocked"}`,
+    );
+  }
+
+  if (!actual.repo.verified || actual.repo.status === "AUTH_REQUIRED") {
+    blocked = true;
+    items.push(
+      item({
+        id: "repo",
+        resource: RELEASE_REPO_SLUG,
+        action: "STOP",
+        status: actual.repo.status,
+        reason: actual.repo.notes[0] ?? `GitHub identity must be ${RELEASE_REPO_SLUG} (fail closed)`,
+        mutates: false,
+        order: 0,
+      }),
+    );
+  } else if (actual.repo.slug !== desired.repo) {
+    blocked = true;
+    items.push(
+      item({
+        id: "repo",
+        resource: actual.repo.slug,
+        action: "STOP",
+        status: "DRIFTED",
+        reason: `refusing to operate on ${actual.repo.slug}; expected ${desired.repo}`,
+        mutates: false,
+        order: 0,
+      }),
+    );
+  } else {
+    items.push(
+      item({
+        id: "repo",
+        resource: desired.repo,
+        action: "NOOP",
+        status: "OK",
+        reason: "gh auth + repository identity verified",
+        mutates: false,
+        order: 0,
+      }),
+    );
+  }
+
+  if (!actual.workflowReferencesEnvironment) {
+    blocked = true;
+    critical.push("CRITICAL: .github/workflows/release.yml must reference environment: npm-release");
+    items.push(
+      item({
+        id: "workflow-environment",
+        resource: "release.yml",
+        action: "STOP",
+        status: "DRIFTED",
+        reason: "release.yml does not reference environment: npm-release (Phase 2.4B contract)",
+        mutates: false,
+        order: 1,
+      }),
+    );
+  } else {
+    items.push(
+      item({
+        id: "workflow-environment",
+        resource: "release.yml",
+        action: "NOOP",
+        status: "OK",
+        reason: "release.yml stage job references environment: npm-release",
+        mutates: false,
+        order: 1,
+      }),
+    );
+  }
+
+  if (actual.environment.status === "AUTH_REQUIRED" || actual.environment.status === "UNKNOWN") {
+    blocked = true;
+    items.push(
+      item({
+        id: "environment",
+        resource: RELEASE_ENVIRONMENT_NAME,
+        action: "STOP",
+        status: actual.environment.status,
+        reason: actual.environment.notes[0] ?? "cannot read GitHub Environment npm-release",
+        mutates: false,
+        order: 10,
+      }),
+    );
+  } else if (!actual.environment.exists || actual.environment.status === "MISSING") {
+    blocked = true;
+    items.push(
+      item({
+        id: "environment",
+        resource: RELEASE_ENVIRONMENT_NAME,
+        action: "STOP",
+        status: "MISSING",
+        reason: "GitHub Environment npm-release is missing",
+        mutates: false,
+        order: 10,
+      }),
+    );
+  } else if (environmentMatches(actual.environment, desired.environment)) {
+    const secretHits = actual.environment.secretNames.filter((n) => /NPM_TOKEN|NODE_AUTH_TOKEN/i.test(n));
+    if (secretHits.length > 0) {
+      blocked = true;
+      critical.push(
+        `CRITICAL: Environment npm-release lists forbidden secret name(s): ${secretHits.join(", ")}`,
+      );
+      items.push(
+        item({
+          id: "environment",
+          resource: RELEASE_ENVIRONMENT_NAME,
+          action: "STOP",
+          status: "DRIFTED",
+          reason: `forbidden environment secrets present: ${secretHits.join(", ")} (do not auto-delete)`,
+          mutates: false,
+          order: 10,
+        }),
+      );
+    } else {
+      items.push(
+        item({
+          id: "environment",
+          resource: RELEASE_ENVIRONMENT_NAME,
+          action: "NOOP",
+          status: "OK",
+          reason:
+            actual.environment.requiredReviewerCount > 0
+              ? `exists; main deployment branch; ${actual.environment.requiredReviewerCount} reviewer(s) preserved (optional)`
+              : "exists; main deployment branch; required reviewers optional and absent",
+          mutates: false,
+          order: 10,
+        }),
+      );
+    }
+  } else {
+    blocked = true;
+    items.push(
+      item({
+        id: "environment",
+        resource: RELEASE_ENVIRONMENT_NAME,
+        action: "STOP",
+        status: actual.environment.status === "OK" ? "DRIFTED" : actual.environment.status,
+        reason: actual.environment.notes[0] ?? "Environment npm-release drifted from desired deployment-branch policy",
+        mutates: false,
+        order: 10,
+        diff: [`deploymentBranches: [${actual.environment.deploymentBranches.join(", ")}] → main`],
+      }),
+    );
+  }
+
+  if (actual.ruleset.status === "AUTH_REQUIRED" || actual.ruleset.status === "UNKNOWN") {
+    blocked = true;
+    items.push(
+      item({
+        id: "ruleset",
+        resource: RELEASE_RULESET_NAME,
+        action: "STOP",
+        status: actual.ruleset.status,
+        reason: actual.ruleset.notes[0] ?? "cannot read repository rulesets",
+        mutates: false,
+        order: 20,
+      }),
+    );
+  } else if (actual.ruleset.managed.length > 1) {
+    blocked = true;
+    items.push(
+      item({
+        id: "ruleset",
+        resource: RELEASE_RULESET_NAME,
+        action: "STOP",
+        status: "DRIFTED",
+        reason: `multiple rulesets named ${RELEASE_RULESET_NAME} (ids ${actual.ruleset.managed
+          .map((r) => r.id)
+          .join(", ")}) — STOP, no overwrite`,
+        mutates: false,
+        order: 20,
+      }),
+    );
+  } else if (actual.ruleset.managed.length === 0) {
+    blocked = true;
+    items.push(
+      item({
+        id: "ruleset",
+        resource: RELEASE_RULESET_NAME,
+        action: "STOP",
+        status: "MISSING",
+        reason: `managed tag ruleset ${RELEASE_RULESET_NAME} is missing`,
+        mutates: false,
+        order: 20,
+      }),
+    );
+  } else {
+    const snap = actual.ruleset.managed[0]!;
+    const assessment = assessManagedRuleset(snap, desired.ruleset);
+    if (assessment.kind === "MATCH") {
+      items.push(
+        item({
+          id: "ruleset",
+          resource: RELEASE_RULESET_NAME,
+          action: "NOOP",
+          status: "OK",
+          reason: `ruleset ${RELEASE_RULESET_NAME} matches (PR#13 tag read-back; pattern ${RELEASE_TAG_PATTERN}; delete/update protected)`,
+          mutates: false,
+          order: 20,
+        }),
+      );
+    } else {
+      blocked = true;
+      items.push(
+        item({
+          id: "ruleset",
+          resource: RELEASE_RULESET_NAME,
+          action: "STOP",
+          status: "DRIFTED",
+          reason: assessment.kind === "STOP" ? assessment.reason : `managed ruleset ${RELEASE_RULESET_NAME} drifted from desired`,
+          mutates: false,
+          order: 20,
+          diff: assessment.diff,
+        }),
+      );
+    }
+  }
+
+  items.push(
+    item({
+      id: "npm-live-governance",
+      resource: "npm Trusted Publisher + package security",
+      action: "NOOP",
+      status: "NOT_QUERIED",
+      reason: "NPM LIVE GOVERNANCE: NOT QUERIED",
+      mutates: false,
+      order: 40,
+    }),
+  );
+
+  const githubBlocked = blocked || items.some((i) => i.action === "STOP");
+  const readyTrue = readyValueIsTrue(actual.readyVariable.value);
+
+  if (!ctx.fingerprintMatch) {
+    items.push(
+      item({
+        id: "fingerprint",
+        resource: "CONTROL_PLANE_CONFIG_SHA256",
+        action: "LIVE_AUDIT",
+        status: "LIVE_AUDIT_REQUIRED",
+        reason: ctx.driftReason,
+        mutates: false,
+        order: 80,
+        diff: [
+          `computed=${ctx.fingerprintSha256}`,
+          `expected=${ctx.expectedSha256 ?? "missing"}`,
+          ctx.drift ? `drift=${ctx.drift}` : "drift=unknown",
+        ],
+      }),
+    );
+  } else {
+    items.push(
+      item({
+        id: "fingerprint",
+        resource: "CONTROL_PLANE_CONFIG_SHA256",
+        action: "NOOP",
+        status: "CACHED_OK",
+        reason: `fingerprint matches (CONTROL_PLANE_CONFIG_SHA256=${ctx.fingerprintSha256})`,
+        mutates: false,
+        order: 80,
+      }),
+    );
+  }
+
+  if (githubBlocked) {
+    items.push(
+      item({
+        id: "ready",
+        resource: READY_VARIABLE_NAME,
+        action: "STOP",
+        status: readyTrue ? "DRIFTED" : actual.readyVariable.status,
+        reason: "GitHub control-plane drift — READY cache is not trusted",
+        mutates: false,
+        order: 90,
+      }),
+    );
+  } else if (!readyTrue) {
+    items.push(
+      item({
+        id: "ready",
+        resource: READY_VARIABLE_NAME,
+        action: "LIVE_AUDIT",
+        status: "LIVE_AUDIT_REQUIRED",
+        reason: "LIVE AUDIT REQUIRED",
+        mutates: false,
+        order: 90,
+      }),
+    );
+  } else if (!ctx.fingerprintMatch) {
+    items.push(
+      item({
+        id: "ready",
+        resource: READY_VARIABLE_NAME,
+        action: "LIVE_AUDIT",
+        status: "LIVE_AUDIT_REQUIRED",
+        reason: ctx.driftReason,
+        mutates: false,
+        order: 90,
+      }),
+    );
+  } else {
+    items.push(
+      item({
+        id: "ready",
+        resource: READY_VARIABLE_NAME,
+        action: "NOOP",
+        status: "CACHED_OK",
+        reason: "CACHED_OK — READY=true and fingerprint / package set / TP desired / workflow identity match",
+        mutates: false,
+        order: 90,
+      }),
+    );
+  }
+
+  items.sort((a, b) => a.order - b.order);
+  const stopItems = items.filter((i) => i.action === "STOP");
+  const liveAuditItems = items.filter((i) => i.action === "LIVE_AUDIT");
+
+  let verdict: SetupVerdict;
+  if (blocked || critical.length > 0 || stopItems.length > 0) {
+    verdict = "BLOCKED";
+  } else if (liveAuditItems.length > 0 || !readyTrue || !ctx.fingerprintMatch) {
+    verdict = "LIVE_AUDIT_REQUIRED";
+  } else {
+    verdict = "PASS";
+  }
+
+  const remainingHuman =
+    verdict === "PASS"
+      ? []
+      : verdict === "LIVE_AUDIT_REQUIRED"
+        ? ["run pnpm release:setup --audit-live (human npm auth / 2FA may be required — never automated)"]
+        : [...HUMAN_BOUNDARY_NOTES];
+
+  const plan: SetupPlan = {
+    mode: "check-agent",
+    verdict,
+    items,
+    critical,
+    readyLast: true,
+    remainingHuman,
+    notes,
+  };
+  assertNoSecrets(JSON.stringify(plan), "agent-check plan");
   return plan;
 }
 

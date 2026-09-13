@@ -656,7 +656,7 @@ export function parseRulesetDetail(id: number, name: string, json: unknown): Rul
 /** Check-mode wrapper: every write throws. */
 export function readOnlyGitHub(inner: GitHubControlPlaneClient): GitHubControlPlaneClient {
   const refuse = async (): Promise<never> => {
-    throw new Error("release:setup --check is read-only; write refused");
+    throw new Error("release:setup read-only mode; GitHub write refused");
   };
   return {
     verifyRepo: () => inner.verifyRepo(),

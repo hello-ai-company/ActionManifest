@@ -87,7 +87,9 @@ For each of the 10 packages:
 
 ## Trusted Publisher configuration (after ALL 10 exist)
 
-Preferred: `pnpm release:setup --check` then `--apply` (ADR 0010).
+Preferred: `pnpm release:setup --check-agent` (normal), `--audit-live`
+(governance audit; `--check` is the compatible live alias), then `--apply`
+with explicit approval (ADR 0010).
 Break-glass: per package, on npmjs.com (or `npm trust github`, npm CLI ≥ 11.15, 2FA):
 
 - [ ] Organization/user: `hello-ai-company`

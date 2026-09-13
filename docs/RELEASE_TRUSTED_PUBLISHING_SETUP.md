@@ -13,13 +13,56 @@ WebAuthn / security key / OTP when the official CLI requests it, and later
 `npm stage approve` (2FA). `release:setup` never runs `npm publish`,
 `npm stage publish`, or `npm stage approve`.
 
-## 0. Audit (read-only)
+## 0. Two-layer verification (read-only)
+
+Phase 2.4D splits verification. Safety is not weakened: Agent Check never
+treats `READY=true` or a manual attestation file as live npm proof.
+
+| Layer | Command | What it does |
+| --- | --- | --- |
+| **Normal (Agent / CI)** | `pnpm release:setup --check-agent` | GitHub + local desired config + cached READY/fingerprint. **No** `npm trust list`, package-security queries, npm login/2FA, or writes. |
+| **Governance audit** | `pnpm release:setup --audit-live` | Full live read-back including npm trust list / security / auth detection. Without human npm auth → `BLOCKED — NPM HUMAN AUTH REQUIRED` is OK. |
+| **Backward compatible** | `pnpm release:setup --check` | Same live path as `--audit-live`. **Not** silently changed into agent-only. |
+| **Mutation** | `pnpm release:setup --apply` | Explicit converge only, after a brief authorizes it. READY last. |
 
 ```bash
+pnpm release:setup --check-agent
+pnpm release:setup --audit-live
 pnpm release:setup --check
 ```
 
-Completely read-only. Zero mutations. Inspects:
+All three are read-only. Zero mutations.
+
+### 0.1 Agent Check (`--check-agent`)
+
+Verifies: repo identity, `release.yml` + `environment: npm-release`,
+Environment existence + deployment-branch policy, tag ruleset
+`actionmanifest-release-tags` (PR#13 tag read-back: GitHub REST may omit
+`update.parameters`; that is MATCH for tag-target), READY variable,
+in-repo release / desired control-plane config, and
+`CONTROL_PLANE_CONFIG_SHA256` (`docs/evidence/control-plane-config-fingerprint.json`).
+No secrets or timestamps enter the fingerprint.
+
+`READY=true` alone is **not** enough. Verdict `PASS` (cached OK) only when
+READY is exactly `true` **and** the fingerprint / package set / Trusted
+Publisher desired config / workflow identity / control-plane config match.
+Fail-closed:
+
+- READY missing/false → `LIVE AUDIT REQUIRED`
+- package set change → `LIVE AUDIT REQUIRED — PACKAGE SET CHANGED`
+- publisher config change → `LIVE AUDIT REQUIRED — PUBLISHER CONFIG CHANGED`
+- material workflow change → `LIVE AUDIT REQUIRED`
+- fingerprint mismatch → `LIVE AUDIT REQUIRED — CONFIG DRIFT`
+- GitHub drift (missing env/ruleset, wrong workflow) → `BLOCKED`
+
+Normal success: `verdict=PASS`; GitHub rows `NOOP`;
+`NPM LIVE GOVERNANCE: NOT QUERIED`; writes=0; no Human action required.
+The attestation file may be hashed into the fingerprint; it is **never**
+live npm security proof.
+
+### 0.2 Live audit (`--audit-live` / `--check`)
+
+Inspects everything Agent Check does, plus npm live governance:
 
 1. GitHub Environment `npm-release` (exists; deployment branch `main`;
    required reviewers **optional** — npm staged approval + 2FA is the
@@ -31,7 +74,7 @@ Completely read-only. Zero mutations. Inspects:
    still send `update_allows_fetch_and_merge: false`. Branch-target
    assessment, if used later, stays strict on that parameter.
 3. Repository variable `NPM_TRUSTED_PUBLISHING_READY` (read only here).
-   `READY=true` with incomplete prerequisites is **CRITICAL**.
+   `READY=true` with incomplete **live** prerequisites is **CRITICAL**.
 4. npm Trusted Publishers for all 10 names in `PUBLIC_PACKAGE_NAMES`
    (SoT — do not duplicate the roster): GitHub Actions,
    `hello-ai-company/ActionManifest`, workflow `release.yml`, environment
@@ -42,7 +85,7 @@ Completely read-only. Zero mutations. Inspects:
    the status is `MANUAL_REQUIRED` / `UNSUPPORTED` / `UNKNOWN` — never a
    fake `PASS`.
 
-Verdict: `READY` / `NOT_READY` / `BLOCKED`. Optional local
+Live verdict: `READY` / `NOT_READY` / `BLOCKED`. Optional local
 `release-control-plane-report.json` (gitignored, non-secret).
 
 ## 1. Converge (explicit apply)

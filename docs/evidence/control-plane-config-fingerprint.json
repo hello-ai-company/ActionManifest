@@ -1,0 +1,56 @@
+{
+  "kind": "actionmanifest-control-plane-config-fingerprint-v1",
+  "packages": [
+    "@actionmanifest/schema",
+    "@actionmanifest/core",
+    "@actionmanifest/temporal",
+    "@actionmanifest/adapters",
+    "@actionmanifest/extractor",
+    "@actionmanifest/verifier",
+    "@actionmanifest/exporters",
+    "@actionmanifest/consumer",
+    "@actionmanifest/adapter-xberg",
+    "@actionmanifest/cli"
+  ],
+  "trustedPublisher": {
+    "provider": "github",
+    "org": "hello-ai-company",
+    "repo": "ActionManifest",
+    "workflow": "release.yml",
+    "environment": "npm-release",
+    "allowStagePublish": true,
+    "allowPublish": false
+  },
+  "workflow": {
+    "filename": "release.yml",
+    "environment": "npm-release",
+    "referencesNpmRelease": true,
+    "referencesReadyVariable": true
+  },
+  "environment": {
+    "name": "npm-release",
+    "deploymentBranches": [
+      "main"
+    ],
+    "requiredReviewersOptional": true
+  },
+  "ruleset": {
+    "name": "actionmanifest-release-tags",
+    "target": "tag",
+    "enforcement": "active",
+    "include": "refs/tags/v*",
+    "rules": [
+      "deletion",
+      "update",
+      "non_fast_forward"
+    ]
+  },
+  "readyVariable": "NPM_TRUSTED_PUBLISHING_READY",
+  "attestationPolicy": {
+    "kind": "actionmanifest-manual-package-security-attestation",
+    "defaultPath": "docs/evidence/manual-package-security-attestation.json",
+    "recordSha256": null,
+    "coveredPackages": []
+  },
+  "sha256": "c86593550ee2b66efc6c727c342703ac5ed9bb4fb8c23b7ec83569bf948cc904"
+}

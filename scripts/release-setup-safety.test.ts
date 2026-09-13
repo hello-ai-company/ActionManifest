@@ -199,10 +199,12 @@ function deps(github: MemoryGitHub, npm: MemoryNpm): { deps: SetupDeps; logs: st
 }
 
 describe("parseSetupArgs", () => {
-  it("defaults to check (no --apply ⇒ zero writes)", () => {
+  it("defaults to check (no --apply ⇒ zero writes; not silently agent-only)", () => {
     expect(parseSetupArgs([])).toBe("check");
     expect(parseSetupArgs(["--check"])).toBe("check");
     expect(parseSetupArgs(["--apply"])).toBe("apply");
+    expect(parseSetupArgs(["--check-agent"])).toBe("check-agent");
+    expect(parseSetupArgs(["--audit-live"])).toBe("audit-live");
   });
 });
 
@@ -459,6 +461,7 @@ describe("npm / GitHub command safety (static + helpers)", () => {
       "release-setup-plan.ts",
       "release-setup-npm-runner.ts",
       "release-setup-attestation.ts",
+      "release-setup-fingerprint.ts",
     ]) {
       const src = readFileSync(join(here, file), "utf8");
       expect(src, file).not.toMatch(/npm publish /);

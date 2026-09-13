@@ -1,8 +1,10 @@
 /**
  * release:setup — Release Control Plane controller.
  *
- *   pnpm release:setup --check   READ ONLY. Zero mutations.
- *   pnpm release:setup --apply   Explicit only. Print plan, then converge.
+ *   pnpm release:setup --check-agent   Agent/CI-safe. GitHub + cached READY. No npm live.
+ *   pnpm release:setup --audit-live    Full live read-back (npm trust list / security / auth).
+ *   pnpm release:setup --check         Backward-compatible full live check (same as --audit-live).
+ *   pnpm release:setup --apply         Explicit only. Print plan, then converge. READY last.
  *
  * DEFAULT DENY. READY last. No registry publish / staged publish / approve.
  * No release tag / GitHub Release / version bump. Human 2FA PoP is never automated.
@@ -17,10 +19,25 @@ import {
   resolveAttestationPath,
   toAttestationApplication,
 } from "./release-setup-attestation.js";
+import {
+  CONTROL_PLANE_FINGERPRINT_RELATIVE,
+  buildFingerprintDocument,
+  classifyFingerprintDrift,
+  controlPlaneConfigSha256,
+  currentFingerprintSections,
+  defaultAttestationPolicy,
+  documentIntegrityOk,
+  liveAuditReason,
+  parseFingerprintDocument,
+  sectionsFromDocument,
+  sha256Hex,
+  type ControlPlaneFingerprintDocument,
+} from "./release-setup-fingerprint.js";
 import { GhControlPlaneClient, readOnlyGitHub, type GitHubControlPlaneClient } from "./release-setup-github.js";
 import {
   OfficialNpmTrustClient,
   TRUSTED_PUBLISHER_WRITE_PACE_MS,
+  agentSafeNpm,
   readOnlyNpm,
   type NpmTrustClient,
 } from "./release-setup-npm.js";
@@ -33,16 +50,23 @@ import {
   assertNoSecrets,
   desiredControlPlane,
   evaluatePrerequisites,
+  isAgentCheckMode,
+  isReadOnlySetupMode,
   mutatingItems,
+  planAgentControlPlaneCheck,
   planReleaseControlPlane,
   prerequisitesPass,
+  queriesNpmLive,
   redactSecrets,
   type ActualControlPlane,
+  type AgentCheckContext,
+  type PackageSecurityActual,
   type PlanItem,
   type SecurityAttestationApplication,
   type SetupMode,
   type SetupPlan,
   type SetupVerdict,
+  type TrustedPublisherActual,
 } from "./release-setup-plan.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -70,6 +94,13 @@ export interface ControlPlaneReport {
   remaining_human: string[];
   registry_writes: string;
   notes: string[];
+  npm_live_governance: "NOT_QUERIED" | "QUERIED";
+  fingerprint: {
+    sha256: string | null;
+    expected: string | null;
+    match: boolean | null;
+    drift: string | null;
+  };
 }
 
 export interface SetupResult {
@@ -103,13 +134,47 @@ export function defaultReadWorkflow(): string {
   return readFileSync(join(root, ".github/workflows/release.yml"), "utf8");
 }
 
-export async function discoverActual(deps: SetupDeps): Promise<ActualControlPlane> {
+function notQueriedPublisher(packageName: string): TrustedPublisherActual {
+  return {
+    packageName,
+    exists: false,
+    status: "NOT_QUERIED",
+    notes: ["NPM LIVE GOVERNANCE: NOT QUERIED"],
+  };
+}
+
+function notQueriedSecurity(packageName: string): PackageSecurityActual {
+  return {
+    packageName,
+    twoFactorRequired: "UNKNOWN",
+    longLivedTokensDisallowed: "UNKNOWN",
+    trustedPublishingUsed: "UNKNOWN",
+    status: "NOT_QUERIED",
+    notes: ["NPM LIVE GOVERNANCE: NOT QUERIED"],
+  };
+}
+
+export async function discoverActual(
+  deps: SetupDeps,
+  mode: SetupMode = "check",
+): Promise<ActualControlPlane> {
   const desired = desiredControlPlane();
   const repo = await deps.github.verifyRepo();
   const workflow = deps.readWorkflow();
   const environment = await deps.github.getEnvironment(RELEASE_ENVIRONMENT_NAME);
   const ruleset = await deps.github.listRulesets();
   const readyVariable = await deps.github.getVariable(READY_VARIABLE_NAME);
+  if (isAgentCheckMode(mode)) {
+    return {
+      repo,
+      workflowReferencesEnvironment: workflowReferencesNpmRelease(workflow),
+      environment,
+      ruleset,
+      readyVariable,
+      trustedPublishers: desired.packages.map(notQueriedPublisher),
+      packageSecurity: desired.packages.map(notQueriedSecurity),
+    };
+  }
   const trustedPublishers = [];
   const packageSecurity = [];
   for (const name of desired.packages) {
@@ -125,6 +190,56 @@ export async function discoverActual(deps: SetupDeps): Promise<ActualControlPlan
     trustedPublishers,
     packageSecurity,
   };
+}
+
+export function loadCommittedFingerprint(repoRoot: string = root): ControlPlaneFingerprintDocument | null {
+  const path = join(repoRoot, CONTROL_PLANE_FINGERPRINT_RELATIVE);
+  if (!existsSync(path)) return null;
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+    const doc = parseFingerprintDocument(parsed);
+    if (!doc || !documentIntegrityOk(doc)) return null;
+    return doc;
+  } catch {
+    return null;
+  }
+}
+
+export function attestationRecordSha256(repoRoot: string = root): string | null {
+  const path = join(repoRoot, DEFAULT_MANUAL_SECURITY_ATTESTATION_RELATIVE);
+  if (!existsSync(path)) return null;
+  return sha256Hex(readFileSync(path, "utf8"));
+}
+
+export function buildAgentCheckContext(
+  workflowYaml: string,
+  committed: ControlPlaneFingerprintDocument | null,
+  attestationSha256: string | null = null,
+): AgentCheckContext {
+  const current = currentFingerprintSections(workflowYaml, defaultAttestationPolicy(attestationSha256));
+  const computed = controlPlaneConfigSha256(current);
+  if (!committed) {
+    return {
+      fingerprintSha256: computed,
+      expectedSha256: null,
+      fingerprintMatch: false,
+      drift: "CONFIG_DRIFT",
+      driftReason: "LIVE AUDIT REQUIRED — CONFIG DRIFT",
+    };
+  }
+  const expected = sectionsFromDocument(committed);
+  const drift = classifyFingerprintDrift(expected, current);
+  return {
+    fingerprintSha256: computed,
+    expectedSha256: committed.sha256,
+    fingerprintMatch: drift === null,
+    drift,
+    driftReason: liveAuditReason(drift),
+  };
+}
+
+export function committedFingerprintDocumentFromWorkflow(workflowYaml: string): ControlPlaneFingerprintDocument {
+  return buildFingerprintDocument(currentFingerprintSections(workflowYaml, defaultAttestationPolicy()));
 }
 
 function printPlan(plan: SetupPlan, log: (line: string) => void): void {
@@ -148,12 +263,28 @@ function printPlan(plan: SetupPlan, log: (line: string) => void): void {
   }
 }
 
+function registryWritesNote(mode: SetupMode, writes: string[]): string {
+  if (mode === "check-agent") {
+    return "none (check-agent is read-only; npm live not queried)";
+  }
+  if (mode === "check" || mode === "audit-live") {
+    return mode === "audit-live"
+      ? "none (audit-live is read-only)"
+      : "none (check is read-only)";
+  }
+  return writes.length === 0
+    ? "none (idempotent — NO CHANGES REQUIRED)"
+    : "approved control-plane settings only — no registry publish/stage/approve, no release tag, no GitHub Release";
+}
+
 function buildReport(
   mode: SetupMode,
   plan: SetupPlan,
   actual: ActualControlPlane,
   writes: string[],
+  fingerprint: AgentCheckContext | null,
 ): ControlPlaneReport {
+  const npmLive = queriesNpmLive(mode) ? "QUERIED" : "NOT_QUERIED";
   const report: ControlPlaneReport = {
     kind: "actionmanifest-release-control-plane-report",
     mode,
@@ -172,17 +303,22 @@ function buildReport(
     items: plan.items,
     critical: plan.critical,
     remaining_human: plan.remainingHuman,
-    registry_writes:
-      mode === "check"
-        ? "none (check is read-only)"
-        : writes.length === 0
-          ? "none (idempotent — NO CHANGES REQUIRED)"
-          : "approved control-plane settings only — no registry publish/stage/approve, no release tag, no GitHub Release",
+    registry_writes: registryWritesNote(mode, writes),
+    npm_live_governance: npmLive,
+    fingerprint: {
+      sha256: fingerprint?.fingerprintSha256 ?? null,
+      expected: fingerprint?.expectedSha256 ?? null,
+      match: fingerprint ? fingerprint.fingerprintMatch : null,
+      drift: fingerprint?.drift ?? null,
+    },
     notes: [
       ...plan.notes,
       `unrelated environments/rulesets preserved (managed ruleset name=${RELEASE_RULESET_NAME})`,
       "direct OIDC registry publish is not enabled (stage-only Trusted Publisher)",
       "MANUAL_REQUIRED/UNSUPPORTED still block READY unless --attest-manual-security loads a valid non-secret attestation (never silent PASS, never stored credentials)",
+      mode === "check-agent"
+        ? "NPM LIVE GOVERNANCE: NOT QUERIED — attestation is not live npm security proof"
+        : "live npm governance queried (trust list / package security / auth detection)",
     ],
   };
   assertNoSecrets(JSON.stringify(report), "control-plane report");
@@ -242,7 +378,7 @@ async function maybeSetReady(
   attestation?: SecurityAttestationApplication | null,
 ): Promise<void> {
   deps.log("read-back after mutations (READY still unset)…");
-  const after = await discoverActual(deps);
+  const after = await discoverActual(deps, "apply");
   const flags = evaluatePrerequisites(after, desiredControlPlane(), attestation);
   if (!prerequisitesPass(flags)) {
     deps.log("read-back: prerequisites incomplete — READY not set");
@@ -268,13 +404,22 @@ export async function runReleaseSetup(
     }
   }
   const attestation = options?.attestation ?? null;
-  const github = mode === "check" ? readOnlyGitHub(deps.github) : deps.github;
-  const npm = mode === "check" ? readOnlyNpm(deps.npm) : deps.npm;
+  const github = isReadOnlySetupMode(mode) ? readOnlyGitHub(deps.github) : deps.github;
+  const npm = isAgentCheckMode(mode) ? agentSafeNpm() : mode === "apply" ? deps.npm : readOnlyNpm(deps.npm);
   const guarded: SetupDeps = { ...deps, github, npm };
 
   deps.log(`release:setup ${mode} — discovering ${RELEASE_REPO_SLUG} (read first)…`);
-  const actual = await discoverActual(guarded);
-  const plan = planReleaseControlPlane(actual, mode, desiredControlPlane(), attestation);
+  if (isAgentCheckMode(mode)) {
+    deps.log("NPM LIVE GOVERNANCE: NOT QUERIED");
+  }
+  const actual = await discoverActual(guarded, mode);
+  const workflowYaml = deps.readWorkflow();
+  const agentCtx = isAgentCheckMode(mode)
+    ? buildAgentCheckContext(workflowYaml, loadCommittedFingerprint(), attestationRecordSha256())
+    : null;
+  const plan = isAgentCheckMode(mode)
+    ? planAgentControlPlaneCheck(actual, agentCtx!, desiredControlPlane(), attestation)
+    : planReleaseControlPlane(actual, mode, desiredControlPlane(), attestation);
   printPlan(plan, deps.log);
 
   const writes: string[] = [];
@@ -289,7 +434,8 @@ export async function runReleaseSetup(
     }
   }
 
-  const finalActual = mode === "apply" && writes.length > 0 ? await discoverActual(guarded) : actual;
+  const finalActual =
+    mode === "apply" && writes.length > 0 ? await discoverActual(guarded, mode) : actual;
   const finalPlan =
     mode === "apply" && writes.length > 0
       ? planReleaseControlPlane(finalActual, mode, desiredControlPlane(), attestation)
@@ -305,22 +451,33 @@ export async function runReleaseSetup(
     }
   }
 
-  const report = buildReport(mode, finalPlan, finalActual, writes);
+  const report = buildReport(mode, finalPlan, finalActual, writes, agentCtx);
   const serialized = redactSecrets(JSON.stringify(report, null, 2) + "\n");
   assertNoSecrets(serialized, "written report");
   deps.writeReport?.(report);
   deps.log(`report: ${mode} verdict=${finalPlan.verdict} writes=${writes.length}`);
+  if (isAgentCheckMode(mode)) {
+    deps.log(`NPM LIVE GOVERNANCE: ${report.npm_live_governance}`);
+    if (finalPlan.verdict === "PASS") {
+      deps.log("Human action required: none");
+    }
+  }
   return { mode, plan: finalPlan, report, writes, actual: finalActual };
 }
 
+const SETUP_MODE_FLAGS: { flag: string; mode: SetupMode }[] = [
+  { flag: "--apply", mode: "apply" },
+  { flag: "--check-agent", mode: "check-agent" },
+  { flag: "--audit-live", mode: "audit-live" },
+  { flag: "--check", mode: "check" },
+];
+
 export function parseSetupArgs(argv: string[]): SetupMode {
-  const apply = argv.includes("--apply");
-  const check = argv.includes("--check") || !apply;
-  if (apply && argv.includes("--check")) {
-    throw new Error("use exactly one of --check or --apply");
+  const selected = SETUP_MODE_FLAGS.filter((m) => argv.includes(m.flag));
+  if (selected.length > 1) {
+    throw new Error("use exactly one of --check, --check-agent, --audit-live, or --apply");
   }
-  if (apply) return "apply";
-  if (check) return "check";
+  if (selected.length === 1) return selected[0]!.mode;
   return "check";
 }
 
@@ -355,10 +512,10 @@ async function defaultPaceTrustedPublisherWrites(ms: number): Promise<void> {
   });
 }
 
-function liveDeps(): SetupDeps {
+function liveDeps(mode: SetupMode): SetupDeps {
   return {
     github: new GhControlPlaneClient(),
-    npm: new OfficialNpmTrustClient(),
+    npm: isAgentCheckMode(mode) ? agentSafeNpm() : new OfficialNpmTrustClient(),
     readWorkflow: defaultReadWorkflow,
     writeReport: (report) => {
       writeFileSync(DEFAULT_REPORT, JSON.stringify(report, null, 2) + "\n", "utf8");
@@ -389,10 +546,12 @@ function main(): void {
     path: cli.attestationPath ? resolveAttestationPath(root, cli.attestationPath) : null,
   });
   const attestation = toAttestationApplication(loaded);
-  runReleaseSetup(cli.mode, liveDeps(), { attestation })
+  runReleaseSetup(cli.mode, liveDeps(cli.mode), { attestation })
     .then((result) => {
       if (result.plan.verdict === "BLOCKED") process.exit(2);
-      if (result.plan.verdict === "NOT_READY") process.exit(1);
+      if (result.plan.verdict === "NOT_READY" || result.plan.verdict === "LIVE_AUDIT_REQUIRED") {
+        process.exit(1);
+      }
       process.exit(0);
     })
     .catch((error: unknown) => {

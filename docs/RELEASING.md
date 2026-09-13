@@ -45,8 +45,10 @@ Next        — version PR → main CI → Release Check (canonical tarballs
 
 See [evidence/RC0_BOOTSTRAP_RELEASE_2026-09-11.md](evidence/RC0_BOOTSTRAP_RELEASE_2026-09-11.md)
 and [RELEASE_TRUSTED_PUBLISHING_SETUP.md](RELEASE_TRUSTED_PUBLISHING_SETUP.md)
-(`pnpm release:setup --check` / `--apply` is the preferred control plane;
-the UI is break-glass). This phase does **not** bump off `0.9.0-rc.0`.
+(`pnpm release:setup --check-agent` is the normal Agent/CI path;
+`--audit-live` / `--check` is the live governance audit; `--apply` is
+mutation with explicit approval; the UI is break-glass). This phase does
+**not** bump off `0.9.0-rc.0`.
 
 All 10 packages share one version (**lockstep / fixed versioning**) — one
 coherent `@actionmanifest/*` line, one changelog entry, one tag. Trade-off:
@@ -242,8 +244,10 @@ Hard rules for the bootstrap:
 All 10 packages exist on npm. Preferred, auditable, idempotent path:
 
 ```bash
-pnpm release:setup --check    # read-only discovery + diff
-pnpm release:setup --apply    # explicit; READY last; no package release
+pnpm release:setup --check-agent   # normal Agent/CI: GitHub + cached READY; no npm live
+pnpm release:setup --audit-live    # governance audit: npm trust list / security / auth
+pnpm release:setup --check         # backward-compatible full live check (not agent-only)
+pnpm release:setup --apply         # explicit mutation; READY last; no package release
 ```
 
 Expected Trusted Publisher fields (SoT = `PUBLIC_PACKAGE_NAMES`):
@@ -291,10 +295,12 @@ Invariants:
 ### 6.4 Status
 
 `0.9.0-rc.0` is on npm (10/10). **No git tag, no GitHub Release.**
-Phase 2.4C adds `pnpm release:setup` (check/apply). Do not bump the
-version in this phase. Do not treat this documentation PR as a package
-release. Remaining human boundary: npm auth/2FA when requested;
-`npm stage approve` (2FA) after a later `release.yml` mode=`stage`.
+Phase 2.4C adds `pnpm release:setup` (check/apply). Phase 2.4D splits
+verification: `--check-agent` (normal) vs `--audit-live` (governance).
+Do not bump the version in this phase. Do not treat this documentation
+PR as a package release. Remaining human boundary: npm auth/2FA when
+`--audit-live` / `--apply` requests it; `npm stage approve` (2FA) after
+a later `release.yml` mode=`stage`.
 
 ## 7. Tag & publish ordering (unified, tag-triggered)
 
@@ -409,15 +415,16 @@ Also verify provenance attestations are visible on npmjs.com
   publish ran (tag-triggered, §7) and is never moved or deleted. Retry the
   workflow on the same tag, or cut the next RC tag.
 
-## 11. What Phase 2.4C deliberately does NOT do
+## 11. What Phase 2.4C / 2.4D deliberately do NOT do
 
 - No version bump off `0.9.0-rc.0`. No `rc.1`. No merge of this PR by the agent.
 - No package release: no `npm publish`, no `npm stage publish`, no
   `npm stage approve`, no dist-tag / unpublish / deprecate.
 - No git tag. No GitHub Release.
-- `pnpm release:setup --check` is read-only. `--apply` writes only approved
-  control-plane settings (Environment, managed tag ruleset, Trusted
-  Publishers, READY last) when explicitly invoked — not as part of tests
-  or `release:check`.
+- `pnpm release:setup --check-agent` / `--audit-live` / `--check` are
+  read-only. `--apply` writes only approved control-plane settings
+  (Environment, managed tag ruleset, Trusted Publishers, READY last)
+  when explicitly invoked — not as part of tests or `release:check`.
+  Phase 2.4D does **not** run production `--apply` or flip READY.
 - Direct OIDC `npm publish` is never enabled.
 - `pnpm release:check` / `pnpm release:dry-run` remain verification-only.

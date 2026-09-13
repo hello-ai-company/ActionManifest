@@ -2,6 +2,34 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## Phase 2.4D — Agent-safe Release Control Plane Checks (no version bump)
+
+Controller verification only. Package versions stay `0.9.0-rc.0`. No npm
+package release, no stage publish/approve, no git tag, no GitHub Release,
+no `rc.1`, no production `--apply`, no READY flip.
+
+### Added
+
+- **`pnpm release:setup --check-agent`** — Agent/CI-safe read-only layer.
+  Verifies GitHub controls + desired config +
+  `CONTROL_PLANE_CONFIG_SHA256`. Does **not** call `npm trust list`,
+  package-security queries, npm login/2FA, or any write. `READY=true` is
+  a cached governance assertion: `PASS` only with a matching fingerprint
+  / package set / TP desired config / workflow identity. Otherwise
+  `LIVE AUDIT REQUIRED` (or `BLOCKED` on GitHub drift).
+- **`pnpm release:setup --audit-live`** — explicit full live audit
+  (npm trust list / security / auth detection). Human npm auth may yield
+  `BLOCKED — NPM HUMAN AUTH REQUIRED`.
+- Committed fingerprint snapshot
+  `docs/evidence/control-plane-config-fingerprint.json` (no secrets,
+  no timestamps). Attestation hash/policy may be included; the
+  attestation file is never live npm security proof.
+
+### Unchanged (compatibility)
+
+- **`--check`** remains the existing full live path (not silently
+  agent-only). `--apply` stays explicit, READY last, fail-closed.
+
 ## Phase 2.4C — Release Control Plane (no version bump)
 
 Controller only. Package versions stay `0.9.0-rc.0`. No npm package

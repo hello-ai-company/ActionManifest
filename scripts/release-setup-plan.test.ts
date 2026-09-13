@@ -15,7 +15,9 @@ import {
   desiredControlPlane,
   desiredRulesetPayload,
   emptyEnvironmentActual,
+  emptyApprovedConfigSha,
   evaluatePrerequisites,
+  classifyApprovedConfigSha,
   managedRulesetUpdatePayload,
   mergeManagedRulesetRules,
   mutatingItems,
@@ -144,11 +146,44 @@ function actual(partial: Partial<ActualControlPlane> = {}): ActualControlPlane {
     environment: okEnv(),
     ruleset: okRuleset(),
     readyVariable: readyVar(null),
+    approvedConfigSha256: emptyApprovedConfigSha(),
     trustedPublishers: PUBLIC_PACKAGE_NAMES.map((n) => tp(n)),
     packageSecurity: PUBLIC_PACKAGE_NAMES.map((n) => okSecurity(n)),
     ...partial,
   };
 }
+
+describe("classifyApprovedConfigSha", () => {
+  const computed = "ab".repeat(32);
+
+  it("MATCH only when status OK and hex equals computed", () => {
+    expect(
+      classifyApprovedConfigSha({ exists: true, value: computed, status: "OK", notes: [] }, computed),
+    ).toBe("MATCH");
+  });
+
+  it("MISSING when unset", () => {
+    expect(classifyApprovedConfigSha(emptyApprovedConfigSha(), computed)).toBe("MISSING");
+  });
+
+  it("UNREADABLE on AUTH_REQUIRED / UNKNOWN", () => {
+    expect(
+      classifyApprovedConfigSha(emptyApprovedConfigSha({ status: "AUTH_REQUIRED" }), computed),
+    ).toBe("UNREADABLE");
+    expect(classifyApprovedConfigSha(emptyApprovedConfigSha({ status: "UNKNOWN" }), computed)).toBe(
+      "UNREADABLE",
+    );
+  });
+
+  it("MISMATCH when live-approved is a different SHA-256", () => {
+    expect(
+      classifyApprovedConfigSha(
+        { exists: true, value: "cd".repeat(32), status: "OK", notes: [] },
+        computed,
+      ),
+    ).toBe("MISMATCH");
+  });
+});
 
 describe("desiredControlPlane uses PUBLIC_PACKAGE_NAMES as SoT", () => {
   it("lists the 10 public packages and does not hardcode a second roster", () => {

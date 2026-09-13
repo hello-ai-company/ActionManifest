@@ -25,6 +25,20 @@ no `rc.1`, no production `--apply`, no READY flip.
   no timestamps). Attestation hash/policy may be included; the
   attestation file is never live npm security proof.
 
+### Review Round 2 (same Draft PR)
+
+- Agent Check binds READY to a **live-approved** fingerprint SHA stored
+  outside the repo (`NPM_TRUSTED_PUBLISHING_CONFIG_SHA256` Actions
+  variable). `PASS` requires READY=`true` **and** live-approved SHA ==
+  computed `CONTROL_PLANE_CONFIG_SHA256` **and** committed fingerprint
+  integrity **and** GitHub control plane OK. Same-PR
+  `release.yml` + committed-fingerprint edits cannot fake `PASS`.
+- Missing / unreadable / mismatch approved hash → `LIVE AUDIT REQUIRED`
+  (never `PASS`). Check paths never invent or write the hash.
+- Approved hash is written only after a successful `--audit-live`
+  (prerequisites pass; READY is not flipped) or `--apply` read-back
+  success, **before** READY (READY last). `--check` stays write-free.
+
 ### Review Round 1 (same Draft PR)
 
 - Fingerprint includes the full SHA-256 of `.github/workflows/release.yml`.

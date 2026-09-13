@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { PUBLIC_PACKAGE_NAMES } from "./release-identity.js";
 import {
+  computeControlPlaneConfigSha256,
   parseSetupArgs,
   parseSetupCli,
   runReleaseSetup,
@@ -15,8 +16,10 @@ import {
   RELEASE_ENVIRONMENT_NAME,
   RELEASE_REPO_SLUG,
   RELEASE_RULESET_NAME,
+  APPROVED_CONFIG_SHA256_VARIABLE_NAME,
   containsForbiddenSecret,
   desiredControlPlane,
+  emptyApprovedConfigSha,
   emptyEnvironmentActual,
   planAgentControlPlaneCheck,
   planReleaseControlPlane,
@@ -34,6 +37,9 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const realWorkflow = readFileSync(join(root, ".github/workflows/release.yml"), "utf8");
+const computedFingerprintSha = computeControlPlaneConfigSha256(realWorkflow);
+const HASH_A = "aa".repeat(32);
+const HASH_B = "bb".repeat(32);
 
 const expectedPublisher = desiredControlPlane().trustedPublisher;
 
@@ -86,6 +92,12 @@ function agentActual(partial: Partial<ActualControlPlane> = {}): ActualControlPl
       notes: [],
     },
     readyVariable: { exists: true, value: "true", status: "OK", notes: [] },
+    approvedConfigSha256: {
+      exists: true,
+      value: HASH_A,
+      status: "OK",
+      notes: [],
+    },
     trustedPublishers: PUBLIC_PACKAGE_NAMES.map((packageName) => ({
       packageName,
       exists: false,
@@ -111,6 +123,8 @@ class MemoryGitHub implements GitHubControlPlaneClient {
   rulesets: RulesetSnapshot[] = [productionTagRuleset()];
   unrelated = [{ id: 99, name: "do-not-touch-me" }];
   ready: string | null = "true";
+  approvedSha: string | null = computedFingerprintSha;
+  approvedReadStatus: "OK" | "MISSING" | "AUTH_REQUIRED" | "UNKNOWN" = "OK";
   repoOk = true;
 
   async verifyRepo(): Promise<RepoIdentityActual> {
@@ -150,6 +164,31 @@ class MemoryGitHub implements GitHubControlPlaneClient {
       notes: [],
     };
   }
+  async getApprovedConfigSha256() {
+    if (this.approvedReadStatus === "AUTH_REQUIRED") {
+      return emptyApprovedConfigSha({
+        status: "AUTH_REQUIRED",
+        notes: ["cannot read approved config sha variable"],
+      });
+    }
+    if (this.approvedReadStatus === "UNKNOWN") {
+      return emptyApprovedConfigSha({
+        status: "UNKNOWN",
+        notes: ["cannot read approved config sha variable"],
+      });
+    }
+    if (this.approvedSha === null || this.approvedReadStatus === "MISSING") {
+      return emptyApprovedConfigSha({
+        notes: [`variable ${APPROVED_CONFIG_SHA256_VARIABLE_NAME} is unset`],
+      });
+    }
+    return {
+      exists: true,
+      value: this.approvedSha,
+      status: /^[0-9a-f]{64}$/.test(this.approvedSha) ? "OK" : "DRIFTED",
+      notes: [],
+    };
+  }
   async createEnvironment(): Promise<void> {
     this.writes.push("createEnvironment");
   }
@@ -165,6 +204,10 @@ class MemoryGitHub implements GitHubControlPlaneClient {
   async setReadyVariable(): Promise<void> {
     this.writes.push("setReadyVariable");
     this.ready = "true";
+  }
+  async setApprovedConfigSha256(sha256: string): Promise<void> {
+    this.writes.push("setApprovedConfigSha256");
+    this.approvedSha = sha256;
   }
 }
 
@@ -346,6 +389,56 @@ describe("planAgentControlPlaneCheck", () => {
     expect(plan.verdict).toBe("PASS");
   });
 
+  it("READY=true + old live-approved A + committed/computed B → LIVE_AUDIT_REQUIRED (PASS forbidden)", () => {
+    const plan = planAgentControlPlaneCheck(
+      agentActual({
+        approvedConfigSha256: { exists: true, value: HASH_A, status: "OK", notes: [] },
+      }),
+      matchCtx({
+        fingerprintSha256: HASH_B,
+        expectedSha256: HASH_B,
+        fingerprintMatch: true,
+        drift: null,
+      }),
+    );
+    expect(plan.verdict).toBe("LIVE_AUDIT_REQUIRED");
+    expect(plan.verdict).not.toBe("PASS");
+    expect(plan.items.find((i) => i.id === "approved-config-sha")?.status).toBe("LIVE_AUDIT_REQUIRED");
+    expect(plan.items.find((i) => i.id === "approved-config-sha")?.reason).toMatch(
+      /approved config sha mismatch/,
+    );
+    expect(plan.items.find((i) => i.id === "ready")?.status).toBe("LIVE_AUDIT_REQUIRED");
+  });
+
+  it("READY=true + missing live-approved hash → LIVE_AUDIT_REQUIRED", () => {
+    const plan = planAgentControlPlaneCheck(
+      agentActual({ approvedConfigSha256: emptyApprovedConfigSha() }),
+      matchCtx(),
+    );
+    expect(plan.verdict).toBe("LIVE_AUDIT_REQUIRED");
+    expect(plan.items.find((i) => i.id === "approved-config-sha")?.reason).toMatch(
+      /approved config sha missing/,
+    );
+  });
+
+  it("READY=true + unreadable live-approved hash → LIVE_AUDIT_REQUIRED (not PASS)", () => {
+    const plan = planAgentControlPlaneCheck(
+      agentActual({
+        approvedConfigSha256: emptyApprovedConfigSha({
+          status: "AUTH_REQUIRED",
+          notes: ["cannot read approved config sha variable"],
+        }),
+      }),
+      matchCtx(),
+    );
+    expect(plan.verdict).toBe("LIVE_AUDIT_REQUIRED");
+    expect(plan.verdict).not.toBe("PASS");
+    expect(plan.items.find((i) => i.id === "approved-config-sha")?.status).toBe("LIVE_AUDIT_REQUIRED");
+    expect(plan.items.some((i) => i.id === "approved-config-sha" && i.status === "AUTH_REQUIRED")).toBe(
+      false,
+    );
+  });
+
   it("READY unreadable is LIVE AUDIT REQUIRED, not AUTH_REQUIRED", () => {
     const plan = planAgentControlPlaneCheck(
       agentActual({
@@ -401,6 +494,33 @@ describe("runReleaseSetup --check-agent", () => {
     expect(logs.join("\n")).toMatch(/NPM LIVE GOVERNANCE: NOT QUERIED/);
     expect(logs.join("\n")).toMatch(/Human action required: none/);
     expect(containsForbiddenSecret(JSON.stringify(result.report))).toBe(false);
+  });
+
+  it("READY=true + committed fingerprint B + live-approved A → LIVE_AUDIT_REQUIRED; writes 0; npm 0", async () => {
+    const github = new MemoryGitHub();
+    github.approvedSha = HASH_A;
+    const npm = new CountingNpm();
+    const result = await runReleaseSetup("check-agent", deps(github, npm).deps);
+    expect(result.plan.verdict).toBe("LIVE_AUDIT_REQUIRED");
+    expect(result.plan.verdict).not.toBe("PASS");
+    expect(result.writes).toEqual([]);
+    expect(github.writes).toEqual([]);
+    expect(npm.calls).toEqual([]);
+    expect(result.report.approved_config_sha256.match).toBe(false);
+    expect(result.report.approved_config_sha256.value).toBe(HASH_A);
+    expect(result.report.approved_config_sha256.computed).toBe(computedFingerprintSha);
+    expect(result.report.npm_live_governance).toBe("NOT_QUERIED");
+  });
+
+  it("missing live-approved hash is LIVE_AUDIT_REQUIRED and does not write the hash", async () => {
+    const github = new MemoryGitHub();
+    github.approvedSha = null;
+    const npm = new CountingNpm();
+    const result = await runReleaseSetup("check-agent", deps(github, npm).deps);
+    expect(result.plan.verdict).toBe("LIVE_AUDIT_REQUIRED");
+    expect(github.writes).toEqual([]);
+    expect(result.writes).toEqual([]);
+    expect(npm.calls).toEqual([]);
   });
 
   it("READY missing → LIVE AUDIT REQUIRED; still no npm calls", async () => {
@@ -470,6 +590,30 @@ describe("runReleaseSetup --audit-live / --check live path", () => {
     expect(result.plan.items.some((i) => i.status === "AUTH_REQUIRED")).toBe(true);
     expect(result.plan.verdict).toBe("BLOCKED");
     npm.listTrustedPublisher = orig;
+  });
+
+  it("--check never writes the approved hash even when live discovery succeeds", async () => {
+    const github = new MemoryGitHub();
+    github.approvedSha = null;
+    const npm = new CountingNpm();
+    const result = await runReleaseSetup("check", deps(github, npm).deps);
+    expect(result.writes).toEqual([]);
+    expect(github.writes).toEqual([]);
+    expect(result.report.npm_live_governance).toBe("QUERIED");
+  });
+
+  it("successful --audit-live persists approved hash and does not flip READY", async () => {
+    const github = new MemoryGitHub();
+    github.approvedSha = null;
+    github.ready = null;
+    const npm = new CountingNpm();
+    const result = await runReleaseSetup("audit-live", deps(github, npm).deps);
+    expect(github.writes).toEqual(["setApprovedConfigSha256"]);
+    expect(github.approvedSha).toBe(computedFingerprintSha);
+    expect(github.ready).toBeNull();
+    expect(result.writes).toEqual(["approved-config-sha"]);
+    expect(npm.writes).toEqual([]);
+    expect(result.report.npm_live_governance).toBe("QUERIED");
   });
 
   it("TP missing on live audit is CREATE/MISSING (drift), not agent NOT_QUERIED", async () => {

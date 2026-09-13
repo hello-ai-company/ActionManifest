@@ -21,7 +21,7 @@ treats `READY=true` or a manual attestation file as live npm proof.
 | Layer | Command | What it does |
 | --- | --- | --- |
 | **Normal (Agent / CI)** | `pnpm release:setup --check-agent` | GitHub + local desired config + cached READY/fingerprint. **No** `npm trust list`, package-security queries, npm login/2FA, or writes. |
-| **Governance audit** | `pnpm release:setup --audit-live` | Full live read-back including npm trust list / security / auth detection. Without human npm auth → `BLOCKED — NPM HUMAN AUTH REQUIRED` is OK. |
+| **Governance audit** | `pnpm release:setup --audit-live` | Full live read-back including npm trust list / security / auth detection. Without human npm auth → `BLOCKED — NPM HUMAN AUTH REQUIRED` is OK. After a fully successful live audit it may persist `NPM_TRUSTED_PUBLISHING_CONFIG_SHA256` (never READY). |
 | **Backward compatible** | `pnpm release:setup --check` | Same live path as `--audit-live`. **Not** silently changed into agent-only. |
 | **Mutation** | `pnpm release:setup --apply` | Explicit converge only, after a brief authorizes it. READY last. |
 
@@ -31,7 +31,10 @@ pnpm release:setup --audit-live
 pnpm release:setup --check
 ```
 
-All three are read-only. Zero mutations.
+`--check` and `--check-agent` are read-only (zero mutations). `--audit-live`
+does not flip READY and does not write Environment / ruleset / npm; the
+only allowed write is persisting the live-approved config SHA after a
+fully successful live audit.
 
 ### 0.1 Agent Check (`--check-agent`)
 
@@ -51,9 +54,21 @@ Environment secrets follow Phase 2.4C fail-closed: GET 401/403 →
 `PASS` while secrets discovery is `AUTH_REQUIRED` / `UNKNOWN`. A successful
 empty secrets list is OK (no `NPM_TOKEN` / `NODE_AUTH_TOKEN` names).
 
-`READY=true` alone is **not** enough. Verdict `PASS` (cached OK) only when
-READY is exactly `true` **and** the fingerprint / package set / Trusted
-Publisher desired config / workflow identity / control-plane config match.
+`READY=true` alone is **not** enough. The committed fingerprint is not the
+approval record. Verdict `PASS` only when **all** of these hold:
+
+1. READY is exactly `true`
+2. GitHub Actions variable `NPM_TRUSTED_PUBLISHING_CONFIG_SHA256` (outside
+   the repo) equals the computed `CONTROL_PLANE_CONFIG_SHA256`
+3. committed fingerprint integrity is OK (current == committed snapshot)
+4. GitHub control plane OK (env / ruleset / workflow)
+
+A same-PR edit that changes `release.yml` and updates the committed
+fingerprint cannot `PASS` while the live-approved hash is still the old
+value. Missing / unreadable / mismatch approved hash →
+`LIVE AUDIT REQUIRED` (never `PASS`). Check paths never invent or write
+that variable.
+
 Fail-closed:
 
 - READY missing/false → `LIVE AUDIT REQUIRED`
@@ -81,8 +96,11 @@ Inspects everything Agent Check does, plus npm live governance:
    tag-target (the `update` rule must still exist). Create/update writes
    still send `update_allows_fetch_and_merge: false`. Branch-target
    assessment, if used later, stays strict on that parameter.
-3. Repository variable `NPM_TRUSTED_PUBLISHING_READY` (read only here).
-   `READY=true` with incomplete **live** prerequisites is **CRITICAL**.
+3. Repository variables `NPM_TRUSTED_PUBLISHING_READY` and
+   `NPM_TRUSTED_PUBLISHING_CONFIG_SHA256`. `--check` is read-only.
+   `--audit-live` may persist the approved config SHA after a successful
+   live audit; it never flips READY. `READY=true` with incomplete **live**
+   prerequisites is **CRITICAL**.
 4. npm Trusted Publishers for all 10 names in `PUBLIC_PACKAGE_NAMES`
    (SoT — do not duplicate the roster): GitHub Actions,
    `hello-ai-company/ActionManifest`, workflow `release.yml`, environment
@@ -104,8 +122,9 @@ pnpm release:setup --apply
 
 Prints the plan, then writes **only** approved control-plane settings, in
 order: Environment → tag ruleset → Trusted Publishers 10/10 → automatable
-security → read-back → **only then** `NPM_TRUSTED_PUBLISHING_READY=true` →
-final read-back. Idempotent: a second apply reports `NO CHANGES REQUIRED`.
+security → read-back → persist `NPM_TRUSTED_PUBLISHING_CONFIG_SHA256` →
+**only then** `NPM_TRUSTED_PUBLISHING_READY=true` → final read-back.
+Idempotent: a second apply reports `NO CHANGES REQUIRED`.
 
 Require `gh` auth against **`hello-ai-company/ActionManifest`**.
 `release:setup` uses the **exact pinned npm CLI 11.15.0**
@@ -191,11 +210,15 @@ break-glass path.
 - [ ] Tags are created **by a human after** main CI + Release Check are green
       on the exact SHA — never by `release.yml`
 
-## 3. Repository variable (last)
+## 3. Repository variables (approved hash, then READY last)
 
-`pnpm release:setup --apply` sets `NPM_TRUSTED_PUBLISHING_READY=true`
-**only after** prerequisites pass read-back. Break-glass:
+`pnpm release:setup --apply` persists
+`NPM_TRUSTED_PUBLISHING_CONFIG_SHA256` (computed fingerprint) after
+read-back, then sets `NPM_TRUSTED_PUBLISHING_READY=true`. `--audit-live`
+may persist the approved hash only; it never flips READY. Break-glass:
 
+- [ ] Settings → Secrets and variables → Actions → Variables
+      `NPM_TRUSTED_PUBLISHING_CONFIG_SHA256` = live-approved fingerprint SHA
 - [ ] Settings → Secrets and variables → Actions → Variables
       `NPM_TRUSTED_PUBLISHING_READY` = `true`
 

@@ -14,6 +14,7 @@ import {
   RELEASE_REPO_SLUG,
   RELEASE_RULESET_NAME,
   containsForbiddenSecret,
+  emptyApprovedConfigSha,
   emptyEnvironmentActual,
   type GitHubEnvironmentActual,
   type PackageSecurityActual,
@@ -55,6 +56,7 @@ class MemoryGitHub implements GitHubControlPlaneClient {
   rulesets: RulesetSnapshot[] = [];
   unrelated = [{ id: 99, name: "do-not-touch-me" }];
   ready: string | null = null;
+  approvedSha: string | null = null;
   repoOk = true;
 
   async verifyRepo(): Promise<RepoIdentityActual> {
@@ -94,6 +96,10 @@ class MemoryGitHub implements GitHubControlPlaneClient {
       notes: [],
     };
   }
+  async getApprovedConfigSha256() {
+    if (this.approvedSha === null) return emptyApprovedConfigSha();
+    return { exists: true, value: this.approvedSha, status: "OK", notes: [] };
+  }
   async createEnvironment(): Promise<void> {
     this.writes.push("createEnvironment");
     this.envExists = true;
@@ -115,6 +121,10 @@ class MemoryGitHub implements GitHubControlPlaneClient {
   async setReadyVariable(): Promise<void> {
     this.writes.push("setReadyVariable");
     this.ready = "true";
+  }
+  async setApprovedConfigSha256(sha256: string): Promise<void> {
+    this.writes.push("setApprovedConfigSha256");
+    this.approvedSha = sha256;
   }
 }
 
@@ -334,6 +344,7 @@ describe("check / apply write guards", () => {
     expect(github.writes.at(-1)).toBe("setReadyVariable");
     expect(github.writes.indexOf("createEnvironment")).toBeLessThan(github.writes.indexOf("setReadyVariable"));
     expect(github.writes.indexOf("createRuleset")).toBeLessThan(github.writes.indexOf("setReadyVariable"));
+    expect(github.writes.indexOf("setApprovedConfigSha256")).toBeLessThan(github.writes.indexOf("setReadyVariable"));
   });
 
   it("MANUAL_REQUIRED without attestation never sets READY; valid attestation may after other prereqs", async () => {

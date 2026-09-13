@@ -421,10 +421,13 @@ Also verify provenance attestations are visible on npmjs.com
 - No package release: no `npm publish`, no `npm stage publish`, no
   `npm stage approve`, no dist-tag / unpublish / deprecate.
 - No git tag. No GitHub Release.
-- `pnpm release:setup --check-agent` / `--audit-live` / `--check` are
-  read-only. `--apply` writes only approved control-plane settings
-  (Environment, managed tag ruleset, Trusted Publishers, READY last)
-  when explicitly invoked — not as part of tests or `release:check`.
-  Phase 2.4D does **not** run production `--apply` or flip READY.
+- `pnpm release:setup --check-agent` / `--check` are read-only.
+  `--audit-live` may persist `NPM_TRUSTED_PUBLISHING_CONFIG_SHA256`
+  after a fully successful live audit; it never flips READY.
+  `--apply` writes only approved control-plane settings
+  (Environment, managed tag ruleset, Trusted Publishers, approved
+  config SHA, READY last) when explicitly invoked — not as part of
+  tests or `release:check`. Phase 2.4D does **not** run production
+  `--apply` or flip READY.
 - Direct OIDC `npm publish` is never enabled.
 - `pnpm release:check` / `pnpm release:dry-run` remain verification-only.

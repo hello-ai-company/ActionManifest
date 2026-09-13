@@ -17,6 +17,8 @@ export const RELEASE_RULESET_NAME = "actionmanifest-release-tags";
 export const RELEASE_TAG_INCLUDE = "refs/tags/v*";
 export const RELEASE_TAG_PATTERN = "v*";
 export const READY_VARIABLE_NAME = "NPM_TRUSTED_PUBLISHING_READY";
+/** Last live-approved CONTROL_PLANE_CONFIG_SHA256 (GitHub Actions variable, outside the repo). */
+export const APPROVED_CONFIG_SHA256_VARIABLE_NAME = "NPM_TRUSTED_PUBLISHING_CONFIG_SHA256";
 export const TRUSTED_PUBLISHER_WORKFLOW = "release.yml";
 export const TRUSTED_PUBLISHER_PROVIDER = "github";
 export const MANAGED_RULESET_RULES = ["deletion", "update", "non_fast_forward"] as const;
@@ -222,6 +224,53 @@ export interface ReadyVariableActual {
   notes: string[];
 }
 
+/** Live-approved fingerprint SHA stored outside the repo (Actions variable). */
+export type ApprovedConfigShaActual = ReadyVariableActual;
+
+export type ApprovedConfigShaClass = "MATCH" | "MISSING" | "UNREADABLE" | "MISMATCH";
+
+export function isApprovedConfigSha256(value: string | null | undefined): value is string {
+  return typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+}
+
+export function emptyApprovedConfigSha(
+  partial: Partial<ApprovedConfigShaActual> = {},
+): ApprovedConfigShaActual {
+  return { exists: false, value: null, status: "MISSING", notes: [], ...partial };
+}
+
+/**
+ * Compare the GitHub-stored live-approved hash to the computed fingerprint.
+ * Missing / unreadable / invalid / mismatch never count as MATCH.
+ */
+export function approvedConfigShaMatches(actual: ApprovedConfigShaActual, computed: string): boolean {
+  return classifyApprovedConfigSha(actual, computed) === "MATCH";
+}
+
+export function classifyApprovedConfigSha(
+  actual: ApprovedConfigShaActual,
+  computed: string,
+): ApprovedConfigShaClass {
+  if (actual.status === "AUTH_REQUIRED" || actual.status === "UNKNOWN") return "UNREADABLE";
+  if (!isApprovedConfigSha256(actual.value)) {
+    return actual.exists && actual.value != null && actual.value !== "" ? "MISMATCH" : "MISSING";
+  }
+  return actual.value === computed ? "MATCH" : "MISMATCH";
+}
+
+export function approvedConfigAuditReason(kind: ApprovedConfigShaClass): string {
+  switch (kind) {
+    case "MISSING":
+      return "LIVE AUDIT REQUIRED — approved config sha missing";
+    case "UNREADABLE":
+      return "LIVE AUDIT REQUIRED — approved config sha unreadable";
+    case "MISMATCH":
+      return "LIVE AUDIT REQUIRED — approved config sha mismatch";
+    case "MATCH":
+      return "live-approved CONFIG_SHA256 matches computed CONTROL_PLANE_CONFIG_SHA256";
+  }
+}
+
 export interface TrustedPublisherRecord {
   id?: string;
   provider: string;
@@ -263,6 +312,7 @@ export interface ActualControlPlane {
   environment: GitHubEnvironmentActual;
   ruleset: TagRulesetActual;
   readyVariable: ReadyVariableActual;
+  approvedConfigSha256: ApprovedConfigShaActual;
   trustedPublishers: TrustedPublisherActual[];
   packageSecurity: PackageSecurityActual[];
 }
@@ -1240,8 +1290,10 @@ export function planReleaseControlPlane(
 /**
  * Agent-safe planner. GitHub + local desired config + cached READY/fingerprint.
  * Never plans npm live queries. CREATE/UPDATE become STOP (read-only).
- * READY=true is not enough — fingerprint / package set / TP desired /
- * workflow identity must match. GitHub drift → BLOCKED.
+ * READY=true is not enough — live-approved CONFIG_SHA256 must equal the
+ * computed fingerprint, and committed fingerprint integrity must hold.
+ * GitHub drift → BLOCKED. Missing/unreadable/mismatch approved hash →
+ * LIVE_AUDIT_REQUIRED (never PASS).
  */
 export function planAgentControlPlaneCheck(
   actual: ActualControlPlane,
@@ -1255,6 +1307,7 @@ export function planAgentControlPlaneCheck(
     "NPM LIVE GOVERNANCE: NOT QUERIED",
     `CONTROL_PLANE_CONFIG_SHA256=${ctx.fingerprintSha256}`,
     "READY is a cached governance assertion — not live npm security proof",
+    "live-approved CONFIG_SHA256 is the GitHub Actions variable NPM_TRUSTED_PUBLISHING_CONFIG_SHA256 (outside the repo)",
     "attestation file is never treated as live npm security proof",
   ];
   let blocked = false;
@@ -1520,6 +1573,8 @@ export function planAgentControlPlaneCheck(
 
   const githubBlocked = blocked || items.some((i) => i.action === "STOP");
   const readyTrue = readyValueIsTrue(actual.readyVariable.value);
+  const approvedClass = classifyApprovedConfigSha(actual.approvedConfigSha256, ctx.fingerprintSha256);
+  const approvedMatch = approvedClass === "MATCH";
 
   if (!ctx.fingerprintMatch) {
     items.push(
@@ -1548,6 +1603,37 @@ export function planAgentControlPlaneCheck(
         reason: `fingerprint matches (CONTROL_PLANE_CONFIG_SHA256=${ctx.fingerprintSha256})`,
         mutates: false,
         order: 80,
+      }),
+    );
+  }
+
+  if (!approvedMatch) {
+    items.push(
+      item({
+        id: "approved-config-sha",
+        resource: APPROVED_CONFIG_SHA256_VARIABLE_NAME,
+        action: "LIVE_AUDIT",
+        status: "LIVE_AUDIT_REQUIRED",
+        reason: approvedConfigAuditReason(approvedClass),
+        mutates: false,
+        order: 85,
+        diff: [
+          `computed=${ctx.fingerprintSha256}`,
+          `approved=${actual.approvedConfigSha256.value ?? "missing"}`,
+          `class=${approvedClass}`,
+        ],
+      }),
+    );
+  } else {
+    items.push(
+      item({
+        id: "approved-config-sha",
+        resource: APPROVED_CONFIG_SHA256_VARIABLE_NAME,
+        action: "NOOP",
+        status: "CACHED_OK",
+        reason: approvedConfigAuditReason("MATCH"),
+        mutates: false,
+        order: 85,
       }),
     );
   }
@@ -1588,6 +1674,18 @@ export function planAgentControlPlaneCheck(
         order: 90,
       }),
     );
+  } else if (!approvedMatch) {
+    items.push(
+      item({
+        id: "ready",
+        resource: READY_VARIABLE_NAME,
+        action: "LIVE_AUDIT",
+        status: "LIVE_AUDIT_REQUIRED",
+        reason: approvedConfigAuditReason(approvedClass),
+        mutates: false,
+        order: 90,
+      }),
+    );
   } else {
     items.push(
       item({
@@ -1595,7 +1693,8 @@ export function planAgentControlPlaneCheck(
         resource: READY_VARIABLE_NAME,
         action: "NOOP",
         status: "CACHED_OK",
-        reason: "CACHED_OK — READY=true and fingerprint / package set / TP desired / workflow identity match",
+        reason:
+          "CACHED_OK — READY=true, live-approved CONFIG_SHA256 matches computed, committed fingerprint integrity OK",
         mutates: false,
         order: 90,
       }),
@@ -1609,7 +1708,7 @@ export function planAgentControlPlaneCheck(
   let verdict: SetupVerdict;
   if (blocked || critical.length > 0 || stopItems.length > 0) {
     verdict = "BLOCKED";
-  } else if (liveAuditItems.length > 0 || !readyTrue || !ctx.fingerprintMatch) {
+  } else if (liveAuditItems.length > 0 || !readyTrue || !ctx.fingerprintMatch || !approvedMatch) {
     verdict = "LIVE_AUDIT_REQUIRED";
   } else {
     verdict = "PASS";

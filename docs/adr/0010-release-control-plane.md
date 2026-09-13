@@ -41,7 +41,8 @@ wraps write methods so they throw. CI workflows do not set
 - **Governance audit:** `pnpm release:setup --audit-live` — full live
   read-back including npm trust list / security / auth detection. Without
   human npm auth, `BLOCKED — NPM HUMAN AUTH REQUIRED` is an acceptable
-  live outcome.
+  live outcome. After a successful live audit it may persist
+  `NPM_TRUSTED_PUBLISHING_CONFIG_SHA256`; it never flips READY.
 - **`--check`:** existing full live behavior (same discovery as
   `--audit-live`). **Not** silently changed into agent-only.
   Verdict `READY` / `NOT_READY` / `BLOCKED`. Zero mutations.
@@ -50,16 +51,20 @@ wraps write methods so they throw. CI workflows do not set
   converged plane reports `NO CHANGES REQUIRED`. READY last.
 
 `READY=true` is a **cached governance assertion**, not live npm proof.
-Agent Check `PASS` only when READY is `true` and the
-`CONTROL_PLANE_CONFIG_SHA256` fingerprint (package set, Trusted Publisher
-desired config, workflow identity including the full SHA-256 of
-`.github/workflows/release.yml`, control-plane config, attestation
-policy/hash — no secrets/timestamps) matches. Drift →
-`LIVE AUDIT REQUIRED` (or `BLOCKED` for GitHub drift). Environment
-secrets GET 401/403 is `AUTH_REQUIRED`; other failures `UNKNOWN`; unread
-secrets never become empty-OK and Agent Check must not `PASS`. A successful
-empty secrets list is allowed. A manual attestation file is never treated
-as live npm security proof.
+Agent Check `PASS` only when READY is `true`, the GitHub Actions variable
+`NPM_TRUSTED_PUBLISHING_CONFIG_SHA256` (live-approved hash, outside the
+repo) equals the computed `CONTROL_PLANE_CONFIG_SHA256`, the committed
+fingerprint integrity holds, and the GitHub control plane is OK.
+Updating `release.yml` and the committed fingerprint in the same PR
+cannot `PASS` while the live-approved hash is still the previous value.
+Missing / unreadable / mismatch approved hash → `LIVE AUDIT REQUIRED`.
+Check paths never invent or write that variable. The approved hash is
+updated only after a successful `--audit-live` or `--apply` read-back,
+before READY (READY last). Drift → `LIVE AUDIT REQUIRED` (or `BLOCKED`
+for GitHub drift). Environment secrets GET 401/403 is `AUTH_REQUIRED`;
+other failures `UNKNOWN`; unread secrets never become empty-OK and Agent
+Check must not `PASS`. A successful empty secrets list is allowed. A
+manual attestation file is never treated as live npm security proof.
 
 ### 3. Idempotent merge/preserve
 
@@ -73,7 +78,8 @@ Multiple same-name rulesets → `STOP`. Trusted Publisher identity drift
 ### 4. READY last
 
 Order: Environment `npm-release` → tag ruleset → Trusted Publishers 10/10
-→ automatable security → read-back → **only then**
+→ automatable security → read-back → persist
+`NPM_TRUSTED_PUBLISHING_CONFIG_SHA256` → **only then**
 `NPM_TRUSTED_PUBLISHING_READY=true` → final read-back.
 
 `READY=true` with incomplete prerequisites is `CRITICAL` (fail loudly).

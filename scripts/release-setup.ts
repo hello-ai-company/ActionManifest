@@ -42,15 +42,18 @@ import {
   type NpmTrustClient,
 } from "./release-setup-npm.js";
 import {
+  APPROVED_CONFIG_SHA256_VARIABLE_NAME,
   READY_VARIABLE_NAME,
   RELEASE_ENVIRONMENT_NAME,
   RELEASE_REPO_SLUG,
   RELEASE_RULESET_NAME,
   applyBlocked,
+  approvedConfigShaMatches,
   assertNoSecrets,
   desiredControlPlane,
   evaluatePrerequisites,
   isAgentCheckMode,
+  isApprovedConfigSha256,
   isReadOnlySetupMode,
   mutatingItems,
   planAgentControlPlaneCheck,
@@ -88,6 +91,12 @@ export interface ControlPlaneReport {
   repo: typeof RELEASE_REPO_SLUG;
   packages: readonly string[];
   ready: { name: typeof READY_VARIABLE_NAME; value: string | null; last: true };
+  approved_config_sha256: {
+    name: typeof APPROVED_CONFIG_SHA256_VARIABLE_NAME;
+    value: string | null;
+    computed: string | null;
+    match: boolean | null;
+  };
   mutations: { id: string; action: string; resource: string }[];
   items: PlanItem[];
   critical: string[];
@@ -164,6 +173,7 @@ export async function discoverActual(
   const environment = await deps.github.getEnvironment(RELEASE_ENVIRONMENT_NAME);
   const ruleset = await deps.github.listRulesets();
   const readyVariable = await deps.github.getVariable(READY_VARIABLE_NAME);
+  const approvedConfigSha256 = await deps.github.getApprovedConfigSha256();
   if (isAgentCheckMode(mode)) {
     return {
       repo,
@@ -171,6 +181,7 @@ export async function discoverActual(
       environment,
       ruleset,
       readyVariable,
+      approvedConfigSha256,
       trustedPublishers: desired.packages.map(notQueriedPublisher),
       packageSecurity: desired.packages.map(notQueriedSecurity),
     };
@@ -187,9 +198,19 @@ export async function discoverActual(
     environment,
     ruleset,
     readyVariable,
+    approvedConfigSha256,
     trustedPublishers,
     packageSecurity,
   };
+}
+
+export function computeControlPlaneConfigSha256(
+  workflowYaml: string,
+  attestationSha256: string | null = attestationRecordSha256(),
+): string {
+  return controlPlaneConfigSha256(
+    currentFingerprintSections(workflowYaml, defaultAttestationPolicy(attestationSha256)),
+  );
 }
 
 export function loadCommittedFingerprint(repoRoot: string = root): ControlPlaneFingerprintDocument | null {
@@ -283,6 +304,7 @@ function buildReport(
   actual: ActualControlPlane,
   writes: string[],
   fingerprint: AgentCheckContext | null,
+  computedSha256: string | null,
 ): ControlPlaneReport {
   const npmLive = queriesNpmLive(mode) ? "QUERIED" : "NOT_QUERIED";
   const report: ControlPlaneReport = {
@@ -295,6 +317,14 @@ function buildReport(
       name: READY_VARIABLE_NAME,
       value: actual.readyVariable.value,
       last: true,
+    },
+    approved_config_sha256: {
+      name: APPROVED_CONFIG_SHA256_VARIABLE_NAME,
+      value: actual.approvedConfigSha256.value,
+      computed: computedSha256,
+      match: computedSha256
+        ? approvedConfigShaMatches(actual.approvedConfigSha256, computedSha256)
+        : null,
     },
     mutations: writes.map((id) => {
       const item = plan.items.find((i) => i.id === id);
@@ -372,18 +402,37 @@ async function applyMutations(
   }
 }
 
-async function maybeSetReady(
+async function persistApprovedConfigSha256(
+  deps: SetupDeps,
+  writes: string[],
+  actual: ActualControlPlane,
+  computed: string,
+): Promise<void> {
+  if (!isApprovedConfigSha256(computed)) {
+    throw new Error("internal: computed CONTROL_PLANE_CONFIG_SHA256 is not a SHA-256 hex");
+  }
+  if (approvedConfigShaMatches(actual.approvedConfigSha256, computed)) {
+    return;
+  }
+  deps.log(`setting ${APPROVED_CONFIG_SHA256_VARIABLE_NAME}=${computed} (before READY)`);
+  await deps.github.setApprovedConfigSha256(computed);
+  writes.push("approved-config-sha");
+}
+
+async function maybePersistApprovedAndSetReady(
   deps: SetupDeps,
   writes: string[],
   attestation?: SecurityAttestationApplication | null,
 ): Promise<void> {
-  deps.log("read-back after mutations (READY still unset)…");
+  deps.log("read-back before READY (approved hash then READY last)…");
   const after = await discoverActual(deps, "apply");
   const flags = evaluatePrerequisites(after, desiredControlPlane(), attestation);
   if (!prerequisitesPass(flags)) {
-    deps.log("read-back: prerequisites incomplete — READY not set");
+    deps.log("read-back: prerequisites incomplete — approved hash and READY not set");
     return;
   }
+  const computed = computeControlPlaneConfigSha256(deps.readWorkflow());
+  await persistApprovedConfigSha256(deps, writes, after, computed);
   if (after.readyVariable.value === "true") {
     deps.log("read-back: READY already true");
     return;
@@ -414,6 +463,7 @@ export async function runReleaseSetup(
   }
   const actual = await discoverActual(guarded, mode);
   const workflowYaml = deps.readWorkflow();
+  const computedSha256 = computeControlPlaneConfigSha256(workflowYaml);
   const agentCtx = isAgentCheckMode(mode)
     ? buildAgentCheckContext(workflowYaml, loadCommittedFingerprint(), attestationRecordSha256())
     : null;
@@ -428,9 +478,15 @@ export async function runReleaseSetup(
       deps.log("second/idempotent apply: NO CHANGES REQUIRED");
     } else {
       await applyMutations(plan, actual, guarded, writes);
-      if (!applyBlocked(plan)) {
-        await maybeSetReady(guarded, writes, attestation);
-      }
+    }
+    if (!applyBlocked(plan)) {
+      await maybePersistApprovedAndSetReady(guarded, writes, attestation);
+    }
+  } else if (mode === "audit-live") {
+    const flags = evaluatePrerequisites(actual, desiredControlPlane(), attestation);
+    if (prerequisitesPass(flags)) {
+      const computed = computeControlPlaneConfigSha256(workflowYaml);
+      await persistApprovedConfigSha256(deps, writes, actual, computed);
     }
   }
 
@@ -451,7 +507,7 @@ export async function runReleaseSetup(
     }
   }
 
-  const report = buildReport(mode, finalPlan, finalActual, writes, agentCtx);
+  const report = buildReport(mode, finalPlan, finalActual, writes, agentCtx, computedSha256);
   const serialized = redactSecrets(JSON.stringify(report, null, 2) + "\n");
   assertNoSecrets(serialized, "written report");
   deps.writeReport?.(report);

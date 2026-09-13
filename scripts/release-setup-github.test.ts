@@ -3,6 +3,7 @@ import {
   GhControlPlaneClient,
   buildEnvironmentPutBody,
   classifyGhReadFailure,
+  parseApprovedConfigSha256Read,
   parseEnvironmentDiscovery,
   parseRulesetDetail,
   planEnvironmentWrite,
@@ -27,6 +28,56 @@ describe("classifyGhReadFailure", () => {
     expect(classifyGhReadFailure(403)).toBe("AUTH_REQUIRED");
     expect(classifyGhReadFailure(500)).toBe("UNKNOWN");
     expect(classifyGhReadFailure(null)).toBe("UNKNOWN");
+  });
+});
+
+describe("parseApprovedConfigSha256Read", () => {
+  const sha = "ab".repeat(32);
+
+  it("404 is MISSING — not empty OK", () => {
+    const actual = parseApprovedConfigSha256Read(result(404, null, false));
+    expect(actual.status).toBe("MISSING");
+    expect(actual.value).toBeNull();
+  });
+
+  it("403 is AUTH_REQUIRED — not empty OK", () => {
+    const actual = parseApprovedConfigSha256Read(result(403, null, false));
+    expect(actual.status).toBe("AUTH_REQUIRED");
+    expect(actual.value).toBeNull();
+  });
+
+  it("500 is UNKNOWN — not empty OK", () => {
+    const actual = parseApprovedConfigSha256Read(result(500, null, false));
+    expect(actual.status).toBe("UNKNOWN");
+  });
+
+  it("valid SHA-256 is OK", () => {
+    const actual = parseApprovedConfigSha256Read(result(200, { name: "NPM_TRUSTED_PUBLISHING_CONFIG_SHA256", value: sha }));
+    expect(actual.status).toBe("OK");
+    expect(actual.value).toBe(sha);
+  });
+
+  it("invalid value is DRIFTED — not treated as approved", () => {
+    const actual = parseApprovedConfigSha256Read(result(200, { value: "not-a-hash" }));
+    expect(actual.status).toBe("DRIFTED");
+    expect(actual.value).toBe("not-a-hash");
+  });
+
+  it("getApprovedConfigSha256 maps 403 to AUTH_REQUIRED", async () => {
+    const client = new GhControlPlaneClient(() => result(403, null, false));
+    const actual = await client.getApprovedConfigSha256();
+    expect(actual.status).toBe("AUTH_REQUIRED");
+    expect(actual.value).toBeNull();
+  });
+
+  it("setApprovedConfigSha256 refuses non-hex and does not write", async () => {
+    const calls: string[][] = [];
+    const client = new GhControlPlaneClient((args) => {
+      calls.push(args);
+      return result(200, {});
+    });
+    await expect(client.setApprovedConfigSha256("nope")).rejects.toThrow(/not a SHA-256 hex/);
+    expect(calls).toEqual([]);
   });
 });
 

@@ -44,10 +44,14 @@ When authorized, use the two-layer controller (do not ad-hoc `gh` /
 `npm trust` / UI clicks):
 
 - **Normal (Agent / CI):** `pnpm release:setup --check-agent` — read-only;
-  GitHub + cached READY/fingerprint; no npm live queries.
+  GitHub + cached READY + live-approved `NPM_TRUSTED_PUBLISHING_CONFIG_SHA256`
+  + committed fingerprint; no npm live queries. `PASS` requires the
+  live-approved hash (outside the repo) to match the computed fingerprint.
 - **Governance audit:** `pnpm release:setup --audit-live` — full live
-  read-back (npm trust list / security / auth). `--check` keeps this
-  live behavior for compatibility and is **not** agent-only.
+  read-back (npm trust list / security / auth). May persist the approved
+  config SHA after success; never flips READY. `--check` keeps this
+  live behavior for compatibility, stays write-free, and is **not**
+  agent-only.
 - **Mutation:** `pnpm release:setup --apply` (explicit, idempotent,
   READY last) only when the brief authorizes writes.
 

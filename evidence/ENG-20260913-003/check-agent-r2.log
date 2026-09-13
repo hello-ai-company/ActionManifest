@@ -1,0 +1,20 @@
+$ tsx scripts/release-setup.ts --check-agent
+release:setup check-agent — discovering hello-ai-company/ActionManifest (read first)…
+NPM LIVE GOVERNANCE: NOT QUERIED
+release:setup plan (check-agent) verdict=BLOCKED
+  [NOOP] hello-ai-company/ActionManifest OK — gh auth + repository identity verified
+  [NOOP] release.yml OK — release.yml stage job references environment: npm-release
+  [STOP] npm-release AUTH_REQUIRED — cannot read environment secrets (401/403) — fail closed
+  [NOOP] actionmanifest-release-tags OK — ruleset actionmanifest-release-tags matches (PR#13 tag read-back; pattern v*; delete/update protected)
+  [NOOP] npm Trusted Publisher + package security NOT_QUERIED — NPM LIVE GOVERNANCE: NOT QUERIED
+  [NOOP] CONTROL_PLANE_CONFIG_SHA256 CACHED_OK — fingerprint matches (CONTROL_PLANE_CONFIG_SHA256=cf8e5a2123291c100cf2f44809e81497758276c189e0decfc61c6f35bc33df9d)
+  [LIVE_AUDIT] NPM_TRUSTED_PUBLISHING_CONFIG_SHA256 LIVE_AUDIT_REQUIRED — LIVE AUDIT REQUIRED — approved config sha unreadable
+      diff: computed=cf8e5a2123291c100cf2f44809e81497758276c189e0decfc61c6f35bc33df9d
+      diff: approved=missing
+      diff: class=UNREADABLE
+  [STOP] NPM_TRUSTED_PUBLISHING_READY AUTH_REQUIRED — GitHub control-plane drift — READY cache is not trusted
+  NO CHANGES REQUIRED
+report: check-agent verdict=BLOCKED writes=0
+NPM LIVE GOVERNANCE: NOT_QUERIED
+[ELIFECYCLE] Command failed with exit code 2.
+EXIT:2

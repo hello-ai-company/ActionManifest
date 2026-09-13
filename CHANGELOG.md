@@ -2,6 +2,56 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## Phase 2.4D — Agent-safe Release Control Plane Checks (no version bump)
+
+Controller verification only. Package versions stay `0.9.0-rc.0`. No npm
+package release, no stage publish/approve, no git tag, no GitHub Release,
+no `rc.1`, no production `--apply`, no READY flip.
+
+### Added
+
+- **`pnpm release:setup --check-agent`** — Agent/CI-safe read-only layer.
+  Verifies GitHub controls + desired config +
+  `CONTROL_PLANE_CONFIG_SHA256`. Does **not** call `npm trust list`,
+  package-security queries, npm login/2FA, or any write. `READY=true` is
+  a cached governance assertion: `PASS` only with a matching fingerprint
+  / package set / TP desired config / workflow identity. Otherwise
+  `LIVE AUDIT REQUIRED` (or `BLOCKED` on GitHub drift).
+- **`pnpm release:setup --audit-live`** — explicit full live audit
+  (npm trust list / security / auth detection). Human npm auth may yield
+  `BLOCKED — NPM HUMAN AUTH REQUIRED`.
+- Committed fingerprint snapshot
+  `docs/evidence/control-plane-config-fingerprint.json` (no secrets,
+  no timestamps). Attestation hash/policy may be included; the
+  attestation file is never live npm security proof.
+
+### Review Round 2 (same Draft PR)
+
+- Agent Check binds READY to a **live-approved** fingerprint SHA stored
+  outside the repo (`NPM_TRUSTED_PUBLISHING_CONFIG_SHA256` Actions
+  variable). `PASS` requires READY=`true` **and** live-approved SHA ==
+  computed `CONTROL_PLANE_CONFIG_SHA256` **and** committed fingerprint
+  integrity **and** GitHub control plane OK. Same-PR
+  `release.yml` + committed-fingerprint edits cannot fake `PASS`.
+- Missing / unreadable / mismatch approved hash → `LIVE AUDIT REQUIRED`
+  (never `PASS`). Check paths never invent or write the hash.
+- Approved hash is written only after a successful `--audit-live`
+  (prerequisites pass; READY is not flipped) or `--apply` read-back
+  success, **before** READY (READY last). `--check` stays write-free.
+
+### Review Round 1 (same Draft PR)
+
+- Fingerprint includes the full SHA-256 of `.github/workflows/release.yml`.
+  Editing that file invalidates `CACHED_OK` / Agent Check `PASS`.
+- Agent Check Environment secrets stay fail-closed (Phase 2.4C R1):
+  401/403 → `AUTH_REQUIRED`, other failures → `UNKNOWN`. Unread secrets
+  never allow `PASS`. A successful empty secrets list is OK.
+
+### Unchanged (compatibility)
+
+- **`--check`** remains the existing full live path (not silently
+  agent-only). `--apply` stays explicit, READY last, fail-closed.
+
 ## Phase 2.4C — Release Control Plane (no version bump)
 
 Controller only. Package versions stay `0.9.0-rc.0`. No npm package

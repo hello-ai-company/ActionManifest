@@ -40,14 +40,27 @@ If the task brief explicitly names **release-control-plane** or release-infrastr
 
 Trusted Publishing and release-infrastructure changes are forbidden by default. They are allowed only when the brief explicitly scopes release-control-plane setup or maintenance.
 
-When authorized, use `pnpm release:setup --check` (read-only) and
-`pnpm release:setup --apply` (explicit, idempotent, READY last). Do not
-ad-hoc `gh` / `npm trust` / UI clicks. Do not flip
-`NPM_TRUSTED_PUBLISHING_READY` casually. Flip it only when an explicit
-release-control-plane task (1) verifies all prerequisites, (2) confirms
-configuration is complete, and (3) explicitly authorizes the readiness
-change. Keep Phase 2.4B fail-closed. Never automate `npm stage approve`
-or 2FA / WebAuthn / security-key proof-of-presence.
+When authorized, use the two-layer controller (do not ad-hoc `gh` /
+`npm trust` / UI clicks):
+
+- **Normal (Agent / CI):** `pnpm release:setup --check-agent` — read-only;
+  GitHub + cached READY + live-approved `NPM_TRUSTED_PUBLISHING_CONFIG_SHA256`
+  + committed fingerprint; no npm live queries. `PASS` requires the
+  live-approved hash (outside the repo) to match the computed fingerprint.
+- **Governance audit:** `pnpm release:setup --audit-live` — full live
+  read-back (npm trust list / security / auth). May persist the approved
+  config SHA after success; never flips READY. `--check` keeps this
+  live behavior for compatibility, stays write-free, and is **not**
+  agent-only.
+- **Mutation:** `pnpm release:setup --apply` (explicit, idempotent,
+  READY last) only when the brief authorizes writes.
+
+Do not flip `NPM_TRUSTED_PUBLISHING_READY` casually. Flip it only when an
+explicit release-control-plane task (1) verifies all prerequisites,
+(2) confirms configuration is complete, and (3) explicitly authorizes the
+readiness change. `READY=true` alone is not live npm proof. Keep
+Phase 2.4B fail-closed. Never automate `npm stage approve` or 2FA /
+WebAuthn / security-key proof-of-presence.
 
 ## Release safety boundary
 

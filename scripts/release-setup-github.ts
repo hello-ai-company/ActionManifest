@@ -11,12 +11,16 @@ import {
   RELEASE_REPO,
   RELEASE_REPO_SLUG,
   RELEASE_RULESET_NAME,
+  APPROVED_CONFIG_SHA256_VARIABLE_NAME,
   READY_VARIABLE_NAME,
   desiredRulesetPayload,
+  emptyApprovedConfigSha,
+  isApprovedConfigSha256,
   emptyEnvironmentActual,
   managedRulesetUpdatePayload,
   type EnvironmentReviewer,
   type GitHubEnvironmentActual,
+  type ApprovedConfigShaActual,
   type ReadyVariableActual,
   type RepoIdentityActual,
   type RulesetRuleObject,
@@ -37,11 +41,13 @@ export interface GitHubControlPlaneClient {
   getEnvironment(name: string): Promise<GitHubEnvironmentActual>;
   listRulesets(): Promise<TagRulesetActual>;
   getVariable(name: string): Promise<ReadyVariableActual>;
+  getApprovedConfigSha256(): Promise<ApprovedConfigShaActual>;
   createEnvironment(): Promise<void>;
   updateEnvironment(): Promise<void>;
   createRuleset(): Promise<void>;
   updateRuleset(id: number): Promise<void>;
   setReadyVariable(): Promise<void>;
+  setApprovedConfigSha256(sha256: string): Promise<void>;
 }
 
 export interface GitHubExec {
@@ -268,31 +274,14 @@ export function parseEnvironmentDiscovery(
         : null;
   if (policy && deploymentBranchPolicy === null) representable = false;
 
+  const secretNames: string[] = [];
+  let secretsReadStatus: GitHubEnvironmentActual["secretsReadStatus"] = "OK";
+  let secretsBlockStatus: GitHubEnvironmentActual["status"] | null = null;
   if (!secretsRes || !secretsRes.ok) {
     const status = classifyGhReadFailure(secretsRes?.status ?? null);
-    return emptyEnvironmentActual({
-      exists: true,
-      name: body.name ?? name,
-      waitTimer,
-      preventSelfReview,
-      requiredReviewers: reviewers,
-      requiredReviewerCount: reviewers.length,
-      deploymentBranchPolicy,
-      protectionMetadataRepresentable: representable,
-      secretNames: [],
-      secretsReadStatus: status,
-      branchPoliciesReadStatus: "SKIPPED",
-      status,
-      notes: [
-        status === "AUTH_REQUIRED"
-          ? "cannot read environment secrets (401/403) — fail closed"
-          : "cannot read environment secrets — fail closed",
-      ],
-    });
-  }
-
-  const secretNames: string[] = [];
-  if (secretsRes.json && typeof secretsRes.json === "object") {
+    secretsReadStatus = status;
+    secretsBlockStatus = status;
+  } else if (secretsRes.json && typeof secretsRes.json === "object") {
     const payload = secretsRes.json as { secrets?: { name?: string }[] };
     for (const s of payload.secrets ?? []) {
       if (s.name) secretNames.push(s.name);
@@ -311,9 +300,9 @@ export function parseEnvironmentDiscovery(
       deploymentBranchPolicy,
       protectionMetadataRepresentable: representable,
       secretNames,
-      secretsReadStatus: "OK",
+      secretsReadStatus,
       branchPoliciesReadStatus: status,
-      status,
+      status: secretsBlockStatus ?? status,
       notes: [
         status === "AUTH_REQUIRED"
           ? "cannot read deployment branch policies (401/403) — fail closed"
@@ -328,6 +317,29 @@ export function parseEnvironmentDiscovery(
     for (const p of payload.branch_policies ?? []) {
       if (p.name) branchNames.push(p.name);
     }
+  }
+
+  if (secretsBlockStatus) {
+    return emptyEnvironmentActual({
+      exists: true,
+      name: body.name ?? name,
+      deploymentBranches: branchNames,
+      requiredReviewers: reviewers,
+      requiredReviewerCount: reviewers.length,
+      waitTimer,
+      preventSelfReview,
+      deploymentBranchPolicy,
+      protectionMetadataRepresentable: representable,
+      secretNames: [],
+      secretsReadStatus,
+      branchPoliciesReadStatus: "OK",
+      status: secretsBlockStatus,
+      notes: [
+        secretsBlockStatus === "AUTH_REQUIRED"
+          ? "cannot read environment secrets (401/403) — fail closed"
+          : "cannot read environment secrets — fail closed",
+      ],
+    });
   }
 
   return emptyEnvironmentActual({
@@ -447,6 +459,15 @@ export class GhControlPlaneClient implements GitHubControlPlaneClient {
     };
   }
 
+  async getApprovedConfigSha256(): Promise<ApprovedConfigShaActual> {
+    const res = this.exec([
+      "-X",
+      "GET",
+      `repos/${RELEASE_OWNER}/${RELEASE_REPO}/actions/variables/${APPROVED_CONFIG_SHA256_VARIABLE_NAME}`,
+    ]);
+    return parseApprovedConfigSha256Read(res);
+  }
+
   async getVariable(name: string = READY_VARIABLE_NAME): Promise<ReadyVariableActual> {
     const res = this.exec([
       "-X",
@@ -554,29 +575,34 @@ export class GhControlPlaneClient implements GitHubControlPlaneClient {
   }
 
   async setReadyVariable(): Promise<void> {
-    const existing = await this.getVariable(READY_VARIABLE_NAME);
+    await this.upsertActionsVariable(READY_VARIABLE_NAME, "true");
+  }
+
+  async setApprovedConfigSha256(sha256: string): Promise<void> {
+    if (!isApprovedConfigSha256(sha256)) {
+      throw new Error(`refusing to write ${APPROVED_CONFIG_SHA256_VARIABLE_NAME}: not a SHA-256 hex`);
+    }
+    await this.upsertActionsVariable(APPROVED_CONFIG_SHA256_VARIABLE_NAME, sha256);
+  }
+
+  private async upsertActionsVariable(name: string, value: string): Promise<void> {
+    const existing = await this.getVariable(name);
     if (existing.exists) {
       const patch = this.exec(
-        [
-          "-X",
-          "PATCH",
-          `repos/${RELEASE_OWNER}/${RELEASE_REPO}/actions/variables/${READY_VARIABLE_NAME}`,
-          "--input",
-          "-",
-        ],
-        { name: READY_VARIABLE_NAME, value: "true" },
+        ["-X", "PATCH", `repos/${RELEASE_OWNER}/${RELEASE_REPO}/actions/variables/${name}`, "--input", "-"],
+        { name, value },
       );
       if (!patch.ok) {
-        throw new Error(`set ${READY_VARIABLE_NAME} failed (HTTP ${patch.status ?? "?"})`);
+        throw new Error(`set ${name} failed (HTTP ${patch.status ?? "?"})`);
       }
       return;
     }
     const create = this.exec(
       ["-X", "POST", `repos/${RELEASE_OWNER}/${RELEASE_REPO}/actions/variables`, "--input", "-"],
-      { name: READY_VARIABLE_NAME, value: "true" },
+      { name, value },
     );
     if (!create.ok) {
-      throw new Error(`create ${READY_VARIABLE_NAME} failed (HTTP ${create.status ?? "?"})`);
+      throw new Error(`create ${name} failed (HTTP ${create.status ?? "?"})`);
     }
   }
 
@@ -656,18 +682,54 @@ export function parseRulesetDetail(id: number, name: string, json: unknown): Rul
 /** Check-mode wrapper: every write throws. */
 export function readOnlyGitHub(inner: GitHubControlPlaneClient): GitHubControlPlaneClient {
   const refuse = async (): Promise<never> => {
-    throw new Error("release:setup --check is read-only; write refused");
+    throw new Error("release:setup read-only mode; GitHub write refused");
   };
   return {
     verifyRepo: () => inner.verifyRepo(),
     getEnvironment: (name) => inner.getEnvironment(name),
     listRulesets: () => inner.listRulesets(),
     getVariable: (name) => inner.getVariable(name),
+    getApprovedConfigSha256: () => inner.getApprovedConfigSha256(),
     createEnvironment: refuse,
     updateEnvironment: refuse,
     createRuleset: refuse,
     updateRuleset: refuse,
     setReadyVariable: refuse,
+    setApprovedConfigSha256: refuse,
+  };
+}
+
+export function parseApprovedConfigSha256Read(res: GhApiResult): ApprovedConfigShaActual {
+  if (!res.ok) {
+    if (res.status === 404 || /Not Found|404/i.test(`${res.stderr}\n${res.stdout}`)) {
+      return emptyApprovedConfigSha({
+        status: "MISSING",
+        notes: [`variable ${APPROVED_CONFIG_SHA256_VARIABLE_NAME} is unset`],
+      });
+    }
+    if (res.status === 401 || res.status === 403) {
+      return emptyApprovedConfigSha({
+        status: "AUTH_REQUIRED",
+        notes: ["cannot read approved config sha variable"],
+      });
+    }
+    return emptyApprovedConfigSha({
+      status: "UNKNOWN",
+      notes: ["cannot read approved config sha variable"],
+    });
+  }
+  const value =
+    res.json && typeof res.json === "object" && "value" in res.json
+      ? String((res.json as { value?: unknown }).value ?? "")
+      : "";
+  if (isApprovedConfigSha256(value)) {
+    return { exists: true, value, status: "OK", notes: [] };
+  }
+  return {
+    exists: true,
+    value: value || null,
+    status: "DRIFTED",
+    notes: ["approved config sha is missing or not a SHA-256 hex"],
   };
 }
 

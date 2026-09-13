@@ -4,6 +4,7 @@ Status: Accepted
 Date: 2026-09-12
 Builds on: ADR 0007 (release versioning), ADR 0008 (bootstrap), ADR 0009 (canonical artifact)
 Ticket: ENG-20260912-002 / CASE PA-20260912-003
+Superseding note: ENG-20260913-003 / CASE PA-20260913-003 (Phase 2.4D two-layer check)
 
 ## Context
 
@@ -25,16 +26,45 @@ infrastructure must not be mutated unless a brief explicitly authorizes a
 
 `pnpm release:setup` is the only in-repo controller. Discovery is read-only
 until a human (or an explicitly authorized agent brief) passes `--apply`.
-No `--apply` means `--check`. Check mode wraps every write method so it
-throws. CI workflows do not set `NPM_TRUSTED_PUBLISHING_READY`.
+No `--apply` defaults to `--check` (full live path, backward compatible).
+`--check-agent` and `--audit-live` are explicit. Every read-only mode
+wraps write methods so they throw. CI workflows do not set
+`NPM_TRUSTED_PUBLISHING_READY`.
 
-### 2. `--check` / `--apply`
+### 2. Two-layer check / `--apply` (Phase 2.4D)
 
-- `--check`: complete read-only discovery + expected-state diff + verdict
-  (`READY` / `NOT_READY` / `BLOCKED`). Zero mutations.
-- `--apply`: print the plan, then write **only** approved control-plane
+- **Normal (Agent / CI):** `pnpm release:setup --check-agent` — fully
+  read-only. GitHub + local desired config + cached READY/fingerprint.
+  Must not call `npm trust list`, package-security queries, npm login/2FA,
+  or any npm write. Must not produce `AUTH_REQUIRED` on the normal path.
+  Verdict `PASS` / `LIVE_AUDIT_REQUIRED` / `BLOCKED`. Writes=0.
+- **Governance audit:** `pnpm release:setup --audit-live` — full live
+  read-back including npm trust list / security / auth detection. Without
+  human npm auth, `BLOCKED — NPM HUMAN AUTH REQUIRED` is an acceptable
+  live outcome. After a successful live audit it may persist
+  `NPM_TRUSTED_PUBLISHING_CONFIG_SHA256`; it never flips READY.
+- **`--check`:** existing full live behavior (same discovery as
+  `--audit-live`). **Not** silently changed into agent-only.
+  Verdict `READY` / `NOT_READY` / `BLOCKED`. Zero mutations.
+- **`--apply`:** print the plan, then write **only** approved control-plane
   settings, in order, then read-back. Idempotent: a second apply against a
-  converged plane reports `NO CHANGES REQUIRED`.
+  converged plane reports `NO CHANGES REQUIRED`. READY last.
+
+`READY=true` is a **cached governance assertion**, not live npm proof.
+Agent Check `PASS` only when READY is `true`, the GitHub Actions variable
+`NPM_TRUSTED_PUBLISHING_CONFIG_SHA256` (live-approved hash, outside the
+repo) equals the computed `CONTROL_PLANE_CONFIG_SHA256`, the committed
+fingerprint integrity holds, and the GitHub control plane is OK.
+Updating `release.yml` and the committed fingerprint in the same PR
+cannot `PASS` while the live-approved hash is still the previous value.
+Missing / unreadable / mismatch approved hash → `LIVE AUDIT REQUIRED`.
+Check paths never invent or write that variable. The approved hash is
+updated only after a successful `--audit-live` or `--apply` read-back,
+before READY (READY last). Drift → `LIVE AUDIT REQUIRED` (or `BLOCKED`
+for GitHub drift). Environment secrets GET 401/403 is `AUTH_REQUIRED`;
+other failures `UNKNOWN`; unread secrets never become empty-OK and Agent
+Check must not `PASS`. A successful empty secrets list is allowed. A
+manual attestation file is never treated as live npm security proof.
 
 ### 3. Idempotent merge/preserve
 
@@ -48,7 +78,8 @@ Multiple same-name rulesets → `STOP`. Trusted Publisher identity drift
 ### 4. READY last
 
 Order: Environment `npm-release` → tag ruleset → Trusted Publishers 10/10
-→ automatable security → read-back → **only then**
+→ automatable security → read-back → persist
+`NPM_TRUSTED_PUBLISHING_CONFIG_SHA256` → **only then**
 `NPM_TRUSTED_PUBLISHING_READY=true` → final read-back.
 
 `READY=true` with incomplete prerequisites is `CRITICAL` (fail loudly).
@@ -159,11 +190,14 @@ pnpm release:setup --apply --attest-manual-security[=<path>]
 
 ## Consequences
 
-- `pnpm release:setup --check` is the preferred audit. The npmjs.com /
+- `pnpm release:setup --check-agent` is the preferred **normal** Agent/CI
+  path. `pnpm release:setup --audit-live` (or backward-compatible
+  `--check`) is the preferred **governance audit**. The npmjs.com /
   GitHub Settings UI is break-glass only.
 - `pnpm release:setup --apply` is the preferred converge path when a brief
-  authorizes it. This Phase 2.4C change implements the controller; it does
-  not execute a production apply unless evidence lists that run.
+  authorizes it. Phase 2.4C implemented the controller; Phase 2.4D adds
+  the agent-safe layer. Neither phase executes a production apply unless
+  evidence lists that run.
 - Remaining human boundary after a green plane: npm auth/2FA when the
   official CLI requests it, and later `npm stage approve` (2FA).
 - Package-level “require 2FA and disallow tokens” is `MANUAL_REQUIRED` when

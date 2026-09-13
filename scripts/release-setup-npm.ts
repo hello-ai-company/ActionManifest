@@ -479,10 +479,10 @@ export class OfficialNpmTrustClient implements NpmTrustClient {
   }
 }
 
-/** Check-mode wrapper: every write throws. */
+/** Check-mode wrapper: every write throws. Live reads still go through. */
 export function readOnlyNpm(inner: NpmTrustClient): NpmTrustClient {
   const refuse = async (): Promise<never> => {
-    throw new Error("release:setup --check is read-only; write refused");
+    throw new Error("release:setup read-only mode; npm write refused");
   };
   return {
     inspectCli: () => inner.inspectCli(),
@@ -490,5 +490,22 @@ export function readOnlyNpm(inner: NpmTrustClient): NpmTrustClient {
     addTrustedPublisher: refuse,
     getPackageSecurity: (pkg) => inner.getPackageSecurity(pkg),
     applyAutomatableSecurity: refuse,
+  };
+}
+
+/**
+ * Agent-safe npm client. Any method call is a contract violation.
+ * --check-agent must not probe trust list, package security, login, or writes.
+ */
+export function agentSafeNpm(): NpmTrustClient {
+  const refuse = async (method: string): Promise<never> => {
+    throw new Error(`release:setup --check-agent must not call npm ${method}`);
+  };
+  return {
+    inspectCli: () => refuse("inspectCli / --version"),
+    listTrustedPublisher: () => refuse("trust list"),
+    addTrustedPublisher: () => refuse("trust github"),
+    getPackageSecurity: () => refuse("package security"),
+    applyAutomatableSecurity: () => refuse("security write"),
   };
 }

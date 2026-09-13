@@ -25,7 +25,8 @@
     "filename": "release.yml",
     "environment": "npm-release",
     "referencesNpmRelease": true,
-    "referencesReadyVariable": true
+    "referencesReadyVariable": true,
+    "fileSha256": "989186d8e9f464149376b0fc70828162eb8a704b111502b4c6d88e3e0ac2040f"
   },
   "environment": {
     "name": "npm-release",
@@ -52,5 +53,5 @@
     "recordSha256": null,
     "coveredPackages": []
   },
-  "sha256": "c86593550ee2b66efc6c727c342703ac5ed9bb4fb8c23b7ec83569bf948cc904"
+  "sha256": "cf8e5a2123291c100cf2f44809e81497758276c189e0decfc61c6f35bc33df9d"
 }

@@ -293,7 +293,7 @@ describe("planAgentControlPlaneCheck", () => {
     );
   });
 
-  it("environment secrets unread (agent token) is NOOP, not AUTH_REQUIRED", () => {
+  it("environment secrets 403 is AUTH_REQUIRED and not PASS", () => {
     const env = emptyEnvironmentActual({
       exists: true,
       name: RELEASE_ENVIRONMENT_NAME,
@@ -305,9 +305,44 @@ describe("planAgentControlPlaneCheck", () => {
       notes: ["cannot read environment secrets (401/403) — fail closed"],
     });
     const plan = planAgentControlPlaneCheck(agentActual({ environment: env }), matchCtx());
+    expect(plan.verdict).not.toBe("PASS");
+    expect(plan.verdict).toBe("BLOCKED");
+    expect(plan.items.find((i) => i.id === "environment")?.action).toBe("STOP");
+    expect(plan.items.find((i) => i.id === "environment")?.status).toBe("AUTH_REQUIRED");
+  });
+
+  it("environment secrets UNKNOWN/500 is not PASS", () => {
+    const env = emptyEnvironmentActual({
+      exists: true,
+      name: RELEASE_ENVIRONMENT_NAME,
+      deploymentBranches: ["main"],
+      deploymentBranchPolicy: { protected_branches: false, custom_branch_policies: true },
+      secretsReadStatus: "UNKNOWN",
+      branchPoliciesReadStatus: "OK",
+      status: "UNKNOWN",
+      notes: ["cannot read environment secrets — fail closed"],
+    });
+    const plan = planAgentControlPlaneCheck(agentActual({ environment: env }), matchCtx());
+    expect(plan.verdict).not.toBe("PASS");
+    expect(plan.verdict).toBe("BLOCKED");
+    expect(plan.items.find((i) => i.id === "environment")?.status).toBe("UNKNOWN");
+  });
+
+  it("successful empty secrets list may PASS when READY + fingerprint match", () => {
+    const env = emptyEnvironmentActual({
+      exists: true,
+      name: RELEASE_ENVIRONMENT_NAME,
+      deploymentBranches: ["main"],
+      waitTimer: 0,
+      preventSelfReview: false,
+      deploymentBranchPolicy: { protected_branches: false, custom_branch_policies: true },
+      secretNames: [],
+      secretsReadStatus: "OK",
+      branchPoliciesReadStatus: "OK",
+      status: "OK",
+    });
+    const plan = planAgentControlPlaneCheck(agentActual({ environment: env }), matchCtx());
     expect(plan.items.find((i) => i.id === "environment")?.action).toBe("NOOP");
-    expect(plan.items.find((i) => i.id === "environment")?.status).toBe("OK");
-    expect(plan.items.some((i) => i.status === "AUTH_REQUIRED")).toBe(false);
     expect(plan.verdict).toBe("PASS");
   });
 

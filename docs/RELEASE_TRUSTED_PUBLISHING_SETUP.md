@@ -41,7 +41,15 @@ Environment existence + deployment-branch policy, tag ruleset
 `update.parameters`; that is MATCH for tag-target), READY variable,
 in-repo release / desired control-plane config, and
 `CONTROL_PLANE_CONFIG_SHA256` (`docs/evidence/control-plane-config-fingerprint.json`).
+The fingerprint includes the deterministic SHA-256 of the entire
+`.github/workflows/release.yml` file (UTF-8). Editing that file invalidates
+`CACHED_OK` / Agent Check `PASS` (`WORKFLOW_CHANGED` → live audit).
 No secrets or timestamps enter the fingerprint.
+
+Environment secrets follow Phase 2.4C fail-closed: GET 401/403 →
+`AUTH_REQUIRED`; other read failures → `UNKNOWN`. Agent Check must not
+`PASS` while secrets discovery is `AUTH_REQUIRED` / `UNKNOWN`. A successful
+empty secrets list is OK (no `NPM_TOKEN` / `NODE_AUTH_TOKEN` names).
 
 `READY=true` alone is **not** enough. Verdict `PASS` (cached OK) only when
 READY is exactly `true` **and** the fingerprint / package set / Trusted

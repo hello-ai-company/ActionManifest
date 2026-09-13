@@ -25,6 +25,14 @@ no `rc.1`, no production `--apply`, no READY flip.
   no timestamps). Attestation hash/policy may be included; the
   attestation file is never live npm security proof.
 
+### Review Round 1 (same Draft PR)
+
+- Fingerprint includes the full SHA-256 of `.github/workflows/release.yml`.
+  Editing that file invalidates `CACHED_OK` / Agent Check `PASS`.
+- Agent Check Environment secrets stay fail-closed (Phase 2.4C R1):
+  401/403 → `AUTH_REQUIRED`, other failures → `UNKNOWN`. Unread secrets
+  never allow `PASS`. A successful empty secrets list is OK.
+
 ### Unchanged (compatibility)
 
 - **`--check`** remains the existing full live path (not silently

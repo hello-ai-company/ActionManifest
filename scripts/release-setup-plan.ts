@@ -336,12 +336,11 @@ export function environmentMatches(
 }
 
 /**
- * Agent Check verifies Environment existence + deployment-branch policy.
- * Secret listing is best-effort: integration tokens often 403 that API.
- * Unread secrets never become a fake empty-OK for live apply (status stays
- * AUTH_REQUIRED on the discovery object). Agent matching does not require
- * the secret list, and does not emit AUTH_REQUIRED when existence+branches
- * are representable.
+ * Agent Check Environment match — Phase 2.4C R1 fail-closed on secrets.
+ * Existence + deployment-branch policy are required. Secret listing must
+ * be a successful read (`OK`). A successful empty list is allowed (no
+ * `NPM_TOKEN` / `NODE_AUTH_TOKEN` names). AUTH_REQUIRED / UNKNOWN / SKIPPED
+ * never match and never become empty-OK.
  */
 export function environmentMatchesAgent(
   actual: GitHubEnvironmentActual,
@@ -349,16 +348,9 @@ export function environmentMatchesAgent(
 ): boolean {
   if (!actual.exists) return false;
   if (actual.name !== desired.name) return false;
+  if (actual.secretsReadStatus !== "OK") return false;
   if (actual.branchPoliciesReadStatus !== "OK") return false;
-  if (!desired.deploymentBranches.every((b) => actual.deploymentBranches.includes(b))) {
-    return false;
-  }
-  if (actual.secretsReadStatus === "OK" || actual.status === "OK") return true;
-  return (
-    actual.secretsReadStatus === "AUTH_REQUIRED" ||
-    actual.secretsReadStatus === "UNKNOWN" ||
-    actual.secretsReadStatus === "SKIPPED"
-  );
+  return desired.deploymentBranches.every((b) => actual.deploymentBranches.includes(b));
 }
 
 export function includeMatchesDesired(include: string[], desired: DesiredRuleset): boolean {
@@ -1357,6 +1349,40 @@ export function planAgentControlPlaneCheck(
         order: 10,
       }),
     );
+  } else if (
+    actual.environment.secretsReadStatus === "AUTH_REQUIRED" ||
+    (actual.environment.status === "AUTH_REQUIRED" && actual.environment.secretsReadStatus !== "OK")
+  ) {
+    blocked = true;
+    items.push(
+      item({
+        id: "environment",
+        resource: RELEASE_ENVIRONMENT_NAME,
+        action: "STOP",
+        status: "AUTH_REQUIRED",
+        reason:
+          actual.environment.notes[0] ??
+          "cannot read environment secrets (401/403) — fail closed",
+        mutates: false,
+        order: 10,
+      }),
+    );
+  } else if (
+    actual.environment.secretsReadStatus === "UNKNOWN" ||
+    actual.environment.status === "UNKNOWN"
+  ) {
+    blocked = true;
+    items.push(
+      item({
+        id: "environment",
+        resource: RELEASE_ENVIRONMENT_NAME,
+        action: "STOP",
+        status: "UNKNOWN",
+        reason: actual.environment.notes[0] ?? "cannot read environment secrets — fail closed",
+        mutates: false,
+        order: 10,
+      }),
+    );
   } else if (environmentMatchesAgent(actual.environment, desired.environment)) {
     const secretHits = actual.environment.secretNames.filter((n) => /NPM_TOKEN|NODE_AUTH_TOKEN/i.test(n));
     if (secretHits.length > 0) {
@@ -1376,18 +1402,16 @@ export function planAgentControlPlaneCheck(
         }),
       );
     } else {
-      const secretsUnread = actual.environment.secretsReadStatus !== "OK";
       items.push(
         item({
           id: "environment",
           resource: RELEASE_ENVIRONMENT_NAME,
           action: "NOOP",
           status: "OK",
-          reason: secretsUnread
-            ? "exists; main deployment branch; environment secrets not listed (agent token)"
-            : actual.environment.requiredReviewerCount > 0
-              ? `exists; main deployment branch; ${actual.environment.requiredReviewerCount} reviewer(s) preserved (optional)`
-              : "exists; main deployment branch; required reviewers optional and absent",
+          reason:
+            actual.environment.requiredReviewerCount > 0
+              ? `exists; main deployment branch; secrets listed (${actual.environment.secretNames.length}); ${actual.environment.requiredReviewerCount} reviewer(s) preserved (optional)`
+              : "exists; main deployment branch; secrets listed (empty is OK); required reviewers optional and absent",
           mutates: false,
           order: 10,
         }),

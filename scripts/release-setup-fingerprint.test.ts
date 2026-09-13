@@ -87,16 +87,31 @@ describe("CONTROL_PLANE_CONFIG_SHA256", () => {
   });
 
   it("workflow identity reads environment + READY references; attestation policy is not live proof", () => {
-    const id = workflowIdentityFromYaml(realWorkflow());
+    const yaml = realWorkflow();
+    const id = workflowIdentityFromYaml(yaml);
     expect(id.filename).toBe("release.yml");
     expect(id.environment).toBe("npm-release");
     expect(id.referencesNpmRelease).toBe(true);
     expect(id.referencesReadyVariable).toBe(true);
+    expect(id.fileSha256).toBe(sha256Hex(yaml));
+    expect(id.fileSha256).toMatch(/^[0-9a-f]{64}$/);
     const policy = defaultAttestationPolicy();
     expect(policy.recordSha256).toBeNull();
     expect(policy.coveredPackages).toEqual([]);
     expect(sha256Hex("abc")).toHaveLength(64);
-    const doc = buildFingerprintDocument(currentFingerprintSections(realWorkflow()));
+    const doc = buildFingerprintDocument(currentFingerprintSections(yaml));
     expect(sectionsFromDocument(doc).attestationPolicy.recordSha256).toBeNull();
+    expect(doc.workflow.fileSha256).toBe(sha256Hex(yaml));
+  });
+
+  it("full release.yml content SHA-256 is in the fingerprint; content edit is WORKFLOW_CHANGED", () => {
+    const yaml = realWorkflow();
+    const base = currentFingerprintSections(yaml);
+    expect(base.workflow.fileSha256).toBe(sha256Hex(yaml));
+    const edited = currentFingerprintSections(`${yaml}\n# fingerprint-drift\n`);
+    expect(edited.workflow.fileSha256).not.toBe(base.workflow.fileSha256);
+    expect(controlPlaneConfigSha256(base)).not.toBe(controlPlaneConfigSha256(edited));
+    expect(classifyFingerprintDrift(base, edited)).toBe("WORKFLOW_CHANGED");
+    expect(liveAuditReason("WORKFLOW_CHANGED")).toBe("LIVE AUDIT REQUIRED");
   });
 });

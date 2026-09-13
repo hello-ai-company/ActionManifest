@@ -38,6 +38,8 @@ export interface FingerprintWorkflowIdentity {
   environment: typeof RELEASE_ENVIRONMENT_NAME;
   referencesNpmRelease: boolean;
   referencesReadyVariable: boolean;
+  /** SHA-256 of the entire `.github/workflows/release.yml` UTF-8 bytes. */
+  fileSha256: string;
 }
 
 export interface FingerprintAttestationPolicy {
@@ -106,6 +108,7 @@ export function workflowIdentityFromYaml(
     environment: RELEASE_ENVIRONMENT_NAME,
     referencesNpmRelease: /environment:\s*npm-release\b/.test(yaml),
     referencesReadyVariable: yaml.includes(READY_VARIABLE_NAME),
+    fileSha256: sha256Hex(yaml),
   };
 }
 
@@ -219,6 +222,12 @@ export function parseFingerprintDocument(json: unknown): ControlPlaneFingerprint
   if (!Array.isArray(raw.packages) || raw.packages.some((p) => typeof p !== "string")) return null;
   if (!raw.trustedPublisher || typeof raw.trustedPublisher !== "object") return null;
   if (!raw.workflow || typeof raw.workflow !== "object") return null;
+  if (
+    typeof raw.workflow.fileSha256 !== "string" ||
+    !/^[0-9a-f]{64}$/.test(raw.workflow.fileSha256)
+  ) {
+    return null;
+  }
   if (!raw.environment || typeof raw.environment !== "object") return null;
   if (!raw.ruleset || typeof raw.ruleset !== "object") return null;
   if (typeof raw.readyVariable !== "string") return null;

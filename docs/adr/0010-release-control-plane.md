@@ -52,10 +52,14 @@ wraps write methods so they throw. CI workflows do not set
 `READY=true` is a **cached governance assertion**, not live npm proof.
 Agent Check `PASS` only when READY is `true` and the
 `CONTROL_PLANE_CONFIG_SHA256` fingerprint (package set, Trusted Publisher
-desired config, workflow identity, control-plane config, attestation
+desired config, workflow identity including the full SHA-256 of
+`.github/workflows/release.yml`, control-plane config, attestation
 policy/hash — no secrets/timestamps) matches. Drift →
-`LIVE AUDIT REQUIRED` (or `BLOCKED` for GitHub drift). A manual
-attestation file is never treated as live npm security proof.
+`LIVE AUDIT REQUIRED` (or `BLOCKED` for GitHub drift). Environment
+secrets GET 401/403 is `AUTH_REQUIRED`; other failures `UNKNOWN`; unread
+secrets never become empty-OK and Agent Check must not `PASS`. A successful
+empty secrets list is allowed. A manual attestation file is never treated
+as live npm security proof.
 
 ### 3. Idempotent merge/preserve
 

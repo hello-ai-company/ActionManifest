@@ -105,3 +105,11 @@ false-verified action.
 - Security: [SECURITY.md](../../SECURITY.md)
 
 Apache-2.0.
+
+## Matoe compatibility command
+
+`actionman prepare-matoe <manifest> --doc <exact-ocr.txt> [--out <new-bundle.json>]`
+creates a complete wire-plus-audit bundle for the explicit Matoe v0.1 profile.
+The default extraction schema remains v0.2. See
+[the integration guide](../../docs/MATOE-COMPATIBILITY.md) before sending its
+`manifest` member to a backend. The command makes no network calls.

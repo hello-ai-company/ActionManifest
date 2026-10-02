@@ -44,3 +44,11 @@ ready is exactly what the default export policy ships.
 - Integration contract: [docs/INTEGRATION-CONTRACT.md](../../docs/INTEGRATION-CONTRACT.md)
 
 Apache-2.0.
+
+## Matoe compatibility
+
+`prepareMatoeManifest(input, canonicalSourceText)` returns an explicit v0.1 wire
+manifest together with a mandatory full-original audit bundle. It refuses unsafe
+or incomplete projections and never executes actions. See
+[the Matoe integration guide](../../docs/MATOE-COMPATIBILITY.md) for the profile,
+refusal policy, CLI usage, and unverified Swift/HTTP boundaries.

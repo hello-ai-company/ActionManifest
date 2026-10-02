@@ -6,3 +6,5 @@ export type {
   ConsumerReport,
   DispositionReason,
 } from "./classify.js";
+export { prepareMatoeManifest } from "./matoe.js";
+export type { MatoeCompatibilityBundle } from "./matoe.js";

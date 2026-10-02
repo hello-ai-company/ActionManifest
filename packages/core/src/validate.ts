@@ -48,7 +48,9 @@ export function validateActionManifest(data: unknown): ActionManifest {
       "Action Manifest is missing a string schema_version",
     );
   }
-  const validate = manifestValidatorsByVersion[version];
+  const validate = Object.hasOwn(manifestValidatorsByVersion, version)
+    ? manifestValidatorsByVersion[version]
+    : undefined;
   if (!validate) {
     throw new SchemaValidationError(
       `Unsupported schema_version ${version}; expected one of ${SUPPORTED_SCHEMA_VERSIONS.join(", ")}`,

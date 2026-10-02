@@ -42,6 +42,7 @@
     "postpack": "node ../../scripts/pack-assets.mjs clean conformance benchmark"
   },
   "dependencies": {
+    "@actionmanifest/consumer": "workspace:*",
     "@actionmanifest/adapters": "workspace:*",
     "@actionmanifest/core": "workspace:*",
     "@actionmanifest/extractor": "workspace:*",

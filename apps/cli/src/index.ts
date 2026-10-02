@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { Command } from "commander";
 import { resolveAdapter } from "@actionmanifest/adapters";
+import { prepareMatoeManifest } from "@actionmanifest/consumer";
 import {
   ActionManifestError,
   validateActionManifest,
@@ -92,6 +93,27 @@ program
       if (flags && !verificationPassed(flags)) {
         process.exitCode = 2;
       }
+    } catch (e) {
+      fail(e);
+    }
+  });
+
+program
+  .command("prepare-matoe")
+  .description("create a Matoe v0.1 wire manifest plus mandatory original-provenance audit bundle")
+  .argument("<manifest>", "unfiltered manifest JSON path")
+  .requiredOption("--doc <file>", "exact canonical OCR text (UTF-8; no normalization)")
+  .option("--out <file>", "write the complete compatibility bundle to a new file")
+  .action(async (manifestPath: string, opts: { doc: string; out?: string }) => {
+    try {
+      const raw = JSON.parse(await readFile(resolve(manifestPath), "utf8"));
+      const text = await readFile(resolve(opts.doc), "utf8");
+      const bundle = prepareMatoeManifest(raw, text);
+      const json = JSON.stringify(bundle, null, 2) + "\n";
+      // No verified-only filtering: receipts must describe exactly the supplied actions.
+      // Never expose only the projected manifest and silently discard the audit.
+      if (opts.out) await writeFile(resolve(opts.out), json, { encoding: "utf8", flag: "wx" });
+      else process.stdout.write(json);
     } catch (e) {
       fail(e);
     }

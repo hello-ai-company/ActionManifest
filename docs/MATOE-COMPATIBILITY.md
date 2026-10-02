@@ -31,12 +31,15 @@ profileは`matoe-v0.1-clean/1`。JSON schema検証を先に行い、次に追加
 
 - source.hashが必須。Matoeから受け取った**そのままのOCR文字列**のUTF-8 SHA-256と一致すること。trim・改行変換・Unicode正規化はしない。
 - extraction receiptが必須。receiptのschema_versionは入力versionと一致し、provider/model/extractor_versionが空白や`unknown`でないこと。これらの識別子は自己申告の来歴であり、暗号学的な発行者証明にはならない。
-- アクションIDは一意。Evidenceは同一source IDに属し、実本文に引用があること（Coreの引用照合を使用）。
+- アクションIDは一意。Evidenceは同一source IDに属し、実本文に引用があること（Coreの引用照合を使用）。Swiftは最初の引用しか表示しないため、初期profileは各アクションのEvidenceを1件に限定する。actor.textがある場合、その文言が表示される引用にも含まれること。表示されないactor.roleは拒否する。
 - 状態はproposed/verifiedのみ。accepted/exported/rejectedをproposedへ戻さない。
 - 未検証なら全アクションがproposedであること。検証を捏造せず、audit.warningsに要確認を明記。Matoe既存bridgeも検証欠落を警告し確認を要求する。
 - 検証済みなら全体・個別の全チェックが成功し、errorまたはseverity未指定のissueがないこと。0.2には全アクションの一意な結果と整合する集計値が必要。混在・失敗・不足・矛盾は拒否し、全体成功に丸めない。
-- 個別warningは全体issuesにも同じ内容があること。全体issuesはwireに保持し、個別結果はauditに全保存する。
-- 時間情報はなし、またはexact/day/dateのみ。整合するyear/month/day、同日のend、until/on_day、certainty/timezoneもそのまま保持可能。datetime、範囲、条件、代替日、曖昧日、必着/消印等は初期profileでは拒否。対応拡張には別途Swiftでの表示・確認動作テストが必要。
+- warningも初期profileでは拒否する。Swiftはそのメッセージを表示せず、warning単独では要確認にもならないため。検証詳細の保管だけでは表示時の安全性を保証できない。
+- conditions（空配列以外）とnotesは拒否する。Swiftはこれらを表示・要確認判定に使わない。
+- 時間情報はなし、またはexact/day/dateのみ。整合するyear/month/day、同日のend、until/on_day、certaintyはそのまま保持可能。timezoneは明示されていれば拒否する。Swiftは端末の現在のタイムゾーンで日付を変換し、wireのtimezoneを使わないため。datetime、範囲、条件、代替日、曖昧日、必着/消印等も初期profileでは拒否。対応拡張には別途Swiftでの表示・確認動作テストが必要。
+- receipt日時はSwiftの実際の厳密パーサーに合わせ、uppercase T/Zと秒00..59を要求する。JSON schemaだけが許容するlowercaseや空白区切り、うるう秒等は拒否する。
+- CLI入力はmanifest 1 MiB、OCR 240,000 UTF-8 bytes / 60,000 Unicode scalarsまで。APIにも入力予算とネスト深さ24の制限がある。未知フィールドをサイズ制限の対象外にしない。CLIはサイズ制限内の通常ファイルと有効なUTF-8のみ読み込む。
 
 出力は`{ manifest, audit }`のbundleです。auditには入力の完全なコピーと変更箇所があります。
 wireから外した0.2の検証詳細を捨てません。rootとextractionのschema_versionはwire用に0.1へ変更し、
@@ -54,19 +57,28 @@ pnpm actionman prepare-matoe packages/consumer/fixtures/matoe/verified-v02.json 
   --doc packages/consumer/fixtures/matoe/source.txt --out /tmp/matoe-bundle.json
 ```
 
-`--out`省略時はbundle全体をstdoutに出します。出力先が既存なら拒否し上書きしません。
+`--out`または`--json`をちょうど1つ指定します。`--json`はbundle全体をstdoutへ出す明示指定です。
+指定なしでは原データを出力しません。bundleには原manifestとEvidence引用が含まれ、入力自身に秘密が
+あればそれも保持されます。自動的な秘密の検出・削除はしません。本文を別途追加したり環境変数の認証情報を読み込むことはありません。
+`--out`はmode 0600で新規作成し、既存の出力先は拒否します。
 失敗は非ゼロ終了、schema違反は`SCHEMA_VALIDATION`、互換ポリシー違反は
-`MATOE_COMPATIBILITY_BLOCKED`と理由をstderrに返します。部分出力やlegacyへのfallbackはしません。
+`MATOE_COMPATIBILITY_BLOCKED`と理由をstderrに返します。入力を含むschema/JSON/ファイルエラーの詳細は省略し、
+原文・未知version文字列・アクションID・パスを変換診断のstderrに転載しません。
+変換失敗時にはbundleを返さず、legacyへのfallbackもしません。
 
 実際のdeterministic抽出からも試せます（外部LLM呼び出しなし）。既定exportは検証済みのみを
 フィルタするため、変換の入力には`--include-unverified`で完全なmanifestを使います。
 
 ```sh
-pnpm actionman extract packages/consumer/fixtures/matoe/source.txt \
+pnpm actionman extract packages/consumer/fixtures/matoe/plain-source.txt \
   --provider deterministic --include-unverified --out /tmp/matoe-original.json
 pnpm actionman prepare-matoe /tmp/matoe-original.json \
-  --doc packages/consumer/fixtures/matoe/source.txt --out /tmp/matoe-extracted-bundle.json
+  --doc packages/consumer/fixtures/matoe/plain-source.txt --out /tmp/matoe-extracted-bundle.json
 ```
+
+この例はactorがunknownの入力で、Matoeは確認を要求します。保護者を明記した元のsource.txtからは
+deterministic extractorが`actor.role=guardian`を出すため、初期profileでは理由付きで拒否されます。
+そのroleを後から削除して回避するのではなく、対応profileまたはSwiftの表示・確認動作を別途整える必要があります。
 
 サーバー側の組み込み箇所は次のようになります（HTTP実装・監査保存はこの変更に含みません）。
 

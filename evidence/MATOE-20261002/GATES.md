@@ -30,7 +30,7 @@ passed, including the 219-entry supply-chain policy check, with existing cached
 packages reused. Temporary unrelated lockfile metadata changes were removed.
 The committed lockfile difference is only the new CLI → consumer workspace link.
 
-## Final measured results
+## Initial implementation measured results (commit 5e49853)
 
 | Command | Result |
 | --- | --- |
@@ -100,3 +100,36 @@ review state plus refusal cases, then exercise a local free HTTP response stub.
 The current Python server needs an explicitly selected compatibility response
 path/backend integration with audit retention; no Swift version-gate weakening
 is necessary for this profile.
+
+## Final self-review
+
+The additional requested diff review found and fixed domain-mapping and CLI
+privacy gaps. See [SELF-REVIEW.md](SELF-REVIEW.md) for actual Swift source anchors,
+findings, corrections, and the distinction between static contract evidence and
+unperformed Swift/HTTP execution. The updated verification results follow.
+
+| Final review command | Measured result |
+| --- | --- |
+| `pnpm build` | exit 0 |
+| `pnpm test` | exit 0; **576/576** tests, 48 files |
+| `pnpm integration:test` | exit 0; **25/25** tests, 6 files, built package exports/CLI |
+| `pnpm lint` | exit 0 |
+| `pnpm typecheck` | exit 0; including the new integration tests |
+| `pnpm schema:validate` | exit 0; frozen schemas/checksums unchanged |
+| `pnpm docs:check` | exit 0 |
+| `pnpm conformance:reference` | exit 0; universal **65/65**, reference **4/4**, critical false exported **0** |
+| `pnpm xberg:integration` | exit 0; native runtime **2/2** |
+| `git diff --check` | exit 0 |
+
+64 Matoe contract tests and 4 prototype-version regression tests now supplement
+the original 508 tests. Five Matoe integration tests supplement the original 20.
+The new source fixture plain-source.txt supports the successful deterministic
+extract→verify→CLI projection path. The original guardian-role extractor path
+has a separate refusal regression; no fields are stripped to manufacture success.
+The original golden wire/source pair remains unchanged.
+
+The documented plain-source.txt CLI commands were also executed directly:
+both commands exited 0, audit exactly matched the original, wire actions were
+unchanged, actor certainty stayed unknown, and the new bundle file was mode 0600.
+The required Swift confirmation is inferred from its actual source predicate,
+not asserted as an executed client test.

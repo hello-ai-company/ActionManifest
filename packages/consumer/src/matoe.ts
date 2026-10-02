@@ -22,6 +22,39 @@ function refuse(reason: string): never {
   throw new ActionManifestError("MATOE_COMPATIBILITY_BLOCKED", reason);
 }
 
+export const MATOE_INPUT_LIMITS = Object.freeze({
+  manifestBytes: 1_048_576,
+  ocrBytes: 240_000,
+  ocrScalars: 60_000,
+  nestingDepth: 24,
+});
+
+function assertInputBudget(input: unknown): void {
+  let remaining = MATOE_INPUT_LIMITS.manifestBytes;
+  const stack = [{ value: input, depth: 0 }];
+  while (stack.length) {
+    const { value, depth } = stack.pop()!;
+    if (depth > MATOE_INPUT_LIMITS.nestingDepth || stack.length > 10_000) refuse("Manifest nesting/collection limit exceeded");
+    if (typeof value === "string") remaining -= Buffer.byteLength(value, "utf8") + 2;
+    else if (value && typeof value === "object") {
+      const entries = Object.entries(value);
+      if (entries.length > 10_000) refuse("Manifest collection limit exceeded");
+      for (const [key, child] of entries) {
+        remaining -= Buffer.byteLength(key, "utf8") + 4;
+        if (remaining < 0) refuse("Manifest size limit exceeded");
+        stack.push({ value: child, depth: depth + 1 });
+      }
+    } else remaining -= 16;
+    if (remaining < 0) refuse("Manifest size limit exceeded");
+  }
+}
+
+// AJV accepts lowercase separators and leap seconds; the actual Swift parser
+// requires uppercase T/Z and seconds 00..59. Never emit a receipt it rejects.
+function swiftDateTime(value: string): boolean {
+  return !value.startsWith("0000") && /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(value);
+}
+
 const checks = [
   "evidence_supported", "temporal_supported", "actor_supported",
   "modality_supported", "page_refs_valid",
@@ -42,6 +75,9 @@ function clean(flags: Pick<VerificationFlags, typeof checks[number] | "negation_
  * Input/output schema validation is separate from this conservative ingress policy.
  */
 export function prepareMatoeManifest(input: unknown, canonicalSourceText: string): MatoeCompatibilityBundle {
+  if (Buffer.byteLength(canonicalSourceText, "utf8") > MATOE_INPUT_LIMITS.ocrBytes
+    || Array.from(canonicalSourceText).length > MATOE_INPUT_LIMITS.ocrScalars) refuse("Canonical OCR size limit exceeded");
+  assertInputBudget(input);
   // Validate before copying: unknown versions/keys and explicit nulls fail closed.
   const originalManifest = structuredClone(validateActionManifest(input));
   const manifest = structuredClone(originalManifest);
@@ -61,37 +97,48 @@ export function prepareMatoeManifest(input: unknown, canonicalSourceText: string
       refuse(`Unknown extraction provenance: ${key}`);
     }
   }
+  if (!swiftDateTime(extraction.created_at)) refuse("Extraction timestamp is outside Swift's strict date-time contract");
   const ids = new Set(manifest.actions.map(action => action.id));
   if (ids.size !== manifest.actions.length) refuse("Duplicate action IDs");
   for (const action of manifest.actions) {
     if (!["proposed", "verified"].includes(action.status)) {
-      refuse(`Action ${action.id}: status ${action.status} cannot enter Matoe; approval/lifecycle states are never reset`);
+      refuse("Action status cannot enter Matoe; approval/lifecycle states are never reset");
     }
     if (!action.id.trim() || !action.title.trim()) refuse("Blank action identity/title");
+    if ((action.conditions?.length ?? 0) > 0 || action.notes !== undefined) {
+      refuse("Action conditions/notes are not displayed or used for review by the current Swift bridge");
+    }
+    const visibleEvidence = action.evidence[0];
+    if (action.evidence.length !== 1 || !visibleEvidence) refuse("Swift displays only the first Evidence quote; multiple quotes require another profile");
     for (const evidence of action.evidence) {
       if (evidence.source_id !== manifest.source.id || !sourceContainsQuote(canonicalSourceText, evidence.text)) {
-        refuse(`Action ${action.id}: evidence does not resolve to the canonical source`);
+        refuse("Action evidence does not resolve to the canonical source");
       }
+    }
+    if (action.actor.role !== undefined || (action.actor.text !== undefined
+      && !sourceContainsQuote(visibleEvidence.text, action.actor.text))) {
+      refuse("Swift does not display actor identity; actor text must remain in its visible Evidence quote and role is unsupported");
     }
     // Keep the initial compatibility profile deliberately small. Rich temporal
     // forms need a separate profile plus Swift mapping tests, never coercion.
     if (action.temporal) {
       const temporal = action.temporal;
+      if (temporal.timezone !== undefined) refuse("Explicit timezone is ignored by Swift's device-local date mapping");
       if (temporal.type !== "exact" || temporal.precision !== "day" || !temporal.date
         || !temporal.raw_text.trim()
         || Object.keys(temporal).some(key => ![
-          "type", "precision", "date", "raw_text", "certainty", "timezone",
+          "type", "precision", "date", "raw_text", "certainty",
           "year", "month", "day", "end", "deadline_qualifier",
         ].includes(key))
         || (temporal.end !== undefined && temporal.end !== temporal.date)
         || (temporal.deadline_qualifier !== undefined && !["until", "on_day"].includes(temporal.deadline_qualifier))) {
-        refuse(`Action ${action.id}: temporal form is outside the exact-day Matoe compatibility profile`);
+        refuse("Action temporal form is outside the exact-day Matoe compatibility profile");
       }
       const [year, month, day] = temporal.date.split("-").map(Number);
-      if ((temporal.year !== undefined && temporal.year !== year)
+      if (year === 0 || (temporal.year !== undefined && temporal.year !== year)
         || (temporal.month !== undefined && temporal.month !== month)
         || (temporal.day !== undefined && temporal.day !== day)) {
-        refuse(`Action ${action.id}: temporal components contradict the exact date`);
+        refuse("Action temporal components contradict the exact date");
       }
     }
   }
@@ -102,6 +149,7 @@ export function prepareMatoeManifest(input: unknown, canonicalSourceText: string
     }
     warnings.push("Verification is missing: every action requires user review in Matoe.");
   } else {
+    if (flags.checked_at !== undefined && !swiftDateTime(flags.checked_at)) refuse("Verification timestamp is outside Swift's strict date-time contract");
     if (!flags.source_hash_matched || !clean(flags)) {
       refuse("Only unanimous clean verification can be represented by Matoe's aggregate receipt; failed/mixed results are refused");
     }
@@ -133,6 +181,9 @@ export function prepareMatoeManifest(input: unknown, canonicalSourceText: string
         delete flags[key];
         changes.push(`/receipt/verification/${key}: retained in audit.originalManifest`);
       }
+    }
+    if (issues.length) {
+      refuse("Verification issues/warnings are not displayed by the current Swift bridge; projection would hide their message");
     }
   }
   if (manifest.schema_version !== "0.1.0") {

@@ -43,16 +43,16 @@ describe("explicit Matoe compatibility contract", () => {
     expect(classifyManifest(bundle.manifest).counts.ready).toBe(0);
   });
 
-  it("preserves aggregate and per-action warning information", () => {
+  it("refuses warnings that Swift would neither display nor mark for confirmation", () => {
     const input = original();
     const issue = { code: "REVIEW", message: "Please review", action_id: "act_001", severity: "warning" as const };
     // Wire object key order is not part of issue identity.
     input.receipt!.verification!.issues = [{ severity: issue.severity, message: issue.message, code: issue.code, action_id: issue.action_id }];
     input.receipt!.verification!.actions![0].issues = [issue];
     input.receipt!.verification!.warning_actions = 1;
-    const bundle = prepareMatoeManifest(input, source);
-    expect(bundle.manifest.receipt?.verification?.issues).toEqual([issue]);
-    expect(bundle.audit.originalManifest.receipt?.verification?.actions![0].issues).toEqual([issue]);
+    const before = structuredClone(input);
+    expect(() => prepareMatoeManifest(input, source)).toThrow(/not displayed/);
+    expect(input).toEqual(before);
   });
 
   it("refuses a genuine mixed result without selecting only the successful action", () => {
@@ -119,6 +119,16 @@ describe("explicit Matoe compatibility contract", () => {
     ["rich temporal outside profile", m => { m.actions[0].temporal!.alternatives = [{ type: "conditional", raw_text: "if rain" }]; }, /temporal form/],
     ["contradictory temporal year", m => { m.actions[0].temporal!.year = 2027; }, /contradict/],
     ["postmark deadline", m => { m.actions[0].temporal!.deadline_qualifier = "postmark_valid"; }, /temporal form/],
+    ["timezone discarded by Swift", m => { m.actions[0].temporal!.timezone = "Asia/Tokyo"; }, /timezone.*ignored/],
+    ["conditions not used for review", m => { m.actions[0].conditions = ["参加希望者のみ"]; }, /conditions\/notes/],
+    ["notes not shown", m => { m.actions[0].notes = "要確認"; }, /conditions\/notes/],
+    ["lowercase receipt date-time", m => { m.receipt!.extraction.created_at = "2026-10-02t00:00:00z"; }, /strict date-time/],
+    ["leap second receipt date-time", m => { m.receipt!.extraction.created_at = "2026-06-30T23:59:60Z"; }, /strict date-time/],
+    ["space separator in verification time", m => { m.receipt!.verification!.checked_at = "2026-10-02 00:00:00Z"; }, /strict date-time/],
+    ["giant field", m => { m.source.title = "a".repeat(1_048_577); }, /size limit/],
+    ["multiple quotes hidden by Swift", m => { m.actions[0].evidence.push(structuredClone(m.actions[0].evidence[0])); }, /first Evidence/],
+    ["actor text hidden by Swift", m => { m.actions[0].actor.text = "別の担当者"; }, /actor identity/],
+    ["actor role hidden by Swift", m => { m.actions[0].actor.role = "guardian"; }, /actor identity/],
   ];
   it.each(negative)("refuses %s with a reason and leaves input untouched", (_name, mutate, reason) => {
     const input = original();
@@ -137,5 +147,36 @@ describe("explicit Matoe compatibility contract", () => {
   it("requires the exact OCR bytes and does not trim or normalize", () => {
     expect(() => prepareMatoeManifest(original(), source.trim())).toThrow(/SHA-256/);
     expect(() => prepareMatoeManifest(original(), "")).toThrow(/empty/);
+  });
+
+  it("bounds OCR, deep recursive temporals, and cyclic API input before schema traversal", () => {
+    expect(() => prepareMatoeManifest(original(), "a".repeat(60_001))).toThrow(/OCR size limit/);
+    const input = original();
+    let temporal = input.actions[0].temporal!;
+    for (let i = 0; i < 30; i++) {
+      const child = { type: "conditional" as const, raw_text: "if rain" };
+      temporal.alternatives = [child];
+      temporal = child;
+    }
+    expect(() => prepareMatoeManifest(input, source)).toThrow(/nesting/);
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    expect(() => prepareMatoeManifest(cycle, source)).toThrow(/nesting/);
+  });
+
+  it.each([
+    ["low confidence", (m: ActionManifest) => { m.actions[0].confidence!.action = 0.2; }],
+    ["component confidence", (m: ActionManifest) => { m.actions[0].confidence!.actor = 0.2; }],
+    ["inferred", (m: ActionManifest) => { m.actions[0].inference = "inferred"; }],
+    ["proposed", (m: ActionManifest) => { m.actions[0].status = "proposed"; }],
+    ["implicit actor", (m: ActionManifest) => { m.actions[0].actor.certainty = "implicit"; }],
+    ["unknown temporal certainty", (m: ActionManifest) => { m.actions[0].temporal!.certainty = "unknown"; }],
+    ["optional modality", (m: ActionManifest) => { m.actions[0].modality = "optional"; }],
+    ["ambiguous kind", (m: ActionManifest) => { m.actions[0].kind = "prepare"; }],
+    ["no temporal", (m: ActionManifest) => { delete m.actions[0].temporal; }],
+  ] as const)("preserves the actual Swift confirmation inputs for %s (static contract evidence, not Swift execution)", (_name, mutate) => {
+    const input = original();
+    mutate(input);
+    expect(prepareMatoeManifest(input, source).manifest.actions).toEqual(input.actions);
   });
 });

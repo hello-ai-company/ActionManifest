@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { Command } from "commander";
 import { resolveAdapter } from "@actionmanifest/adapters";
-import { prepareMatoeManifest } from "@actionmanifest/consumer";
+import { MATOE_INPUT_LIMITS, prepareMatoeManifest } from "@actionmanifest/consumer";
 import {
   ActionManifestError,
   validateActionManifest,
@@ -19,6 +19,7 @@ import {
 import { exportIcs, exportJson, formatSummary, formatVerification } from "@actionmanifest/exporters";
 import { verificationPassed, verifyManifest } from "@actionmanifest/verifier";
 import { defaultFixtureRoot, formatBenchmark, runBenchmark } from "./benchmark.js";
+import { readMatoeInput } from "./matoe-input.js";
 import {
   defaultConformanceRoot,
   formatConformance,
@@ -104,18 +105,27 @@ program
   .argument("<manifest>", "unfiltered manifest JSON path")
   .requiredOption("--doc <file>", "exact canonical OCR text (UTF-8; no normalization)")
   .option("--out <file>", "write the complete compatibility bundle to a new file")
-  .action(async (manifestPath: string, opts: { doc: string; out?: string }) => {
+  .option("--json", "explicitly print the entire bundle, including original manifest and Evidence quotes")
+  .action(async (manifestPath: string, opts: { doc: string; out?: string; json?: boolean }) => {
     try {
-      const raw = JSON.parse(await readFile(resolve(manifestPath), "utf8"));
-      const text = await readFile(resolve(opts.doc), "utf8");
+      if (Boolean(opts.out) === Boolean(opts.json)) {
+        throw new ActionManifestError("MATOE_OUTPUT_REQUIRED", "Choose exactly one of --out or --json; the bundle contains original manifest data and Evidence quotes");
+      }
+      const raw = JSON.parse(await readMatoeInput(resolve(manifestPath), MATOE_INPUT_LIMITS.manifestBytes));
+      const text = await readMatoeInput(resolve(opts.doc), MATOE_INPUT_LIMITS.ocrBytes);
       const bundle = prepareMatoeManifest(raw, text);
       const json = JSON.stringify(bundle, null, 2) + "\n";
       // No verified-only filtering: receipts must describe exactly the supplied actions.
       // Never expose only the projected manifest and silently discard the audit.
-      if (opts.out) await writeFile(resolve(opts.out), json, { encoding: "utf8", flag: "wx" });
+      if (opts.out) await writeFile(resolve(opts.out), json, { encoding: "utf8", flag: "wx", mode: 0o600 });
       else process.stdout.write(json);
     } catch (e) {
-      fail(e);
+      // Diagnostics never echo input snippets, action IDs, versions, or paths.
+      // The explicitly selected bundle output still retains all input data.
+      if (e instanceof ActionManifestError && e.code.startsWith("MATOE_")) fail(e);
+      if (e instanceof ActionManifestError) fail(new ActionManifestError(e.code, "Input failed frozen schema validation; input details omitted"));
+      const code = e instanceof Error && "code" in e && typeof e.code === "string" ? e.code : "MATOE_INPUT_INVALID";
+      fail(new ActionManifestError(code, "Cannot prepare compatibility bundle; input details omitted"));
     }
   });
 

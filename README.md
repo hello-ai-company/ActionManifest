@@ -2,6 +2,10 @@
 
 **Turn documents into actions you can verify.**
 
+Local agents can use the bounded JSON CLI or typed facade for offline extraction
+and fresh verification: [agent usage and synthetic example](docs/AGENT-USAGE.md).
+This local addition grants no execution or approval authority.
+
 School notices, invoices, contracts, and government mail are full of things humans must actually *do* — submit a form, bring a lunch, pay a fee, show up on a rain date. Action Manifest extracts those Actions and keeps every one of them glued to source **Evidence**.
 
 ```

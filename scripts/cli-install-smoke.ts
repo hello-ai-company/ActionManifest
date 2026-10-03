@@ -14,7 +14,7 @@
  * (release artifact verification) so the install proof is never duplicated.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, statSync, writeFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -69,7 +69,7 @@ export function cliInstallSmoke(input: CliSmokeInput): void {
           type: "module",
           // Pin the package manager so the smoke is deterministic across
           // environments (corepack provisions exactly this pnpm).
-          packageManager: "pnpm@10.14.0",
+          packageManager: (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { packageManager: string }).packageManager,
           dependencies: { "@actionmanifest/cli": `file:${input.cliTarball}` },
         },
         null,
@@ -114,6 +114,31 @@ export function cliInstallSmoke(input: CliSmokeInput): void {
     if (help.status !== 0 || !help.stdout.includes("Usage: actionman")) {
       fail("--help did not print usage");
     }
+
+    // Additive public agent subpath must work in the installed artifact without
+    // triggering Commander, and the bin must accept the same JSON protocol.
+    writeFileSync(join(work, "agent-smoke.mjs"), `
+import { strictEqual } from 'node:assert';
+import { spawnSync } from 'node:child_process';
+process.argv.push('--agent-facade-must-not-parse');
+const { runAgentRequest } = await import('@actionmanifest/cli/agent');
+const request = { protocol_version: '1', operation: 'extract', source: {
+  id: 'synthetic-agent', text: '2026年10月15日までに参加票を提出してください。'
+} };
+const result = await runAgentRequest(request);
+strictEqual(result.ok, true);
+strictEqual(result.manifest.schema_version, '0.2.0');
+strictEqual(result.authority.execution_allowed, false);
+strictEqual(result.authority.human_approval_required, true);
+const cli = spawnSync(process.argv[2], ['agent', '--stdin-json'], {
+  input: JSON.stringify(request), encoding: 'utf8', env: { ...process.env,
+    ACTIONMAN_PROVIDER: 'openai', OPENAI_API_KEY: '', OPENAI_BASE_URL: 'http://127.0.0.1:1/must-not-call' }
+});
+strictEqual(cli.status, 0); strictEqual(cli.stderr, '');
+strictEqual(JSON.parse(cli.stdout).input_fingerprint, result.input_fingerprint);
+console.log('installed agent subpath + JSON bin PASS');
+`, "utf8");
+    run(process.execPath, [join(work, "agent-smoke.mjs"), bin], work);
 
     // Data on stdout must be pure JSON when --json is passed.
     writeFileSync(
@@ -177,7 +202,7 @@ export function cliInstallSmoke(input: CliSmokeInput): void {
     }
 
     console.log(
-      "  ✓ @actionmanifest/cli installed from tarball (offline, foreign cwd): bin shim, extract/validate/conformance/benchmark, exit codes, no Xberg — OK",
+      "  ✓ @actionmanifest/cli installed from tarball (offline, foreign cwd): agent public subpath + JSON, bin shim, extract/validate/conformance/benchmark, exit codes, no Xberg — OK",
     );
   } finally {
     rmSync(work, { recursive: true, force: true });

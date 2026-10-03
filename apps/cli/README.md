@@ -4,6 +4,10 @@
 from documents, validate manifests, run the benchmark, and check the
 official conformance suite.
 
+For local agents, `actionman agent --stdin-json` offers a typed, bounded offline
+extract/reverify protocol with full manifests, classification and fixed JSON
+errors. It cannot execute or approve Actions. See [agent usage](../../docs/AGENT-USAGE.md).
+
 For the explicit new Matoe server route, `actionman analyze-matoe --stdin-json`
 accepts only a bounded `sourceId`/`ocrText` JSON object on stdin and emits the full
 v0.2 manifest. It always uses the actual offline DeterministicProvider, never

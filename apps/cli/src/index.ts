@@ -21,6 +21,7 @@ import { verificationPassed, verifyManifest } from "@actionmanifest/verifier";
 import { defaultFixtureRoot, formatBenchmark, runBenchmark } from "./benchmark.js";
 import { readMatoeInput } from "./matoe-input.js";
 import { analyzeMatoeRequest, matoeAnalysisFailure, readMatoeStdin } from "./matoe-analysis.js";
+import { agentFailure, readAgentStdin, runAgentRequest } from "./agent.js";
 import {
   defaultConformanceRoot,
   formatConformance,
@@ -255,5 +256,23 @@ function fail(e: unknown): never {
   }
   process.exit(1);
 }
+
+program
+  .command("agent")
+  .description("bounded offline JSON protocol: extract or reverify proposals, never execute")
+  .option("--stdin-json", "read one protocol v1 JSON request")
+  .allowUnknownOption(true)
+  .argument("[unsupported...]", "unsupported arguments are rejected as JSON")
+  .action(async (unsupported: string[], opts: { stdinJson?: boolean }, command: Command) => {
+    try {
+      if (!opts.stdinJson || unsupported.length || command.args.length) throw new ActionManifestError("AGENT_REQUEST_INVALID", "Invalid agent arguments");
+      const result = await runAgentRequest(await readAgentStdin(process.stdin));
+      process.stdout.write(JSON.stringify(result) + "\n");
+      if (result.classification.manifestFatal || result.classification.counts.blocked > 0) process.exitCode = 2;
+    } catch (error) {
+      process.stdout.write(JSON.stringify(agentFailure(error)) + "\n");
+      process.exitCode = 1;
+    }
+  });
 
 program.parseAsync(process.argv);

@@ -9,6 +9,16 @@ const source = fixture("source.txt");
 const original = (): ActionManifest => JSON.parse(fixture("verified-v02.json"));
 
 describe("explicit Matoe compatibility contract", () => {
+  it.each(["title", "provider", "quote"])("refuses malformed Unicode in %s before Swift projection", field => {
+    const input = original();
+    if (field === "title") input.actions[0].title = "\ud800";
+    if (field === "provider") input.receipt!.extraction.provider = "\udfff";
+    if (field === "quote") input.actions[0].evidence[0]!.text += "\ud800";
+    expect(() => prepareMatoeManifest(input, source)).toThrow(/well-formed Unicode/);
+  });
+  it("refuses malformed Unicode canonical OCR", () => {
+    expect(() => prepareMatoeManifest(original(), source + "\ud800")).toThrow(/well-formed Unicode/);
+  });
   it.each(["guardian", "timezone", "conditions", "notes", "warning", "multiple-evidence"])(
     "keeps the schema-valid %s design handoff outside the current safe Swift profile", name => {
       const input = JSON.parse(fixture(`design-handoff/${name}.json`));

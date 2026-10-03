@@ -77,11 +77,21 @@ function clean(flags: Pick<VerificationFlags, typeof checks[number] | "negation_
  * Input/output schema validation is separate from this conservative ingress policy.
  */
 export function prepareMatoeManifest(input: unknown, canonicalSourceText: string): MatoeCompatibilityBundle {
+  const malformedUnicode = (text: string) => /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(text);
+  if (typeof canonicalSourceText !== "string" || malformedUnicode(canonicalSourceText)) {
+    refuse("Canonical OCR must contain well-formed Unicode");
+  }
   if (Buffer.byteLength(canonicalSourceText, "utf8") > MATOE_INPUT_LIMITS.ocrBytes
     || Array.from(canonicalSourceText).length > MATOE_INPUT_LIMITS.ocrScalars) refuse("Canonical OCR size limit exceeded");
   assertInputBudget(input);
   // Validate before copying: unknown versions/keys and explicit nulls fail closed.
   const originalManifest = structuredClone(validateActionManifest(input));
+  const values: unknown[] = [originalManifest];
+  while (values.length) {
+    const value = values.pop();
+    if (typeof value === "string" && malformedUnicode(value)) refuse("Manifest must contain well-formed Unicode");
+    else if (value && typeof value === "object") values.push(...Object.values(value));
+  }
   const manifest = structuredClone(originalManifest);
   const changes: string[] = [];
   const warnings: string[] = [];

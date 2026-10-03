@@ -1,7 +1,7 @@
 # Matoeとの明示的な接続
 
 既定のextractor、schema、JSON exporterは引き続き0.2.0です。Matoe（Otayori）の
-Swift bridgeは0.1.0だけを受け入れ、未知フィールドも拒否します。
+調査基点のSwift bridgeは0.1.0だけを受け入れ、未知フィールドも拒否します。
 `prepareMatoeManifest` / `actionman prepare-matoe`は、この境界専用の**明示変換**です。
 支払い・返信を実行するものではありません。
 
@@ -50,6 +50,7 @@ profileは`matoe-v0.1-clean/1`。JSON schema検証を先に行い、次に追加
 - 時間情報はなし、またはexact/day/dateのみ。整合するyear/month/day、同日のend、until/on_day、certaintyはそのまま保持可能。timezoneは明示されていれば拒否する。Swiftは端末の現在のタイムゾーンで日付を変換し、wireのtimezoneを使わないため。datetime、範囲、条件、代替日、曖昧日、必着/消印等も初期profileでは拒否。対応拡張には別途Swiftでの表示・確認動作テストが必要。
 - receipt日時はSwiftの実際の厳密パーサーに合わせ、uppercase T/Zと秒00..59を要求する。JSON schemaだけが許容するlowercaseや空白区切り、うるう秒等は拒否する。
 - CLI入力はmanifest 1 MiB、OCR 240,000 UTF-8 bytes / 60,000 Unicode scalarsまで。APIにも入力予算とネスト深さ24の制限がある。未知フィールドをサイズ制限の対象外にしない。CLIはサイズ制限内の通常ファイルと有効なUTF-8のみ読み込む。
+- OCRとmanifest内の不正なUnicode surrogateは拒否する。Swiftが復元できない文字列をhashの一致だけで受け入れない。
 
 出力は`{ manifest, audit }`のbundleです。auditには入力の完全なコピーと変更箇所があります。
 wireから外した0.2の検証詳細を捨てません。rootとextractionのschema_versionはwire用に0.1へ変更し、

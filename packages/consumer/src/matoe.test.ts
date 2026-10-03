@@ -16,6 +16,13 @@ describe("explicit Matoe compatibility contract", () => {
       expect(() => prepareMatoeManifest(input, fixture("design-handoff/source.txt"))).toThrow(/Matoe|Swift|clean verification/);
     },
   );
+  it.each(["rain-alternative", "approximate-date"])(
+    "preserves rich temporal %s as a valid contract but refuses the current Swift projection", name => {
+      const input = JSON.parse(fixture(`design-handoff/${name}.json`));
+      expect(validateActionManifest(input).schema_version).toBe("0.1.0");
+      expect(() => prepareMatoeManifest(input, fixture("design-handoff/temporal-source.txt"))).toThrow(/temporal form/);
+    },
+  );
   it("matches the frozen golden wire, retains complete provenance, and preserves trust", () => {
     const input = original();
     const before = structuredClone(input);

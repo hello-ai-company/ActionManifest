@@ -5,6 +5,11 @@ Swift bridgeは0.1.0だけを受け入れ、未知フィールドも拒否しま
 `prepareMatoeManifest` / `actionman prepare-matoe`は、この境界専用の**明示変換**です。
 支払い・返信を実行するものではありません。
 
+Matoeは主要な接続先ですが、その表示制約は汎用schema/extractor/verifierや
+`classifyManifest`には適用しません。他consumerは0.2の完全なmanifestを使えます。
+[OSS共通部分と製品の境界](OTAYORI-BOUNDARY.md#matoe-first-integration-reusable-oss-contract)、
+[学校通知で止まる具体例と表示契約](MATOE-DESIGN-HANDOFF.md)を参照してください。
+
 ## 確認した契約
 
 ActionManifestの比較基点は`18c159c0bbb238b410c003cc8e60e7a8e013309f`。

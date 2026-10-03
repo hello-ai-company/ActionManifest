@@ -262,6 +262,13 @@ Honest boundaries of the current `0.x` line:
 
 This repository owns Manifest, Extractor, Verifier, Evidence, Temporal, Benchmark, CLI, Exporter, Document adapters. Product UX, family inbox, child profiles, notifications, and billing belong in Otayori — see [docs/OTAYORI-BOUNDARY.md](docs/OTAYORI-BOUNDARY.md).
 
+Matoe is a primary integration target, while the default 0.2 contract and public
+library pipeline remain reusable by any consumer. Its explicit
+[`prepareMatoeManifest` / CLI projection](docs/MATOE-COMPATIBILITY.md) lives at
+the consumer boundary; Swift display restrictions do not alter generic
+extraction, verification or classification. See the
+[remaining Matoe display/review work](docs/MATOE-DESIGN-HANDOFF.md).
+
 ## License
 
 Apache License 2.0 — patent grant for a library other products will embed. See [LICENSE](LICENSE).

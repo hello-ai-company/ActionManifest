@@ -205,6 +205,12 @@ for (const { action, disposition, reasons } of report.actions) {
 A **manifest-level fatal** (`source_hash_matched: false`, or `EMPTY_SOURCE`)
 blocks **every** Action, including ones whose per-Action checks passed.
 
+Generic classification does not apply Matoe's current Swift display restrictions.
+The optional `prepareMatoeManifest(input, canonicalSourceText)` projection is
+called separately and may refuse information that the generic manifest retains.
+See [shared/product boundaries](OTAYORI-BOUNDARY.md#matoe-first-integration-reusable-oss-contract).
+`ready` expresses receipt trust, not product display completeness or user approval.
+
 ## 7. Export policy
 
 **Export is consumption.** Exporters and the reference consumer share ONE

@@ -9,6 +9,13 @@ const source = fixture("source.txt");
 const original = (): ActionManifest => JSON.parse(fixture("verified-v02.json"));
 
 describe("explicit Matoe compatibility contract", () => {
+  it.each(["guardian", "timezone", "conditions", "notes", "warning", "multiple-evidence"])(
+    "keeps the schema-valid %s design handoff outside the current safe Swift profile", name => {
+      const input = JSON.parse(fixture(`design-handoff/${name}.json`));
+      expect(validateActionManifest(input).schema_version).toBe("0.1.0");
+      expect(() => prepareMatoeManifest(input, fixture("design-handoff/source.txt"))).toThrow(/Matoe|Swift|clean verification/);
+    },
+  );
   it("matches the frozen golden wire, retains complete provenance, and preserves trust", () => {
     const input = original();
     const before = structuredClone(input);
@@ -126,10 +133,18 @@ describe("explicit Matoe compatibility contract", () => {
     ["leap second receipt date-time", m => { m.receipt!.extraction.created_at = "2026-06-30T23:59:60Z"; }, /strict date-time/],
     ["space separator in verification time", m => { m.receipt!.verification!.checked_at = "2026-10-02 00:00:00Z"; }, /strict date-time/],
     ["giant field", m => { m.source.title = "a".repeat(1_048_577); }, /size limit/],
-    ["multiple quotes hidden by Swift", m => { m.actions[0].evidence.push(structuredClone(m.actions[0].evidence[0])); }, /first Evidence/],
+    ["multiple quotes hidden by Swift", m => { m.actions[0].evidence.push({ ...structuredClone(m.actions[0].evidence[0]), page: 2 }); }, /first Evidence/],
     ["actor text hidden by Swift", m => { m.actions[0].actor.text = "別の担当者"; }, /actor identity/],
     ["actor role hidden by Swift", m => { m.actions[0].actor.role = "guardian"; }, /actor identity/],
   ];
+
+  it("accepts only fully redundant Evidence duplicates and keeps every copy in wire/audit", () => {
+    const input = original();
+    input.actions[0].evidence.push(structuredClone(input.actions[0].evidence[0]));
+    const bundle = prepareMatoeManifest(input, source);
+    expect(bundle.manifest.actions).toEqual(input.actions);
+    expect(bundle.audit.originalManifest).toEqual(input);
+  });
   it.each(negative)("refuses %s with a reason and leaves input untouched", (_name, mutate, reason) => {
     const input = original();
     mutate(input);

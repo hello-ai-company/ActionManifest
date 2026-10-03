@@ -1,11 +1,13 @@
 import {
   ActionManifestError,
+  createSourceQuoteMatcher,
   sha256Hex,
   sourceContainsQuote,
   validateActionManifest,
   type ActionManifest,
   type VerificationFlags,
 } from "@actionmanifest/core";
+import { isDeepStrictEqual } from "node:util";
 
 /** This bundle is an explicit compatibility projection, never an execution. */
 export interface MatoeCompatibilityBundle {
@@ -100,6 +102,7 @@ export function prepareMatoeManifest(input: unknown, canonicalSourceText: string
   if (!swiftDateTime(extraction.created_at)) refuse("Extraction timestamp is outside Swift's strict date-time contract");
   const ids = new Set(manifest.actions.map(action => action.id));
   if (ids.size !== manifest.actions.length) refuse("Duplicate action IDs");
+  const matchesSource = createSourceQuoteMatcher(canonicalSourceText);
   for (const action of manifest.actions) {
     if (!["proposed", "verified"].includes(action.status)) {
       refuse("Action status cannot enter Matoe; approval/lifecycle states are never reset");
@@ -109,9 +112,11 @@ export function prepareMatoeManifest(input: unknown, canonicalSourceText: string
       refuse("Action conditions/notes are not displayed or used for review by the current Swift bridge");
     }
     const visibleEvidence = action.evidence[0];
-    if (action.evidence.length !== 1 || !visibleEvidence) refuse("Swift displays only the first Evidence quote; multiple quotes require another profile");
+    if (!visibleEvidence || action.evidence.some(evidence => !isDeepStrictEqual(evidence, visibleEvidence))) {
+      refuse("Swift displays only the first Evidence quote; distinct quotes/locators require another profile");
+    }
     for (const evidence of action.evidence) {
-      if (evidence.source_id !== manifest.source.id || !sourceContainsQuote(canonicalSourceText, evidence.text)) {
+      if (evidence.source_id !== manifest.source.id || !matchesSource(evidence.text)) {
         refuse("Action evidence does not resolve to the canonical source");
       }
     }

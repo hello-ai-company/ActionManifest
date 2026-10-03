@@ -31,7 +31,7 @@ profileは`matoe-v0.1-clean/1`。JSON schema検証を先に行い、次に追加
 
 - source.hashが必須。Matoeから受け取った**そのままのOCR文字列**のUTF-8 SHA-256と一致すること。trim・改行変換・Unicode正規化はしない。
 - extraction receiptが必須。receiptのschema_versionは入力versionと一致し、provider/model/extractor_versionが空白や`unknown`でないこと。これらの識別子は自己申告の来歴であり、暗号学的な発行者証明にはならない。
-- アクションIDは一意。Evidenceは同一source IDに属し、実本文に引用があること（Coreの引用照合を使用）。Swiftは最初の引用しか表示しないため、初期profileは各アクションのEvidenceを1件に限定する。actor.textがある場合、その文言が表示される引用にも含まれること。表示されないactor.roleは拒否する。
+- アクションIDは一意。Evidenceは同一source IDに属し、実本文に引用があること（Coreの引用照合を使用）。Swiftは最初の引用しか表示しないため、異なる引用・ページ・bbox・section・source_referenceを持つ複数Evidenceは拒否する。全フィールドが完全に等しい重複だけは情報損失がないため受け入れ、wire/audit双方に全コピーを保持する。actor.textがある場合、その文言が表示される引用にも含まれること。表示されないactor.roleは拒否する。
 - 状態はproposed/verifiedのみ。accepted/exported/rejectedをproposedへ戻さない。
 - 未検証なら全アクションがproposedであること。検証を捏造せず、audit.warningsに要確認を明記。Matoe既存bridgeも検証欠落を警告し確認を要求する。
 - 検証済みなら全体・個別の全チェックが成功し、errorまたはseverity未指定のissueがないこと。0.2には全アクションの一意な結果と整合する集計値が必要。混在・失敗・不足・矛盾は拒否し、全体成功に丸めない。

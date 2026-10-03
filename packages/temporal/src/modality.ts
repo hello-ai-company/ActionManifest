@@ -1,5 +1,5 @@
 import type { Actor, ActorCertainty, Modality } from "@actionmanifest/core";
-import { isNegation } from "./parse.js";
+import { isCorrectionContext, isNegation } from "./parse.js";
 
 export interface ModalityHit {
   modality: Modality;
@@ -20,6 +20,8 @@ const CONDITION_CUES: Array<{ re: RegExp; label: string }> = [
   { re: /participants only/i, label: "participants only" },
   { re: /already submitted/i, label: "already submitted — no resubmit" },
 ];
+
+const ENGLISH_PLANNED_EVENT = /^\s*(?:the\s+)?(?:field trip|health checkups?)\b(?:\s+on\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?)?\s+(?:is|are|has been|have been|was|were)\s+(?:planned|scheduled|rescheduled)\b/i;
 
 export function detectModality(text: string): ModalityHit {
   const cues: string[] = [];
@@ -96,6 +98,12 @@ export function detectKind(text: string): string {
   if (/確認してください|ご確認|review the|please review/i.test(text)) return "review";
   if (/お読み|一読|read /i.test(text)) return "read";
   if (/出席|please attend|参加してください/.test(text)) return "attend";
+  // Explicit English event subjects + planning verbs, not arbitrary mentions
+  // in reports or hypothetical/negated clauses. Past scheduling needs a correction.
+  if (ENGLISH_PLANNED_EVENT.test(text) && !/\b(?:not|never|if|unless|might|could)\b|n't\b/i.test(text)
+    && (!/\b(?:was|were)\s+(?:planned|scheduled)\b/i.test(text) || isCorrectionContext(text))) {
+    return "event";
+  }
   if (
     /実施|開催|遠足|行事|運動会|健康診断|発表会|保護者会|説明会|イベント|office move|open house|inspection|will (?:be )?held|takes place/i.test(
       text,

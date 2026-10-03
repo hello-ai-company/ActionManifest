@@ -30,13 +30,21 @@ export function normalizeForMatch(text: string): string {
   return text.replace(/\s+/g, "").replace(/[「」『』""']/g, "");
 }
 
+/** Request-local matcher: shares normalization, never caches trust or hashes. */
+export function createSourceQuoteMatcher(source: string): (quote: string) => boolean {
+  const nSource = normalizeForMatch(source);
+  return quote => {
+    if (!quote.trim()) return false;
+    const nQuote = normalizeForMatch(quote);
+    if (nQuote.length === 0) return false;
+    if (nSource.includes(nQuote)) return true;
+    // Same punctuation-tail rule as the single-quote API.
+    const trimmed = nQuote.replace(/[。．.、,，!！?？]$/u, "");
+    return trimmed.length >= 8 && nSource.includes(trimmed);
+  };
+}
+
 export function sourceContainsQuote(source: string, quote: string): boolean {
   if (!quote.trim()) return false;
-  const nSource = normalizeForMatch(source);
-  const nQuote = normalizeForMatch(quote);
-  if (nQuote.length === 0) return false;
-  if (nSource.includes(nQuote)) return true;
-  // Allow a slightly trimmed quote (punctuation-only tails).
-  const trimmed = nQuote.replace(/[。．.、,，!！?？]$/u, "");
-  return trimmed.length >= 8 && nSource.includes(trimmed);
+  return createSourceQuoteMatcher(source)(quote);
 }

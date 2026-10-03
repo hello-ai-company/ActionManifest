@@ -40,6 +40,8 @@ function extractObject(text: string): string | undefined {
 }
 
 function eventTitle(text: string): string {
+  const englishSubject = text.match(/^\s*(?:the\s+)?(field trip|health checkups?)\b/i);
+  if (englishSubject) return englishSubject[1]!; // dates/corrections belong in Temporal + Evidence
   const m =
     text.match(/([一-龯ぁ-んァ-ンA-Za-z]{2,12}(?:遠足|行事|説明会|総会|集会|保護者会|運動会|健康診断|発表会|校外学習|式))/) ??
     text.match(/開催する([^\s。]+)/);
@@ -172,6 +174,10 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
   const source = doc.text ?? "";
   const ctx = extractYearContext(source);
   const sentences = splitSentences(source);
+  // A located section can only come from a chunk. Without any sections the
+  // heading check cannot succeed; avoid scanning the entire page per sentence.
+  const hasSections = [...(doc.chunks ?? []), ...(doc.pages ?? []).flatMap(page => page.chunks ?? [])]
+    .some(chunk => Boolean(chunk.section));
   const actions: Action[] = [];
   const cancellationSentences: string[] = [];
 
@@ -211,7 +217,7 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
     // its located chunk's section equals the sentence itself — is document
     // structure, not an Action. Plain-text documents carry no sections, so
     // this never fires for the reference plain-text flow.
-    const headingAt = locateEvidence(doc, sentence);
+    const headingAt = hasSections ? locateEvidence(doc, sentence) : undefined;
     if (headingAt?.section != null && normalizeForMatch(headingAt.section) === normalizeForMatch(sentence)) {
       continue;
     }

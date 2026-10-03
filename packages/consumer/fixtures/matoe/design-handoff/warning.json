@@ -1,0 +1,64 @@
+{
+  "schema_version": "0.1.0",
+  "source": {
+    "id": "matoe-design-handoff",
+    "hash": "812dd7d2557e9d54cae893251b16363e47c9efe4d7058013946650cffb727094",
+    "title": "参加票のお知らせ"
+  },
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "参加票を提出する",
+      "modality": "required",
+      "actor": {
+        "certainty": "explicit",
+        "text": "保護者"
+      },
+      "temporal": {
+        "type": "exact",
+        "precision": "day",
+        "date": "2026-10-15",
+        "raw_text": "2026年10月15日まで"
+      },
+      "evidence": [
+        {
+          "source_id": "matoe-design-handoff",
+          "text": "保護者は2026年10月15日までに参加票を提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "confidence": {
+        "action": 0.95
+      }
+    }
+  ],
+  "receipt": {
+    "extraction": {
+      "provider": "fixture",
+      "model": "design-handoff-fixture",
+      "extractor_version": "design-handoff-1",
+      "schema_version": "0.1.0",
+      "created_at": "2026-10-02T00:00:00Z"
+    },
+    "verification": {
+      "evidence_supported": false,
+      "temporal_supported": false,
+      "actor_supported": false,
+      "modality_supported": false,
+      "negation_conflict": false,
+      "page_refs_valid": false,
+      "source_hash_matched": true,
+      "checked_at": "2026-10-02T00:00:00Z",
+      "issues": [
+        {
+          "code": "REVIEW_REQUIRED",
+          "message": "確認が必要です。",
+          "action_id": "act_001",
+          "severity": "warning"
+        }
+      ]
+    }
+  }
+}

@@ -4,6 +4,12 @@
 from documents, validate manifests, run the benchmark, and check the
 official conformance suite.
 
+For the explicit new Matoe server route, `actionman analyze-matoe --stdin-json`
+accepts only a bounded `sourceId`/`ocrText` JSON object on stdin and emits the full
+v0.2 manifest. It always uses the actual offline DeterministicProvider, never
+an environment-selected external AI. See
+[the wire/error/blocked-action contract](../../docs/MATOE-SERVER-V02.md).
+
 > **Release status:** release-candidate preparation — not yet published to
 > npm. First release: `0.9.0-rc.1`. The commands below are verified on every
 > PR by installing the packed tarball into a fresh project.

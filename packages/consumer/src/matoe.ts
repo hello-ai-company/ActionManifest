@@ -31,7 +31,7 @@ export const MATOE_INPUT_LIMITS = Object.freeze({
   nestingDepth: 24,
 });
 
-function assertInputBudget(input: unknown): void {
+export function assertInputBudget(input: unknown): void {
   let remaining = MATOE_INPUT_LIMITS.manifestBytes;
   const stack = [{ value: input, depth: 0 }];
   while (stack.length) {
@@ -53,7 +53,7 @@ function assertInputBudget(input: unknown): void {
 
 // AJV accepts lowercase separators and leap seconds; the actual Swift parser
 // requires uppercase T/Z and seconds 00..59. Never emit a receipt it rejects.
-function swiftDateTime(value: string): boolean {
+export function swiftDateTime(value: string): boolean {
   return !value.startsWith("0000") && /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(value);
 }
 

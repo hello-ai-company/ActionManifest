@@ -66,3 +66,10 @@ budgets and display restrictions do not apply to the general extractor/verifier
 or `classifyManifest`. A projection failure leaves the full original available
 to other consumers; never remove unsupported fields to make it pass. See the
 [shared/product boundary](../../docs/OTAYORI-BOUNDARY.md) for both public paths.
+
+For the separately implemented new Swift v0.2 route,
+`prepareMatoeV02Manifest(input, canonicalSourceText, expectedSourceId)` checks a
+complete, consistent full-fidelity receipt without dropping any field or failed
+Action. Failed Actions remain blocked. It is incompatible with the old 0.1
+bridge; do not silently select it. See the
+[explicit offline server contract](../../docs/MATOE-SERVER-V02.md).

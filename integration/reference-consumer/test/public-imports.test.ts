@@ -67,6 +67,7 @@ describe("public package entry points", () => {
     expect(typeof exporters.evaluateExportTrust).toBe("function");
     expect(typeof consumer.classifyManifest).toBe("function");
     expect(typeof consumer.readyActions).toBe("function");
+    expect(typeof consumer.prepareMatoeV02Manifest).toBe("function");
 
     // Xberg adapter: public entry point only (pure mapper + adapter class)
     expect(typeof xberg.XbergAdapter).toBe("function");

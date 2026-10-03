@@ -20,6 +20,7 @@ import { exportIcs, exportJson, formatSummary, formatVerification } from "@actio
 import { verificationPassed, verifyManifest } from "@actionmanifest/verifier";
 import { defaultFixtureRoot, formatBenchmark, runBenchmark } from "./benchmark.js";
 import { readMatoeInput } from "./matoe-input.js";
+import { analyzeMatoeRequest, matoeAnalysisFailure, readMatoeStdin } from "./matoe-analysis.js";
 import {
   defaultConformanceRoot,
   formatConformance,
@@ -96,6 +97,21 @@ program
       }
     } catch (e) {
       fail(e);
+    }
+  });
+
+program
+  .command("analyze-matoe")
+  .description("offline deterministic analysis for the explicit new Matoe v0.2 server route")
+  .option("--stdin-json", "read the bounded sourceId/ocrText request and emit the complete v0.2 manifest")
+  .action(async (opts: { stdinJson?: boolean }) => {
+    try {
+      if (!opts.stdinJson) throw new ActionManifestError("MATOE_REQUEST_INVALID", "Explicit stdin JSON input is required");
+      const manifest = await analyzeMatoeRequest(await readMatoeStdin(process.stdin));
+      process.stdout.write(JSON.stringify(manifest) + "\n");
+    } catch (error) {
+      process.stderr.write(JSON.stringify(matoeAnalysisFailure(error)) + "\n");
+      process.exitCode = 1;
     }
   });
 

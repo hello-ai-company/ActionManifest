@@ -14,12 +14,14 @@ v0.2 manifest. It always uses the actual offline DeterministicProvider, never
 an environment-selected external AI. See
 [the wire/error/blocked-action contract](../../docs/MATOE-SERVER-V02.md).
 
-> **Release status:** release-candidate preparation — not yet published to
-> npm. First release: `0.9.0-rc.1`. The commands below are verified on every
-> PR by installing the packed tarball into a fresh project.
+> **Version boundary:** existing npm `0.9.0-rc.0` and this unpublished branch
+> build are different artifacts. New agent/Matoe entry points are branch additions;
+> installing published rc.0 does not provide them. Local packages still carry
+> rc.0 labels, so identify this build by commit and tarball SHA-256. No new npm
+> version is published here. See [local tarball adoption](../../docs/LOCAL-CONSUMER.md).
 
 ```bash
-npm install -g @actionmanifest/cli     # once published
+npm install -g @actionmanifest/cli@0.9.0-rc.0  # existing release; excludes branch additions
 actionman --help
 actionman conformance                  # run the official conformance suite
 

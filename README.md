@@ -167,13 +167,13 @@ built packages. The snippets below are **executable**: they live in
 
 ```ts
 import { PlainTextAdapter } from "@actionmanifest/adapters";
-import { extractActions } from "@actionmanifest/extractor";
+import { DeterministicProvider, extractActions } from "@actionmanifest/extractor";
 import { verifyManifest } from "@actionmanifest/verifier";
 import { classifyManifest } from "@actionmanifest/consumer";
 import { exportIcs, exportJson } from "@actionmanifest/exporters";
 
 const doc = await new PlainTextAdapter().toCanonical({ kind: "text", id: "notice-1", text });
-const candidate = await extractActions(doc);                    // deterministic by default
+const candidate = await extractActions(doc, { provider: new DeterministicProvider(doc) });
 const { manifest } = verifyManifest(candidate, doc);            // per-Action verification
 const report = classifyManifest(manifest);                      // ready / review_required / blocked
 const ics = exportIcs(manifest);                                // trust-qualified only; throws on manifest-level fatal

@@ -57,6 +57,9 @@ Set repo to the absolute reviewed checkout path and create a new directory.
 This follows the same local tarball selection as the existing consumer proof;
 the optional native adapter is excluded. npm's cache must already contain the
 third-party runtime dependencies for --offline. No global install is needed.
+The shell example uses Bash brace expansion. The guide/examples stay in the
+reviewed source checkout; the npm tarballs ship runtime/types/legal/CLI assets,
+not the entire documentation repository.
 
 ```sh
 repo=/absolute/path/to/ActionManifest
@@ -113,6 +116,10 @@ package license files); do not label all dependencies Apache-2.0. Source maps in
 dist and intended schema/benchmark/conformance assets are included; source tests,
 private documents, secrets and native Xberg installation are outside the ordinary
 consumer proof. Local probes do not certify non-local platforms or live services.
+SBOM entries for optional native binaries not installed on the current OS can
+have unresolved license metadata; check those platform distributions separately
+before including them in a release/legal attestation. Ordinary consumer adoption
+above excludes the native adapter.
 
 ## Limited work before a real release
 

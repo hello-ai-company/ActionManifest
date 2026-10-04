@@ -1,0 +1,77 @@
+{
+  "commit": "6640eb13c2a5d53f1068cf3a3bd9d7a3d8c27d9b",
+  "dirty": false,
+  "axes": {
+    "package_version": "0.9.0-rc.0",
+    "schema_versions": [
+      "0.1.0",
+      "0.2.0"
+    ],
+    "conformance_suite_version": "0.2.0",
+    "note": "package version \u2260 schema version \u2260 suite version (docs/COMPATIBILITY.md)"
+  },
+  "packages": [
+    {
+      "name": "@actionmanifest/adapter-xberg",
+      "sha256": "10e35fa12458a9af40faa8b59e63e93b0e6109c9c0e392e948da720f3c67a085",
+      "bytes": 14379,
+      "legal_and_assets": "PASS"
+    },
+    {
+      "name": "@actionmanifest/adapters",
+      "sha256": "4f2263dab66466b01c8dd4efd4868dbb427e7eba715cced4c5abf27a63dee27a",
+      "bytes": 17605,
+      "legal_and_assets": "PASS"
+    },
+    {
+      "name": "@actionmanifest/cli",
+      "sha256": "a915215fb0ef5505498243b014c66f098dc0297d713a6c8fef8c99882d836ea8",
+      "bytes": 80092,
+      "legal_and_assets": "PASS"
+    },
+    {
+      "name": "@actionmanifest/consumer",
+      "sha256": "696d78e84cf687085bd3c647cd3986f6ea934dffb2a8f7d184449234b36661c4",
+      "bytes": 17089,
+      "legal_and_assets": "PASS"
+    },
+    {
+      "name": "@actionmanifest/core",
+      "sha256": "489ac4538bb57e4634afba0371e418e0baaf3b2453e3a42735ffba739d220111",
+      "bytes": 20549,
+      "legal_and_assets": "PASS"
+    },
+    {
+      "name": "@actionmanifest/exporters",
+      "sha256": "42b93ce1bbfd195f0245096c483045bdfaeaa8f194d4ad4511882b1c8f973dcc",
+      "bytes": 16856,
+      "legal_and_assets": "PASS"
+    },
+    {
+      "name": "@actionmanifest/extractor",
+      "sha256": "78a4a9b51a36e593e5e3c256f73b8219b99a94a8469f93491bb9c7f1e1523e2d",
+      "bytes": 22626,
+      "legal_and_assets": "PASS"
+    },
+    {
+      "name": "@actionmanifest/schema",
+      "sha256": "8241f8d4dbcdce2b191e7609848efd66b1495a63854023a37df3b3d4f469994a",
+      "bytes": 13439,
+      "legal_and_assets": "PASS"
+    },
+    {
+      "name": "@actionmanifest/temporal",
+      "sha256": "970d0659308332e2fac1ded853dbf67fcf6f49af0244ebd3db0084625ad2d506",
+      "bytes": 16334,
+      "legal_and_assets": "PASS"
+    },
+    {
+      "name": "@actionmanifest/verifier",
+      "sha256": "be219537318f826dfffd940208535ce01f98cb3e99730d8ea1b9e6829c1cc076",
+      "bytes": 12195,
+      "legal_and_assets": "PASS"
+    }
+  ],
+  "reproducibility": "10 packages x 2 runs byte-identical",
+  "sbom": "CycloneDX 1.5 validation PASS, 14 external components"
+}

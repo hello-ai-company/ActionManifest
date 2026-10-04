@@ -56,3 +56,40 @@ Before any real release, separately authorize the follow-up review/push/merge an
 an unused lockstep version, then use the existing exact-SHA FULL release gate,
 canonical artifact and staged OIDC/human-2FA workflow plus registry verification.
 No release-readiness or physical-device/live-service success is claimed here.
+
+## Completed candidate proof
+
+Exact artifact source: clean local commit
+`6640eb13c2a5d53f1068cf3a3bd9d7a3d8c27d9b` (git.dirty=false).
+release:dry-run PASS: 10 retained tarballs, SHA256SUMS, release-manifest.json,
+CycloneDX 1.5 SBOM validated offline (14 external components).
+release:reproducibility --runs 2 PASS: 10 packages x 2 runs byte-identical.
+All 10 tarball checksums match; LICENSE/NOTICE are byte-identical to repository
+roots, package versions lockstep rc.0, no source/test/env payload leakage, public
+CLI agent export and dist are present. Candidate hashes: artifact-validation.json.
+CLI SHA-256: `a915215fb0ef5505498243b014c66f098dc0297d713a6c8fef8c99882d836ea8`.
+
+Manual adoption also PASS: a separate fresh npm consumer installed 9 local exact
+tarballs with --offline (native adapter excluded), after preparing a disposable
+third-party cache with ordinary public-registry package metadata/bytes. No global
+install, credentials, install scripts, audit, registry writes or paid APIs.
+Copied JavaScript-compatible maintained quick start ran directly as .mjs:
+2 ready Actions, 394-byte ICS. Real CLI wrote schema 0.2 JSON and ICS primary
+2026-10-15 while withholding conditional 2026-10-22; JSON/source validate PASS;
+conformance 65/65; public agent entry PASS, execution_allowed=false. Both SDK
+examples additionally passed installed tarballs in the shared pnpm proof, including
+the mixed unsupported deadline refusal. This new local consumer ran Node 24.19.0;
+the earlier d50220f remote PR proof covered Node20 and Linux Node22 Xberg. No
+remote CI was triggered for this unpushed documentation/install-proof follow-up.
+
+Required ordinary dependencies have license metadata (MIT / BSD-3-Clause);
+ActionManifest packages are Apache-2.0. Five optional non-installed native Xberg
+platform binary entries have unresolved license metadata in the existing SBOM
+generator. Those platforms were not fetched or executed, and need separate legal
+review if included in release attestations. This does not affect the nine-package
+ordinary-consumer proof; it limits any all-platform release-readiness claim.
+
+This final evidence/docs-only receipt is later than the pinned candidate source;
+it does not replace the retained artifact commit or hashes. Review/push/merge,
+unused lockstep version selection and FULL staged-release work remain separate
+authorized steps. No frozen/common contract changes, publication or push occurred.

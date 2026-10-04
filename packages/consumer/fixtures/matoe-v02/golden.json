@@ -1,0 +1,216 @@
+{
+  "schema_version": "0.2.0",
+  "source": {
+    "id": "11111111-1111-4111-8111-111111111111",
+    "hash": "aad85edebe16aa196e6e2fa0ba649f5700d71ae546c956f3a8f11233b1407f86"
+  },
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "保護者は2026年10月15日までに参加票を提出する",
+      "object": "保護者は2026年10月15日までに参加票",
+      "modality": "required",
+      "actor": {
+        "certainty": "explicit",
+        "text": "保護者",
+        "role": "guardian"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-15",
+        "month": 10,
+        "day": 15,
+        "year": 2026,
+        "precision": "day",
+        "deadline_qualifier": "until",
+        "end": "2026-10-15",
+        "certainty": "high",
+        "raw_text": "10月15日までに"
+      },
+      "evidence": [
+        {
+          "source_id": "11111111-1111-4111-8111-111111111111",
+          "text": "保護者は2026年10月15日までに参加票に署名して提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    },
+    {
+      "id": "act_002",
+      "kind": "reply",
+      "title": "希望者のみ2026年10月18日までに返信してください",
+      "modality": "required",
+      "actor": {
+        "certainty": "explicit",
+        "text": "希望者",
+        "role": "applicant"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-18",
+        "month": 10,
+        "day": 18,
+        "year": 2026,
+        "precision": "day",
+        "deadline_qualifier": "until",
+        "end": "2026-10-18",
+        "certainty": "high",
+        "raw_text": "10月18日までに"
+      },
+      "evidence": [
+        {
+          "source_id": "11111111-1111-4111-8111-111111111111",
+          "text": "希望者のみ2026年10月18日までに返信してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified",
+      "conditions": [
+        "希望者のみ",
+        "参加希望者に限り必須"
+      ]
+    },
+    {
+      "id": "act_003",
+      "kind": "event",
+      "title": "遠足は2026年10月20日に実施します",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-20",
+        "year": 2026,
+        "month": 10,
+        "day": 20,
+        "precision": "day",
+        "certainty": "high",
+        "raw_text": "2026年10月20日",
+        "alternatives": [
+          {
+            "type": "conditional",
+            "date": "2026-10-22",
+            "month": 10,
+            "day": 22,
+            "year": 2026,
+            "precision": "day",
+            "raw_text": "雨天の場合は2026年10月22日に延期します",
+            "condition": "雨天",
+            "certainty": "high"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "source_id": "11111111-1111-4111-8111-111111111111",
+          "text": "遠足は2026年10月20日に実施します。"
+        },
+        {
+          "source_id": "11111111-1111-4111-8111-111111111111",
+          "text": "雨天の場合は2026年10月22日に延期します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    },
+    {
+      "id": "act_004",
+      "kind": "event",
+      "title": "健康診断は11月ごろを予定しています",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "approximate",
+        "month": 11,
+        "year": 2026,
+        "precision": "month",
+        "certainty": "low",
+        "raw_text": "11月ごろ"
+      },
+      "evidence": [
+        {
+          "source_id": "11111111-1111-4111-8111-111111111111",
+          "text": "健康診断は11月ごろを予定しています。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified"
+    }
+  ],
+  "receipt": {
+    "extraction": {
+      "provider": "deterministic",
+      "model": "notice-rules-v0.1",
+      "extractor_version": "0.1.0",
+      "schema_version": "0.2.0",
+      "created_at": "2026-10-03T00:00:00.000Z"
+    },
+    "verification": {
+      "evidence_supported": true,
+      "temporal_supported": true,
+      "actor_supported": true,
+      "modality_supported": true,
+      "source_hash_matched": true,
+      "negation_conflict": false,
+      "page_refs_valid": true,
+      "checked_at": "2026-10-03T00:00:00.000Z",
+      "issues": [],
+      "passed": true,
+      "total_actions": 4,
+      "verified_actions": 4,
+      "failed_actions": 0,
+      "warning_actions": 0,
+      "actions": [
+        {
+          "action_id": "act_001",
+          "passed": true,
+          "evidence_supported": true,
+          "temporal_supported": true,
+          "actor_supported": true,
+          "modality_supported": true,
+          "negation_conflict": false,
+          "page_refs_valid": true,
+          "issues": []
+        },
+        {
+          "action_id": "act_002",
+          "passed": true,
+          "evidence_supported": true,
+          "temporal_supported": true,
+          "actor_supported": true,
+          "modality_supported": true,
+          "negation_conflict": false,
+          "page_refs_valid": true,
+          "issues": []
+        },
+        {
+          "action_id": "act_003",
+          "passed": true,
+          "evidence_supported": true,
+          "temporal_supported": true,
+          "actor_supported": true,
+          "modality_supported": true,
+          "negation_conflict": false,
+          "page_refs_valid": true,
+          "issues": []
+        },
+        {
+          "action_id": "act_004",
+          "passed": true,
+          "evidence_supported": true,
+          "temporal_supported": true,
+          "actor_supported": true,
+          "modality_supported": true,
+          "negation_conflict": false,
+          "page_refs_valid": true,
+          "issues": []
+        }
+      ]
+    }
+  }
+}

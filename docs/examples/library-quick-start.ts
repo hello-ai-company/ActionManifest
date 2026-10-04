@@ -3,14 +3,14 @@
  * library" example. It is typechecked and executed in CI (`pnpm
  * docs:examples`), so the README can never drift from the real API.
  *
- * Deterministic: the default provider runs locally; no network, no API keys.
+ * Deterministic provider is explicit: no network, no API keys or env selection.
  *
  * When the packages are published, the same imports resolve from npm
  * (@actionmanifest/adapters, @actionmanifest/extractor, …). In this repo they
  * resolve to the sources via tsconfig paths.
  */
 import { PlainTextAdapter } from "@actionmanifest/adapters";
-import { extractActions } from "@actionmanifest/extractor";
+import { DeterministicProvider, extractActions } from "@actionmanifest/extractor";
 import { verifyManifest } from "@actionmanifest/verifier";
 import { classifyManifest } from "@actionmanifest/consumer";
 import { exportIcs, exportJson } from "@actionmanifest/exporters";
@@ -22,20 +22,21 @@ const text =
 // 1. Parse/normalize ONLY — adapters never infer Actions.
 const doc = await new PlainTextAdapter().toCanonical({ kind: "text", id: "notice-1", text });
 
-// 2. Extract candidate Actions (deterministic provider by default).
-const candidate = await extractActions(doc);
+// 2. Extract candidates offline even if the caller's environment selects OpenAI.
+const candidate = await extractActions(doc, { provider: new DeterministicProvider(doc) });
 
 // 3. Verify per Action against the source document.
 const { manifest, flags } = verifyManifest(candidate, doc);
 if (!flags.passed) throw new Error("expected the golden notice to verify cleanly");
 
-// 4. Apply the reference consumer policy: ready / review_required / blocked.
+// 4. Classify for human review. ready/verified is not approval or execution permission.
 const report = classifyManifest(manifest);
 if (report.counts.ready !== 2 || report.counts.blocked !== 0) {
   throw new Error(`unexpected classification: ${JSON.stringify(report.counts)}`);
 }
 
-// 5. Export — verified-only by default; conditional rain date never becomes DTSTART.
+// 5. Produce strings, without calendar writes or approval. Keep full manifest for
+// review; export is verified-only by default and rain alternatives are not DTSTART.
 const ics = exportIcs(manifest);
 if (!ics.includes("DTSTART;VALUE=DATE:20261015")) throw new Error("missing primary date");
 if (ics.includes("20261022")) throw new Error("conditional alternative must not be executable");

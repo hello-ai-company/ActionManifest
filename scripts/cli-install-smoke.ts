@@ -14,9 +14,10 @@
  * (release artifact verification) so the install proof is never duplicated.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, statSync, writeFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { ModuleKind, ScriptTarget, transpileModule } from "typescript";
 
 export interface CliSmokeInput {
   /** Absolute path to the packed actionmanifest-cli-*.tgz */
@@ -69,7 +70,7 @@ export function cliInstallSmoke(input: CliSmokeInput): void {
           type: "module",
           // Pin the package manager so the smoke is deterministic across
           // environments (corepack provisions exactly this pnpm).
-          packageManager: "pnpm@10.14.0",
+          packageManager: (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { packageManager: string }).packageManager,
           dependencies: { "@actionmanifest/cli": `file:${input.cliTarball}` },
         },
         null,
@@ -115,13 +116,61 @@ export function cliInstallSmoke(input: CliSmokeInput): void {
       fail("--help did not print usage");
     }
 
+    // Additive public agent subpath must work in the installed artifact without
+    // triggering Commander, and the bin must accept the same JSON protocol.
+    writeFileSync(join(work, "agent-smoke.mjs"), `
+import { strictEqual } from 'node:assert';
+import { spawnSync } from 'node:child_process';
+process.argv.push('--agent-facade-must-not-parse');
+const { runAgentRequest } = await import('@actionmanifest/cli/agent');
+const request = { protocol_version: '1', operation: 'extract', source: {
+  id: 'synthetic-agent', text: '2026年10月15日までに参加票を提出してください。'
+} };
+const result = await runAgentRequest(request);
+strictEqual(result.ok, true);
+strictEqual(result.manifest.schema_version, '0.2.0');
+strictEqual(result.authority.execution_allowed, false);
+strictEqual(result.authority.human_approval_required, true);
+const cli = spawnSync(process.argv[2], ['agent', '--stdin-json'], {
+  input: JSON.stringify(request), encoding: 'utf8', env: { ...process.env,
+    ACTIONMAN_PROVIDER: 'openai', OPENAI_API_KEY: '', OPENAI_BASE_URL: 'http://127.0.0.1:1/must-not-call' }
+});
+strictEqual(cli.status, 0); strictEqual(cli.stderr, '');
+strictEqual(JSON.parse(cli.stdout).input_fingerprint, result.input_fingerprint);
+console.log('installed agent subpath + JSON bin PASS');
+`, "utf8");
+    run(process.execPath, [join(work, "agent-smoke.mjs"), bin], work);
+
+    // pnpm exposes only direct dependencies to this consumer. After proving the
+    // CLI alone above, declare the SDKs the examples actually import (no hoisting).
+    const sdkTarballs = [...input.libraryTarballs].filter(([name]) => name !== "adapter-xberg").map(([, path]) => path);
+    run("pnpm", ["add", "--offline", "--ignore-scripts", ...sdkTarballs], work);
+
+    // Run the maintained SDK examples against the actual installed tarballs,
+    // not source aliases. Transpile only; the normal docs gate typechecks them.
+    for (const example of ["library-quick-start", "per-action-verification"]) {
+      const source = readFileSync(new URL(`../docs/examples/${example}.ts`, import.meta.url), "utf8");
+      const js = transpileModule(source, { compilerOptions: { target: ScriptTarget.ES2022, module: ModuleKind.ES2022 } }).outputText;
+      const path = join(work, `${example}.mjs`);
+      writeFileSync(path, js, "utf8");
+      const output = run(process.execPath, ["--input-type=module", "-e", `
+process.env.ACTIONMAN_PROVIDER = 'openai';
+process.env.OPENAI_API_KEY = '';
+process.env.OPENAI_BASE_URL = 'http://127.0.0.1:1/must-not-call';
+globalThis.fetch = () => { throw new Error('OFFLINE_EXAMPLE_MUST_NOT_FETCH'); };
+await import(${JSON.stringify(path)});
+`], work);
+      if (!output.includes(`${example} OK:`)) fail(`installed documentation example failed: ${example}`);
+      console.log(`  ✓ installed SDK documentation example: ${output.trim()}`);
+    }
+
     // Data on stdout must be pure JSON when --json is passed.
     writeFileSync(
       join(work, "sample.txt"),
       "令和8年10月15日に秋の遠足を実施します。雨天の場合は10月22日に延期します。",
       "utf8",
     );
-    const extract = probe(bin, ["extract", "sample.txt", "--json"], work);
+    const extract = probe(bin, ["extract", "sample.txt", "--json", "--ics", "sample.ics"], work);
     if (extract.status !== 0) fail(`extract failed: ${extract.stderr}`);
     try {
       JSON.parse(extract.stdout) as unknown;
@@ -129,6 +178,10 @@ export function cliInstallSmoke(input: CliSmokeInput): void {
       fail("extract --json stdout is not pure JSON");
     }
     if (extract.stderr.trim() !== "") fail("extract wrote to stderr on success");
+    const calendar = readFileSync(join(work, "sample.ics"), "utf8");
+    if (!calendar.startsWith("BEGIN:VCALENDAR") || !calendar.includes("20261015") || calendar.includes("20261022")) {
+      fail("installed CLI ICS must retain primary date and withhold conditional rain alternative");
+    }
 
     writeFileSync(join(work, "manifest.json"), extract.stdout, "utf8");
     const validate = probe(bin, ["validate", "manifest.json", "--doc", "sample.txt", "--json"], work);
@@ -177,7 +230,7 @@ export function cliInstallSmoke(input: CliSmokeInput): void {
     }
 
     console.log(
-      "  ✓ @actionmanifest/cli installed from tarball (offline, foreign cwd): bin shim, extract/validate/conformance/benchmark, exit codes, no Xberg — OK",
+      "  ✓ @actionmanifest/cli installed from tarball (offline, foreign cwd): agent public subpath + JSON, bin shim, extract/validate/conformance/benchmark, exit codes, no Xberg — OK",
     );
   } finally {
     rmSync(work, { recursive: true, force: true });

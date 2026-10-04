@@ -1,0 +1,25 @@
+{
+  "date_utc": "2026-10-03",
+  "node": "24.19.0",
+  "pnpm": "11.23.0",
+  "command_exit_codes": {
+    "build": 0,
+    "lint": 0,
+    "typecheck": 0,
+    "test": 0,
+    "schema": 0,
+    "integration": 0,
+    "conformance": 0,
+    "reference": 0,
+    "xberg": 0,
+    "docs": 0
+  },
+  "standard_tests": 609,
+  "standard_files": 52,
+  "integration_tests": 25,
+  "conformance_cases": 65,
+  "reference_cases": 4,
+  "xberg_tests": 2,
+  "external_provider_calls": 0,
+  "remote_writes": 0
+}

@@ -1,0 +1,780 @@
+{
+  "fixture_count": 74,
+  "accepted": 39,
+  "refused": 35,
+  "refusal_reasons": {
+    "Action temporal form is outside the exact-day Matoe compatibility profile": 9,
+    "Verification issues/warnings are not displayed by the current Swift bridge; projection would hide their message": 6,
+    "Action conditions/notes are not displayed or used for review by the current Swift bridge": 13,
+    "Swift displays only the first Evidence quote; distinct quotes/locators require another profile": 5,
+    "Swift does not display actor identity; actor text must remain in its visible Evidence quote and role is unsupported": 2
+  },
+  "duplicate_evidence_probe": {
+    "accepted": true,
+    "original_evidence": 2,
+    "wire_evidence": 2,
+    "audit_evidence": 2
+  },
+  "rows": [
+    {
+      "id": "adv-en-approximate",
+      "accepted": false,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [
+        "rich-temporal"
+      ],
+      "reason": "Action temporal form is outside the exact-day Matoe compatibility profile"
+    },
+    {
+      "id": "adv-en-cancellation",
+      "accepted": false,
+      "actions": 0,
+      "verification_passed": true,
+      "feature_flags": [],
+      "reason": "Verification issues/warnings are not displayed by the current Swift bridge; projection would hide their message"
+    },
+    {
+      "id": "adv-en-conditional",
+      "accepted": false,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [
+        "actor.role",
+        "conditions"
+      ],
+      "reason": "Action conditions/notes are not displayed or used for review by the current Swift bridge"
+    },
+    {
+      "id": "adv-en-correction",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event"
+      ]
+    },
+    {
+      "id": "adv-en-correction-from-to",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "other"
+      ]
+    },
+    {
+      "id": "adv-en-correction-revised",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "other"
+      ]
+    },
+    {
+      "id": "adv-en-cross-sentence-cancellation",
+      "accepted": false,
+      "actions": 0,
+      "verification_passed": true,
+      "feature_flags": [],
+      "reason": "Verification issues/warnings are not displayed by the current Swift bridge; projection would hide their message"
+    },
+    {
+      "id": "adv-en-cross-sentence-negation",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": false,
+      "feature_flags": [
+        "conditions",
+        "multiple-evidence",
+        "verification-issues"
+      ],
+      "reason": "Action conditions/notes are not displayed or used for review by the current Swift bridge"
+    },
+    {
+      "id": "adv-en-extension",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "deadline"
+      ]
+    },
+    {
+      "id": "adv-en-history",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event"
+      ]
+    },
+    {
+      "id": "adv-en-modality-scale",
+      "accepted": true,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "submit",
+        "review"
+      ]
+    },
+    {
+      "id": "adv-en-multi-submit-negation",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": false,
+      "feature_flags": [
+        "conditions",
+        "multiple-evidence",
+        "verification-issues"
+      ],
+      "reason": "Action conditions/notes are not displayed or used for review by the current Swift bridge"
+    },
+    {
+      "id": "adv-en-negation",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "submit"
+      ]
+    },
+    {
+      "id": "adv-en-postmark",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "other"
+      ]
+    },
+    {
+      "id": "adv-en-previously",
+      "accepted": false,
+      "actions": 0,
+      "verification_passed": true,
+      "feature_flags": [],
+      "reason": "Verification issues/warnings are not displayed by the current Swift bridge; projection would hide their message"
+    },
+    {
+      "id": "adv-en-reverse-correction",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event"
+      ]
+    },
+    {
+      "id": "contract-sign-en",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "sign"
+      ]
+    },
+    {
+      "id": "en-around-october",
+      "accepted": false,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [
+        "rich-temporal"
+      ],
+      "reason": "Action temporal form is outside the exact-day Matoe compatibility profile"
+    },
+    {
+      "id": "event-rsvp-en",
+      "accepted": true,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event",
+        "reply"
+      ]
+    },
+    {
+      "id": "gov-tax-postmark-en",
+      "accepted": false,
+      "actions": 3,
+      "verification_passed": true,
+      "feature_flags": [
+        "rich-temporal"
+      ],
+      "reason": "Action temporal form is outside the exact-day Matoe compatibility profile"
+    },
+    {
+      "id": "housing-inspection-en",
+      "accepted": true,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event",
+        "review"
+      ]
+    },
+    {
+      "id": "insurance-claim-en",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [
+        "conditions"
+      ],
+      "reason": "Action conditions/notes are not displayed or used for review by the current Swift bridge"
+    },
+    {
+      "id": "invoice-payment-en",
+      "accepted": true,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "pay",
+        "pay"
+      ]
+    },
+    {
+      "id": "open-house-en",
+      "accepted": true,
+      "actions": 3,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "other",
+        "event",
+        "review"
+      ]
+    },
+    {
+      "id": "reading-log-en",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [
+        "rich-temporal"
+      ],
+      "reason": "Action temporal form is outside the exact-day Matoe compatibility profile"
+    },
+    {
+      "id": "university-application-en",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [
+        "rich-temporal"
+      ],
+      "reason": "Action temporal form is outside the exact-day Matoe compatibility profile"
+    },
+    {
+      "id": "workplace-meeting-en",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event"
+      ]
+    },
+    {
+      "id": "adv-jp-approximate",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [
+        "rich-temporal"
+      ],
+      "reason": "Action temporal form is outside the exact-day Matoe compatibility profile"
+    },
+    {
+      "id": "adv-jp-cancellation",
+      "accepted": false,
+      "actions": 0,
+      "verification_passed": true,
+      "feature_flags": [],
+      "reason": "Verification issues/warnings are not displayed by the current Swift bridge; projection would hide their message"
+    },
+    {
+      "id": "adv-jp-conditional-date-rain",
+      "accepted": false,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [
+        "multiple-evidence"
+      ],
+      "reason": "Swift displays only the first Evidence quote; distinct quotes/locators require another profile"
+    },
+    {
+      "id": "adv-jp-conditional-eligibility",
+      "accepted": false,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [
+        "conditions"
+      ],
+      "reason": "Action conditions/notes are not displayed or used for review by the current Swift bridge"
+    },
+    {
+      "id": "adv-jp-correction-date",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event"
+      ]
+    },
+    {
+      "id": "adv-jp-correction-from-to",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event"
+      ]
+    },
+    {
+      "id": "adv-jp-correction-gerund",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event"
+      ]
+    },
+    {
+      "id": "adv-jp-cross-action",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [
+        "rich-temporal"
+      ],
+      "reason": "Action temporal form is outside the exact-day Matoe compatibility profile"
+    },
+    {
+      "id": "adv-jp-cross-sentence-cancellation",
+      "accepted": false,
+      "actions": 0,
+      "verification_passed": true,
+      "feature_flags": [],
+      "reason": "Verification issues/warnings are not displayed by the current Swift bridge; projection would hide their message"
+    },
+    {
+      "id": "adv-jp-cross-sentence-negation",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": false,
+      "feature_flags": [
+        "conditions",
+        "multiple-evidence",
+        "verification-issues"
+      ],
+      "reason": "Action conditions/notes are not displayed or used for review by the current Swift bridge"
+    },
+    {
+      "id": "adv-jp-deadline-correction-earlier",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "submit"
+      ]
+    },
+    {
+      "id": "adv-jp-deadline-extension",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "submit"
+      ]
+    },
+    {
+      "id": "adv-jp-exemption-health",
+      "accepted": false,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [
+        "conditions",
+        "multiple-evidence"
+      ],
+      "reason": "Action conditions/notes are not displayed or used for review by the current Swift bridge"
+    },
+    {
+      "id": "adv-jp-history-dates",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event"
+      ]
+    },
+    {
+      "id": "adv-jp-modality-scale",
+      "accepted": true,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event",
+        "other"
+      ]
+    },
+    {
+      "id": "adv-jp-multi-event-cancellation",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event"
+      ]
+    },
+    {
+      "id": "adv-jp-multi-submit-negation",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": false,
+      "feature_flags": [
+        "conditions",
+        "multiple-evidence",
+        "verification-issues"
+      ],
+      "reason": "Action conditions/notes are not displayed or used for review by the current Swift bridge"
+    },
+    {
+      "id": "adv-jp-negation-no-submit",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "submit"
+      ]
+    },
+    {
+      "id": "adv-jp-ocr-noise",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event"
+      ]
+    },
+    {
+      "id": "adv-jp-postmark-vs-arrival",
+      "accepted": true,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "other",
+        "other"
+      ]
+    },
+    {
+      "id": "adv-jp-quoted-old",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "submit"
+      ]
+    },
+    {
+      "id": "adv-jp-reference-only",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "deadline"
+      ]
+    },
+    {
+      "id": "adv-jp-repeated-action",
+      "accepted": true,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "submit",
+        "submit"
+      ]
+    },
+    {
+      "id": "adv-jp-reverse-correction",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event"
+      ]
+    },
+    {
+      "id": "event-collect-on-day",
+      "accepted": false,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [
+        "conditions",
+        "rich-temporal"
+      ],
+      "reason": "Action conditions/notes are not displayed or used for review by the current Swift bridge"
+    },
+    {
+      "id": "event-participants-only",
+      "accepted": false,
+      "actions": 0,
+      "verification_passed": true,
+      "feature_flags": [],
+      "reason": "Verification issues/warnings are not displayed by the current Swift bridge; projection would hide their message"
+    },
+    {
+      "id": "gov-must-arrive",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "submit"
+      ]
+    },
+    {
+      "id": "gov-no-submit-needed",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "submit"
+      ]
+    },
+    {
+      "id": "gov-postmark-valid",
+      "accepted": true,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "other",
+        "submit"
+      ]
+    },
+    {
+      "id": "housing-contract-jp",
+      "accepted": true,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "sign",
+        "submit"
+      ]
+    },
+    {
+      "id": "insurance-review-jp",
+      "accepted": true,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "review",
+        "contact"
+      ]
+    },
+    {
+      "id": "invoice-pay-jp",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "pay"
+      ]
+    },
+    {
+      "id": "mixed-community-notice",
+      "accepted": false,
+      "actions": 3,
+      "verification_passed": true,
+      "feature_flags": [
+        "multiple-evidence",
+        "conditions",
+        "rich-temporal"
+      ],
+      "reason": "Swift displays only the first Evidence quote; distinct quotes/locators require another profile"
+    },
+    {
+      "id": "school-already-submitted",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [
+        "conditions"
+      ],
+      "reason": "Action conditions/notes are not displayed or used for review by the current Swift bridge"
+    },
+    {
+      "id": "school-applicants-only",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [
+        "actor.role",
+        "conditions"
+      ],
+      "reason": "Action conditions/notes are not displayed or used for review by the current Swift bridge"
+    },
+    {
+      "id": "school-around-october",
+      "accepted": false,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [
+        "rich-temporal"
+      ],
+      "reason": "Action temporal form is outside the exact-day Matoe compatibility profile"
+    },
+    {
+      "id": "school-backup-date",
+      "accepted": true,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "event",
+        "other"
+      ]
+    },
+    {
+      "id": "school-bring-own",
+      "accepted": false,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [
+        "actor.role",
+        "conditions"
+      ],
+      "reason": "Action conditions/notes are not displayed or used for review by the current Swift bridge"
+    },
+    {
+      "id": "school-deadline-until",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "submit"
+      ]
+    },
+    {
+      "id": "school-early-october",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [
+        "rich-temporal"
+      ],
+      "reason": "Action temporal form is outside the exact-day Matoe compatibility profile"
+    },
+    {
+      "id": "school-golden-excursion",
+      "accepted": false,
+      "actions": 3,
+      "verification_passed": true,
+      "feature_flags": [
+        "multiple-evidence",
+        "conditions",
+        "rich-temporal"
+      ],
+      "reason": "Swift displays only the first Evidence quote; distinct quotes/locators require another profile"
+    },
+    {
+      "id": "school-guardian-signature",
+      "accepted": false,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [
+        "actor.role"
+      ],
+      "reason": "Swift does not display actor identity; actor text must remain in its visible Evidence quote and role is unsupported"
+    },
+    {
+      "id": "school-rain-postponement",
+      "accepted": false,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [
+        "multiple-evidence"
+      ],
+      "reason": "Swift displays only the first Evidence quote; distinct quotes/locators require another profile"
+    },
+    {
+      "id": "school-reiwa-date",
+      "accepted": false,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [
+        "actor.role"
+      ],
+      "reason": "Swift does not display actor identity; actor text must remain in its visible Evidence quote and role is unsupported"
+    },
+    {
+      "id": "sports-day-exemption",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [
+        "multiple-evidence",
+        "conditions"
+      ],
+      "reason": "Swift displays only the first Evidence quote; distinct quotes/locators require another profile"
+    },
+    {
+      "id": "university-deadline-jp",
+      "accepted": true,
+      "actions": 1,
+      "verification_passed": true,
+      "feature_flags": [],
+      "wire_kinds": [
+        "submit"
+      ]
+    },
+    {
+      "id": "workplace-submit-later",
+      "accepted": false,
+      "actions": 2,
+      "verification_passed": true,
+      "feature_flags": [
+        "conditions",
+        "rich-temporal"
+      ],
+      "reason": "Action conditions/notes are not displayed or used for review by the current Swift bridge"
+    }
+  ]
+}

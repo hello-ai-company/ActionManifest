@@ -8,6 +8,7 @@
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"],
   "references": [
+    { "path": "../../packages/consumer" },
     { "path": "../../packages/adapters" },
     { "path": "../../packages/core" },
     { "path": "../../packages/extractor" },

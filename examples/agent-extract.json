@@ -1,0 +1,8 @@
+{
+  "protocol_version": "1",
+  "operation": "extract",
+  "source": {
+    "id": "synthetic-school-notice",
+    "text": "保護者は2026年10月15日までに参加票に署名して提出してください。\n遠足は2026年10月20日に実施します。\n雨天の場合は2026年10月22日に延期します。\n"
+  }
+}

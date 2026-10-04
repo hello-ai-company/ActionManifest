@@ -1,0 +1,46 @@
+{
+  "schema_version": "0.1.0",
+  "source": {
+    "id": "matoe-temporal-handoff",
+    "hash": "bcd888914d5a1884919802607607cba4a2938e4a2430c063656284ffdd5eced5",
+    "title": "行事予定のお知らせ"
+  },
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "健康診断",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "temporal": {
+        "type": "approximate",
+        "precision": "month",
+        "month": 11,
+        "raw_text": "11月ごろ",
+        "certainty": "low"
+      },
+      "evidence": [
+        {
+          "source_id": "matoe-temporal-handoff",
+          "text": "健康診断は11月ごろを予定しています。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "confidence": {
+        "action": 0.95
+      }
+    }
+  ],
+  "receipt": {
+    "extraction": {
+      "provider": "fixture",
+      "model": "design-handoff-fixture",
+      "extractor_version": "design-handoff-1",
+      "schema_version": "0.1.0",
+      "created_at": "2026-10-02T00:00:00Z"
+    }
+  }
+}

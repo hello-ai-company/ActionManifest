@@ -10,6 +10,10 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
+    "./agent": {
+      "types": "./dist/agent.d.ts",
+      "import": "./dist/agent.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
@@ -42,6 +46,7 @@
     "postpack": "node ../../scripts/pack-assets.mjs clean conformance benchmark"
   },
   "dependencies": {
+    "@actionmanifest/consumer": "workspace:*",
     "@actionmanifest/adapters": "workspace:*",
     "@actionmanifest/core": "workspace:*",
     "@actionmanifest/extractor": "workspace:*",

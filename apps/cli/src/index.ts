@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { Command } from "commander";
 import { resolveAdapter } from "@actionmanifest/adapters";
+import { MATOE_INPUT_LIMITS, prepareMatoeManifest } from "@actionmanifest/consumer";
 import {
   ActionManifestError,
   validateActionManifest,
@@ -18,6 +19,9 @@ import {
 import { exportIcs, exportJson, formatSummary, formatVerification } from "@actionmanifest/exporters";
 import { verificationPassed, verifyManifest } from "@actionmanifest/verifier";
 import { defaultFixtureRoot, formatBenchmark, runBenchmark } from "./benchmark.js";
+import { readMatoeInput } from "./matoe-input.js";
+import { analyzeMatoeRequest, matoeAnalysisFailure, readMatoeStdin } from "./matoe-analysis.js";
+import { agentFailure, readAgentStdin, runAgentRequest } from "./agent.js";
 import {
   defaultConformanceRoot,
   formatConformance,
@@ -94,6 +98,51 @@ program
       }
     } catch (e) {
       fail(e);
+    }
+  });
+
+program
+  .command("analyze-matoe")
+  .description("offline deterministic analysis for the explicit new Matoe v0.2 server route")
+  .option("--stdin-json", "read the bounded sourceId/ocrText request and emit the complete v0.2 manifest")
+  .action(async (opts: { stdinJson?: boolean }) => {
+    try {
+      if (!opts.stdinJson) throw new ActionManifestError("MATOE_REQUEST_INVALID", "Explicit stdin JSON input is required");
+      const manifest = await analyzeMatoeRequest(await readMatoeStdin(process.stdin));
+      process.stdout.write(JSON.stringify(manifest) + "\n");
+    } catch (error) {
+      process.stderr.write(JSON.stringify(matoeAnalysisFailure(error)) + "\n");
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("prepare-matoe")
+  .description("create a Matoe v0.1 wire manifest plus mandatory original-provenance audit bundle")
+  .argument("<manifest>", "unfiltered manifest JSON path")
+  .requiredOption("--doc <file>", "exact canonical OCR text (UTF-8; no normalization)")
+  .option("--out <file>", "write the complete compatibility bundle to a new file")
+  .option("--json", "explicitly print the entire bundle, including original manifest and Evidence quotes")
+  .action(async (manifestPath: string, opts: { doc: string; out?: string; json?: boolean }) => {
+    try {
+      if (Boolean(opts.out) === Boolean(opts.json)) {
+        throw new ActionManifestError("MATOE_OUTPUT_REQUIRED", "Choose exactly one of --out or --json; the bundle contains original manifest data and Evidence quotes");
+      }
+      const raw = JSON.parse(await readMatoeInput(resolve(manifestPath), MATOE_INPUT_LIMITS.manifestBytes));
+      const text = await readMatoeInput(resolve(opts.doc), MATOE_INPUT_LIMITS.ocrBytes);
+      const bundle = prepareMatoeManifest(raw, text);
+      const json = JSON.stringify(bundle, null, 2) + "\n";
+      // No verified-only filtering: receipts must describe exactly the supplied actions.
+      // Never expose only the projected manifest and silently discard the audit.
+      if (opts.out) await writeFile(resolve(opts.out), json, { encoding: "utf8", flag: "wx", mode: 0o600 });
+      else process.stdout.write(json);
+    } catch (e) {
+      // Diagnostics never echo input snippets, action IDs, versions, or paths.
+      // The explicitly selected bundle output still retains all input data.
+      if (e instanceof ActionManifestError && e.code.startsWith("MATOE_")) fail(e);
+      if (e instanceof ActionManifestError) fail(new ActionManifestError(e.code, "Input failed frozen schema validation; input details omitted"));
+      const code = e instanceof Error && "code" in e && typeof e.code === "string" ? e.code : "MATOE_INPUT_INVALID";
+      fail(new ActionManifestError(code, "Cannot prepare compatibility bundle; input details omitted"));
     }
   });
 
@@ -207,5 +256,23 @@ function fail(e: unknown): never {
   }
   process.exit(1);
 }
+
+program
+  .command("agent")
+  .description("bounded offline JSON protocol: extract or reverify proposals, never execute")
+  .option("--stdin-json", "read one protocol v1 JSON request")
+  .allowUnknownOption(true)
+  .argument("[unsupported...]", "unsupported arguments are rejected as JSON")
+  .action(async (unsupported: string[], opts: { stdinJson?: boolean }, command: Command) => {
+    try {
+      if (!opts.stdinJson || unsupported.length || command.args.length) throw new ActionManifestError("AGENT_REQUEST_INVALID", "Invalid agent arguments");
+      const result = await runAgentRequest(await readAgentStdin(process.stdin));
+      process.stdout.write(JSON.stringify(result) + "\n");
+      if (result.classification.manifestFatal || result.classification.counts.blocked > 0) process.exitCode = 2;
+    } catch (error) {
+      process.stdout.write(JSON.stringify(agentFailure(error)) + "\n");
+      process.exitCode = 1;
+    }
+  });
 
 program.parseAsync(process.argv);

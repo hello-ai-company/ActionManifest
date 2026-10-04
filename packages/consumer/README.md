@@ -44,3 +44,32 @@ ready is exactly what the default export policy ships.
 - Integration contract: [docs/INTEGRATION-CONTRACT.md](../../docs/INTEGRATION-CONTRACT.md)
 
 Apache-2.0.
+
+## Matoe compatibility
+
+This is optional and separate from the generic classification above. Importing
+this package or calling `classifyManifest` does not select a Matoe profile.
+Source-supported role, conditions, notes, timezone and multiple Evidence remain
+in generic manifests; `ready` does not mean the consuming UI has rendered them
+or that the user has approved an action. Validate external JSON with
+`validateActionManifest` and verify it against your canonical source before
+using a receipt as your own verification result.
+
+`prepareMatoeManifest(input, canonicalSourceText)` returns an explicit v0.1 wire
+manifest together with a mandatory full-original audit bundle. It refuses unsafe
+or incomplete projections and never executes actions. See
+[the Matoe integration guide](../../docs/MATOE-COMPATIBILITY.md) for the profile,
+refusal policy, CLI usage, and unverified Swift/HTTP boundaries.
+
+Use `MATOE_INPUT_LIMITS` only when working with that Swift wire contract. Its
+budgets and display restrictions do not apply to the general extractor/verifier
+or `classifyManifest`. A projection failure leaves the full original available
+to other consumers; never remove unsupported fields to make it pass. See the
+[shared/product boundary](../../docs/OTAYORI-BOUNDARY.md) for both public paths.
+
+For the separately implemented new Swift v0.2 route,
+`prepareMatoeV02Manifest(input, canonicalSourceText, expectedSourceId)` checks a
+complete, consistent full-fidelity receipt without dropping any field or failed
+Action. Failed Actions remain blocked. It is incompatible with the old 0.1
+bridge; do not silently select it. See the
+[explicit offline server contract](../../docs/MATOE-SERVER-V02.md).

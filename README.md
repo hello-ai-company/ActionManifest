@@ -2,6 +2,10 @@
 
 **Turn documents into actions you can verify.**
 
+Local agents can use the bounded JSON CLI or typed facade for offline extraction
+and fresh verification: [agent usage and synthetic example](docs/AGENT-USAGE.md).
+This local addition grants no execution or approval authority.
+
 School notices, invoices, contracts, and government mail are full of things humans must actually *do* — submit a form, bring a lunch, pay a fee, show up on a rain date. Action Manifest extracts those Actions and keeps every one of them glued to source **Evidence**.
 
 ```
@@ -163,13 +167,13 @@ built packages. The snippets below are **executable**: they live in
 
 ```ts
 import { PlainTextAdapter } from "@actionmanifest/adapters";
-import { extractActions } from "@actionmanifest/extractor";
+import { DeterministicProvider, extractActions } from "@actionmanifest/extractor";
 import { verifyManifest } from "@actionmanifest/verifier";
 import { classifyManifest } from "@actionmanifest/consumer";
 import { exportIcs, exportJson } from "@actionmanifest/exporters";
 
 const doc = await new PlainTextAdapter().toCanonical({ kind: "text", id: "notice-1", text });
-const candidate = await extractActions(doc);                    // deterministic by default
+const candidate = await extractActions(doc, { provider: new DeterministicProvider(doc) });
 const { manifest } = verifyManifest(candidate, doc);            // per-Action verification
 const report = classifyManifest(manifest);                      // ready / review_required / blocked
 const ics = exportIcs(manifest);                                // trust-qualified only; throws on manifest-level fatal
@@ -261,6 +265,13 @@ Honest boundaries of the current `0.x` line:
 ## Otayori vs this OSS
 
 This repository owns Manifest, Extractor, Verifier, Evidence, Temporal, Benchmark, CLI, Exporter, Document adapters. Product UX, family inbox, child profiles, notifications, and billing belong in Otayori — see [docs/OTAYORI-BOUNDARY.md](docs/OTAYORI-BOUNDARY.md).
+
+Matoe is a primary integration target, while the default 0.2 contract and public
+library pipeline remain reusable by any consumer. Its explicit
+[`prepareMatoeManifest` / CLI projection](docs/MATOE-COMPATIBILITY.md) lives at
+the consumer boundary; Swift display restrictions do not alter generic
+extraction, verification or classification. See the
+[remaining Matoe display/review work](docs/MATOE-DESIGN-HANDOFF.md).
 
 ## License
 

@@ -1,5 +1,6 @@
 import {
   canonicalText,
+  createSourceQuoteMatcher,
   sourceContainsQuote,
   validateActionManifest,
   type Action,
@@ -15,6 +16,7 @@ import {
   isApproximateCue,
   isNegation,
   parseTemporals,
+  type YearContext,
 } from "@actionmanifest/temporal";
 
 export interface VerifyOptions {
@@ -39,7 +41,30 @@ function evidenceCorpus(action: Action): string {
   return action.evidence.map((e) => e.text).join("\n");
 }
 
-function dateSupportedByEvidence(action: Action, source: string): boolean {
+interface VerificationContext {
+  matchesQuote: (quote: string) => boolean;
+  pages: Set<number>;
+  hasPages: boolean;
+  temporalSource: () => { year: YearContext; dates: Set<string | undefined> };
+}
+
+function verificationContext(doc: CanonicalDocument, source: string): VerificationContext {
+  let temporal: ReturnType<VerificationContext["temporalSource"]> | undefined;
+  return {
+    matchesQuote: createSourceQuoteMatcher(source),
+    pages: new Set((doc.pages ?? []).map(page => page.pageNumber)),
+    hasPages: (doc.pages?.length ?? 0) > 0,
+    temporalSource: () => {
+      if (!temporal) {
+        const year = extractYearContext(source);
+        temporal = { year, dates: new Set(parseTemporals(source, year).filter(t => t.date).map(t => t.date)) };
+      }
+      return temporal;
+    },
+  };
+}
+
+function dateSupportedByEvidence(action: Action, context: VerificationContext): boolean {
   const temporals = flattenTemporals(action.temporal);
   const exactDates = temporals.filter((t) => t.date && (t.type === "exact" || t.type === "conditional"));
   if (exactDates.length === 0) {
@@ -50,18 +75,15 @@ function dateSupportedByEvidence(action: Action, source: string): boolean {
     return true;
   }
 
-  const ctx = extractYearContext(source);
-  const parsed = [
-    ...parseTemporals(evidenceCorpus(action), ctx),
-    ...parseTemporals(source, ctx),
-  ];
-  const allowed = new Set(parsed.filter((p) => p.date).map((p) => p.date));
+  const { year, dates } = context.temporalSource();
+  const corpus = evidenceCorpus(action);
+  const evidenceDates = new Set(parseTemporals(corpus, year).filter(p => p.date).map(p => p.date));
 
   for (const t of exactDates) {
     if (!t.date) continue;
-    if (allowed.has(t.date)) continue;
+    if (dates.has(t.date) || evidenceDates.has(t.date)) continue;
     // Hallucination: exact date from approximate cue only
-    if (isApproximateCue(evidenceCorpus(action)) && !/\d{1,2}日/.test(evidenceCorpus(action))) {
+    if (isApproximateCue(corpus) && !/\d{1,2}日/.test(corpus)) {
       return false;
     }
     return false;
@@ -140,18 +162,17 @@ function negationConflict(action: Action): boolean {
   return !isExemption;
 }
 
-function pageValid(action: Action, doc: CanonicalDocument): boolean {
-  const pageNumbers = new Set((doc.pages ?? []).map((p) => p.pageNumber));
+function pageValid(action: Action, context: VerificationContext): boolean {
   for (const ev of action.evidence) {
     if (ev.page == null) continue;
-    if (doc.pages && doc.pages.length > 0 && !pageNumbers.has(ev.page)) return false;
+    if (context.hasPages && !context.pages.has(ev.page)) return false;
   }
   return true;
 }
 
 function evidenceCheck(
   action: Action,
-  source: string,
+  context: VerificationContext,
   manifest: ActionManifest,
   doc: CanonicalDocument,
 ): { supported: boolean; issues: VerificationIssue[] } {
@@ -162,7 +183,7 @@ function evidenceCheck(
   }
   let supported = true;
   for (const ev of action.evidence) {
-    if (!sourceContainsQuote(source, ev.text)) {
+    if (!context.matchesQuote(ev.text)) {
       supported = false;
       issues.push(
         issue("EVIDENCE_NOT_IN_SOURCE", "Evidence quote was not found in the source document", action.id),
@@ -197,13 +218,22 @@ export function verifyAction(
   source: string,
   manifest: ActionManifest,
 ): ActionVerificationResult {
+  return verifyActionWithContext(action, doc, manifest, verificationContext(doc, source));
+}
+
+function verifyActionWithContext(
+  action: Action,
+  doc: CanonicalDocument,
+  manifest: ActionManifest,
+  context: VerificationContext,
+): ActionVerificationResult {
   const issues: VerificationIssue[] = [];
 
-  const ev = evidenceCheck(action, source, manifest, doc);
+  const ev = evidenceCheck(action, context, manifest, doc);
   issues.push(...ev.issues);
   const evidence_supported = ev.supported;
 
-  const temporal_supported = dateSupportedByEvidence(action, source);
+  const temporal_supported = dateSupportedByEvidence(action, context);
   if (!temporal_supported) {
     issues.push(
       issue(
@@ -234,7 +264,7 @@ export function verifyAction(
     );
   }
 
-  const page_refs_valid = pageValid(action, doc);
+  const page_refs_valid = pageValid(action, context);
   if (!page_refs_valid) {
     issues.push(issue("INVALID_PAGE_REF", "Evidence page is not in the canonical document", action.id));
   }
@@ -295,7 +325,8 @@ export function verifyManifest(
   const fatal = sourceEmpty || !sourceHashMatched;
 
   // --- Per-action (independent) checks ---
-  const actionResults = manifest.actions.map((a) => verifyAction(a, doc, source, manifest));
+  const context = verificationContext(doc, source);
+  const actionResults = manifest.actions.map((a) => verifyActionWithContext(a, doc, manifest, context));
 
   // --- Backward-compatible aggregate summary (v0.1 semantics: AND across actions) ---
   let evidence_supported = actionResults.every((r) => r.evidence_supported);

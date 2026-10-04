@@ -1,0 +1,57 @@
+{
+  "schema_version": "0.1.0",
+  "source": {
+    "id": "matoe-notice",
+    "hash": "01e989942546ca9dfcdb96e96b673f2f318febadd0abcba72605d11c4a7f7264",
+    "title": "参加票のお知らせ"
+  },
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "参加票を提出する",
+      "modality": "required",
+      "actor": {
+        "certainty": "explicit",
+        "text": "保護者"
+      },
+      "temporal": {
+        "type": "exact",
+        "precision": "day",
+        "date": "2026-10-15",
+        "raw_text": "2026年10月15日まで"
+      },
+      "evidence": [
+        {
+          "source_id": "matoe-notice",
+          "text": "保護者は2026年10月15日までに参加票を提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "verified",
+      "confidence": {
+        "action": 0.95
+      }
+    }
+  ],
+  "receipt": {
+    "extraction": {
+      "provider": "deterministic",
+      "model": "fixture",
+      "extractor_version": "0.1.0",
+      "schema_version": "0.1.0",
+      "created_at": "2026-10-02T00:00:00Z"
+    },
+    "verification": {
+      "evidence_supported": true,
+      "temporal_supported": true,
+      "actor_supported": true,
+      "modality_supported": true,
+      "negation_conflict": false,
+      "page_refs_valid": true,
+      "source_hash_matched": true,
+      "checked_at": "2026-10-02T00:00:00Z",
+      "issues": []
+    }
+  }
+}

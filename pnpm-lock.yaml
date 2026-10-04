@@ -41,6 +41,9 @@ importers:
       '@actionmanifest/adapters':
         specifier: workspace:*
         version: link:../../packages/adapters
+      '@actionmanifest/consumer':
+        specifier: workspace:*
+        version: link:../../packages/consumer
       '@actionmanifest/core':
         specifier: workspace:*
         version: link:../../packages/core

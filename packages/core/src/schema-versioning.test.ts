@@ -152,6 +152,16 @@ describe("immutable versioned schemas — reader dispatch by schema_version", ()
     ).toThrow(SchemaValidationError);
   });
 
+  it.each(["constructor", "toString", "__proto__", "hasOwnProperty"])(
+    "prototype property %s is an unsupported version, never a validator",
+    schema_version => {
+      expect(() => validateActionManifest({ schema_version, source: { id: "doc" }, actions: [] }))
+        .toThrow(SchemaValidationError);
+      expect(() => validateActionManifest({ schema_version, source: { id: "doc" }, actions: [] }))
+        .toThrow(/Unsupported schema_version/);
+    },
+  );
+
   it("non-object input → FAIL (fail closed)", () => {
     expect(() => validateActionManifest(null)).toThrow(SchemaValidationError);
     expect(() => validateActionManifest("0.2.0")).toThrow(SchemaValidationError);

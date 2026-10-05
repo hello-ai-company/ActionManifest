@@ -105,6 +105,15 @@ paths, environment values or request bodies as diagnostics.
 A wrapper timeout/unavailable worker may be a fixed 503 error and never triggers
 paid retry/fallback. Successful output contains quotes and is application data,
 not a diagnostic. 2xx means contract validity, not all-Action success or approval.
+Unsupported analysis arguments use the same fixed MATOE_REQUEST_INVALID JSON
+on stderr, empty stdout and exit 1; argument values are not echoed. Explicit
+standalone `--help` / `-h` remains human help, not a server request. A server
+request accepts exactly `analyze-matoe --stdin-json`; mixing help/version/unknown
+arguments into that request is refused before the ordinary argument parser.
+
+Product-side cancellation, duplicate response and retry requirements are in the
+[recovery contract](MATOE-RECOVERY.md). These do not add an executor or durable
+state to the stateless CLI.
 
 ## Shared synthetic fixtures
 

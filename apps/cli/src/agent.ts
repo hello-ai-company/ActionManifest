@@ -60,6 +60,9 @@ export async function runAgentRequest(input: unknown): Promise<AgentSuccess> {
     || typeof source.text !== "string" || !source.text.trim()) refuse("AGENT_REQUEST_INVALID");
   if (Buffer.byteLength(source.text, "utf8") > AGENT_LIMITS.textBytes || Array.from(source.text).length > AGENT_LIMITS.textScalars) refuse("AGENT_INPUT_TOO_LARGE");
   const doc = assertCanonicalDocument(ensureSourceHash({ id: source.id, text: source.text }));
+  // Bind correlation to the input before extraction yields to the caller. The
+  // caller can mutate its object while awaiting, but cannot relabel this result.
+  const inputFingerprint = sha256Hex(JSON.stringify(stable(input)));
   let candidate: ActionManifest;
   if (operation === "extract") {
     candidate = await new ActionExtractor(new DeterministicProvider(doc)).extract(doc);
@@ -81,7 +84,7 @@ export async function runAgentRequest(input: unknown): Promise<AgentSuccess> {
   const manifest = verifyManifest(candidate, doc).manifest;
   return {
     protocol_version: "1", ok: true, operation,
-    input_fingerprint: sha256Hex(JSON.stringify(stable(input))), manifest,
+    input_fingerprint: inputFingerprint, manifest,
     classification: classifyManifest(manifest),
     authority: { execution_allowed: false, human_approval_required: true, issuer_authenticated: false },
   };

@@ -39,4 +39,16 @@ describe("bounded offline Matoe analysis input", () => {
   it("sanitizes unexpected exceptions and returns a fixed nonsecret error", () => {
     expect(matoeAnalysisFailure(new Error("SYNTHETIC_SECRET_MARKER"))).toEqual({ error: { code: "MATOE_PIPELINE_FAILED", message: "Analysis pipeline failed" } });
   });
+
+  it("binds the result to the original canonical input when the caller mutates a pending request", async () => {
+    const request = { sourceId: "synthetic-original", ocrText: "2026年10月15日までに参加票を提出してください。\n" };
+    const original = await analyzeMatoeRequest(request);
+    const mutable = structuredClone(request);
+    const pending = analyzeMatoeRequest(mutable);
+    mutable.sourceId = "synthetic-replacement";
+    mutable.ocrText = "2026年12月24日までに別の票を提出してください。\n";
+    const result = await pending;
+    expect(result.source).toEqual(original.source);
+    expect(result.actions).toEqual(original.actions);
+  });
 });

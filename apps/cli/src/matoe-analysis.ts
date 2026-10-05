@@ -22,11 +22,15 @@ export async function analyzeMatoeRequest(input: unknown) {
   }
   // Matoe sends text, not verified page geometry. Do not invent page 1/bbox
   // for a flattened multi-page PDF or infer a page from user-authored markers.
-  const doc = assertCanonicalDocument(ensureSourceHash({ id: record.sourceId, text: record.ocrText }));
+  const sourceId = record.sourceId;
+  const ocrText = record.ocrText;
+  const doc = assertCanonicalDocument(ensureSourceHash({ id: sourceId, text: ocrText }));
   // Explicit provider construction prevents environment selection / paid fallback.
   const candidate = await new ActionExtractor(new DeterministicProvider(doc)).extract(doc);
   const { manifest } = verifyManifest(candidate, doc);
-  return prepareMatoeV02Manifest(manifest, record.ocrText, record.sourceId);
+  // Use the already captured canonical input, not the caller's mutable object
+  // after extraction yielded. Result validation belongs to this request.
+  return prepareMatoeV02Manifest(manifest, ocrText, sourceId);
 }
 
 export async function readMatoeStdin(stream: AsyncIterable<Buffer>): Promise<unknown> {

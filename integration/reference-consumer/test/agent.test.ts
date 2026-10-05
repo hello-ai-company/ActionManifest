@@ -35,9 +35,18 @@ describe("built agent entry protocol", () => {
     expect(JSON.parse(result.stdout)).toMatchObject({ ok: false, error: { code: "AGENT_REQUEST_INVALID", retryable: false } });
     expect(result.stdout).not.toContain("PRIVATE_MARKER");
   });
-  it.each([{ args: ["agent"] }, { args: ["agent", "--stdin-json", "--execute"] }, { args: ["agent", "--stdin-json", "unexpected"] }])("refuses unsupported CLI arguments with JSON", ({ args }) => {
+  it.each([{ args: ["agent"] }, { args: ["agent", "--stdin-json", "--execute"] }, { args: ["agent", "--stdin-json", "unexpected"] },
+    { args: ["agent", "--stdin-json", "--unknown-SYNTHETIC_PRIVATE_MARKER", "--help"] },
+    { args: ["agent", "--stdin-json", "--version"] },
+  ])("refuses unsupported CLI arguments with JSON", ({ args }) => {
     const result = run(example, args);
     expect(result.status).toBe(1); expect(result.stderr).toBe("");
     expect(JSON.parse(result.stdout)).toMatchObject({ ok: false, error: { code: "AGENT_REQUEST_INVALID" } });
+    expect(result.stdout).not.toContain("SYNTHETIC_PRIVATE_MARKER");
+  });
+  it("keeps standalone human help available", () => {
+    const result = run("", ["agent", "--help"]);
+    expect(result.status).toBe(0); expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("Usage:"); expect(result.stdout).toContain("--stdin-json");
   });
 });

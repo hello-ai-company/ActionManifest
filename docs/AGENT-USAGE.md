@@ -57,7 +57,9 @@ AGENT_SOURCE_MISMATCH, AGENT_PROVENANCE_INVALID, AGENT_LIFECYCLE_INVALID,
 AGENT_PIPELINE_FAILED. Only unexpected pipeline failures are retryable; a caller
 may make a bounded retry after checking its runtime. Do not retry unchanged
 invalid/oversized inputs or blocked evidence. No paid-provider fallback exists,
-including when environment selects OpenAI. Ordinary CLI --help is human help.
+including when environment selects OpenAI. Standalone `agent --help` / `-h` is
+human help. The machine invocation is exactly `agent --stdin-json`; extra
+arguments, including mixed help/version flags, are refused with fixed JSON.
 
 Limits: 1 MiB total UTF-8 request, 60,000 text scalars / 240,000 text UTF-8 bytes,
 256 source-ID scalars, 256 Actions, depth 24. Malformed UTF-8/lone Unicode
@@ -99,6 +101,12 @@ is SHA-256 of the exact JSON values with object keys sorted (array order retaine
 It is stable for identical requests, not an executor idempotency key or proof of
 issuer identity. Receipt timestamps may differ between repeats. Applications own
 deduplication, approval persistence and execution idempotency separately.
+The fingerprint is fixed before asynchronous extraction starts. Mutating an
+in-process request while awaiting cannot relabel the returned analysis.
+
+For failure, cancellation and retry handling at the product boundary, use the
+[Matoe recovery contract](MATOE-RECOVERY.md). A fresh analysis does not inherit
+approval from an earlier response, and a retryable error is not a retry command.
 
 Offline tests cover the real built CLI plus malformed/oversized/unknown-version
 inputs, forged verification/evidence, source mismatch and lifecycle refusal.

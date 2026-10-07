@@ -105,9 +105,11 @@ program
   .command("analyze-matoe")
   .description("offline deterministic analysis for the explicit new Matoe v0.2 server route")
   .option("--stdin-json", "read the bounded sourceId/ocrText request and emit the complete v0.2 manifest")
-  .action(async (opts: { stdinJson?: boolean }) => {
+  .allowUnknownOption(true)
+  .argument("[unsupported...]", "unsupported arguments are rejected as fixed JSON")
+  .action(async (unsupported: string[], opts: { stdinJson?: boolean }, command: Command) => {
     try {
-      if (!opts.stdinJson) throw new ActionManifestError("MATOE_REQUEST_INVALID", "Explicit stdin JSON input is required");
+      if (!opts.stdinJson || unsupported.length || command.args.length) throw new ActionManifestError("MATOE_REQUEST_INVALID", "Invalid analysis arguments");
       const manifest = await analyzeMatoeRequest(await readMatoeStdin(process.stdin));
       process.stdout.write(JSON.stringify(manifest) + "\n");
     } catch (error) {
@@ -275,4 +277,19 @@ program
     }
   });
 
-program.parseAsync(process.argv);
+// Check machine entry argv before Commander can divert a request into help or
+// version output. Standalone help is still available to a human caller.
+const machineCommand = process.argv[2];
+const machineArgs = process.argv.slice(3);
+const machineEntry = machineCommand === "agent" || machineCommand === "analyze-matoe";
+const machineArgsValid = machineArgs.length === 1 && ["--stdin-json", "--help", "-h"].includes(machineArgs[0]!);
+if (machineEntry && !machineArgsValid) {
+  if (machineCommand === "agent") {
+    process.stdout.write(JSON.stringify(agentFailure(new ActionManifestError("AGENT_REQUEST_INVALID", "Invalid agent arguments"))) + "\n");
+  } else {
+    process.stderr.write(JSON.stringify(matoeAnalysisFailure(new ActionManifestError("MATOE_REQUEST_INVALID", "Invalid analysis arguments"))) + "\n");
+  }
+  process.exitCode = 1;
+} else {
+  await program.parseAsync(process.argv);
+}

@@ -502,16 +502,16 @@ describe("npm / GitHub command safety (static + helpers)", () => {
     expect(workflowReferencesNpmRelease(yml)).toBe(true);
   });
 
-  it("public package versions stay 0.9.0-rc.0", () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const root = join(here, "..");
-    for (const rel of [
-      "packages/schema/package.json",
-      "packages/core/package.json",
-      "apps/cli/package.json",
-    ]) {
-      const v = JSON.parse(readFileSync(join(root, rel), "utf8")).version;
-      expect(v).toBe("0.9.0-rc.0");
+  it("public package versions remain lockstep across the release set", () => {
+    const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+    const expected = JSON.parse(readFileSync(join(root, "apps/cli/package.json"), "utf8")).version;
+    expect(expected).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
+    for (const name of PUBLIC_PACKAGE_NAMES) {
+      const leaf = name.slice("@actionmanifest/".length);
+      const rel = leaf === "cli" ? "apps/cli/package.json" : `packages/${leaf}/package.json`;
+      const pkg = JSON.parse(readFileSync(join(root, rel), "utf8"));
+      expect(pkg.name).toBe(name);
+      expect(pkg.version).toBe(expected);
     }
   });
 });

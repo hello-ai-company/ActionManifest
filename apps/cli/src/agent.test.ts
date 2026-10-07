@@ -46,6 +46,17 @@ describe("offline agent protocol", () => {
     expect(one.manifest.actions).toEqual(two.manifest.actions);
     expect(one.input_fingerprint).not.toBe(three.input_fingerprint);
   });
+  it("binds the fingerprint to the analyzed input even if an in-process caller mutates it while awaiting", async () => {
+    const original = await runAgentRequest(extract);
+    const mutable = structuredClone(extract);
+    const pending = runAgentRequest(mutable);
+    mutable.source.id = "other-synthetic-source";
+    mutable.source.text = "2026年12月24日までに別の票を提出してください。";
+    const result = await pending;
+    expect(result.input_fingerprint).toBe(original.input_fingerprint);
+    expect(result.manifest.source).toEqual(original.manifest.source);
+    expect(result.manifest.actions).toEqual(original.manifest.actions);
+  });
   it.each([null, [], {}, { ...extract, operation: "pay" }, { ...extract, protocol_version: "2" },
     { ...extract, provider: "openai" }, { ...extract, source: { ...source, text: "\ud800" } },
     { ...extract, source: { ...source, text: " " } }, { ...extract, source: { ...source, hash: "x" } }])("refuses malformed or unauthorized operations", async input => {

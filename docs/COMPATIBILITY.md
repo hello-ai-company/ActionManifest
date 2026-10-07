@@ -12,7 +12,7 @@ Three version axes evolve independently. Never conflate them.
 
 | Component | Version | Notes |
 | --- | --- | --- |
-| All 10 npm packages (lockstep) | `0.9.0-rc.0` **on npm** (no git tag / GitHub Release) | Lockstep/fixed versioning (ADR 0007) |
+| All 10 npm packages (lockstep) | `0.9.0-rc.0` **on npm**; `0.9.0-rc.1` prepared locally | Lockstep/fixed versioning (ADR 0007) |
 | Manifest schema | `0.1.0` + `0.2.0` (both frozen, sha256-pinned) | `0.2.0` is current; `0.1.0` still accepted by readers |
 | CanonicalDocument schema | unversioned | additive-only evolution (integration boundary) |
 | Conformance suite | `0.2.0` | 65 universal vectors + 4 reference-serialization goldens |

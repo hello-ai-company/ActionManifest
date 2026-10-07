@@ -63,8 +63,8 @@ try {
   addPackage('@actionmanifest/cli', internal('@actionmanifest/cli'));
   mkdirSync(join(work, 'source'));
   const scoped = ['AGENTS.md', 'LICENSE', 'NOTICE', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'tsconfig.json',
-    'docs/MATOE-SERVER-V02.md', 'docs/MATOE-COMPATIBILITY.md', 'docs/MATOE-DESIGN-HANDOFF.md',
-    'scripts/matoe-offline-bundle.mjs', 'integration/reference-consumer/test/matoe-v02.test.ts'];
+    'docs/MATOE-SERVER-V02.md', 'docs/MATOE-COMPATIBILITY.md', 'docs/MATOE-DESIGN-HANDOFF.md', 'docs/MATOE-RECOVERY.md', 'docs/AGENT-USAGE.md',
+    'scripts/matoe-offline-bundle.mjs', 'integration/reference-consumer/test/matoe-v02.test.ts', 'integration/reference-consumer/test/proposal-recovery.test.ts'];
   for (const pkg of packages.filter(item => item.internal)) {
     const dir = relative(repo, internal(pkg.name));
     scoped.push(`${dir}/src`, `${dir}/package.json`, `${dir}/tsconfig.json`);

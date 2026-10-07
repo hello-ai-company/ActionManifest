@@ -44,4 +44,25 @@ describe("actual built offline server entry / generic consumer boundary", () => 
       expect(run.stderr).not.toContain("SYNTHETIC_PRIVATE_MARKER");
     },
   );
+
+  it.each([
+    { args: ["analyze-matoe"] },
+    { args: ["analyze-matoe", "--stdin-json", "--execute-SYNTHETIC_PRIVATE_MARKER"] },
+    { args: ["analyze-matoe", "--stdin-json", "SYNTHETIC_PRIVATE_MARKER"] },
+    { args: ["analyze-matoe", "--stdin-json", "--unknown-SYNTHETIC_PRIVATE_MARKER", "--help"] },
+    { args: ["analyze-matoe", "--stdin-json", "--version"] },
+  ])("refuses unsupported server arguments with fixed JSON diagnostics: %j", ({ args }) => {
+    const run = spawnSync(process.execPath, [cli, ...args], { input: read("request.json"), encoding: "utf8" });
+    expect(run.status).toBe(1);
+    expect(run.stdout).toBe("");
+    expect(run.stderr).toBe(JSON.stringify({ error: { code: "MATOE_REQUEST_INVALID", message: "Invalid analysis request" } }) + "\n");
+    expect(run.stderr).not.toContain("SYNTHETIC_PRIVATE_MARKER");
+  });
+
+  it("keeps standalone human help outside the machine request protocol", () => {
+    const run = spawnSync(process.execPath, [cli, "analyze-matoe", "--help"], { encoding: "utf8" });
+    expect(run.status).toBe(0); expect(run.stderr).toBe("");
+    expect(run.stdout).toContain("Usage:");
+    expect(run.stdout).toContain("--stdin-json");
+  });
 });

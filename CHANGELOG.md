@@ -13,12 +13,19 @@ conformance suite `0.2.0` (65 vectors), runtime floors and Xberg `1.1.3` stay fi
   audited `0.1.0` conversion rejects information loss and invalid contracts.
 - Add the offline agent SDK/CLI interface, strict JSON input handling and
   installed-consumer documentation with deterministic-provider examples.
-- Snapshot caller input before asynchronous extraction to reject mutation races;
+- Snapshot caller input before asynchronous extraction to bind results to the original input;
   cover retries, recovery and independent request isolation.
 - Tighten schema dispatch and verification, and reuse verification state within
   each request to reduce repeated validation work.
 - Update locked AJV dependency `fast-uri` from `3.1.7` to `3.1.8` for
   [GHSA-hrr3-gc8f-f4qj](https://github.com/advisories/GHSA-hrr3-gc8f-f4qj).
+- Upgrade development-only Vitest to `4.1.11`, removing vulnerable Tinypool,
+  and refresh brace-expansion / source-map-js patch versions. These tools do
+  not ship in public tarballs. Consumers with existing locks should audit
+  and update their own dependency resolutions independently.
+- Replace the old three-package `rc.0` fixture guard with a version/name
+  lockstep assertion covering the full release set.
+
 
 ## Phase 2.4D — Agent-safe Release Control Plane Checks (no version bump)
 

@@ -2,22 +2,16 @@
 
 ## Supported versions
 
-Supported source line on `main`: **Phase 1 `0.1.x`** (release-candidate
-preparation for `0.9.0-rc.1`; see [docs/RELEASING.md](docs/RELEASING.md)).
-
-**As of 2026-09-10: no npm publish, no git tag, no GitHub Release.** The
-`@actionmanifest/*` scope does not exist on the public npm registry
-(verified read-only on 2026-09-09: all names return 404), the repository
-root package is `private: true`, and no publish workflow exists. Security
-fixes land on `main` and are announced in the release notes of the next RC.
-After a first publish, only the latest `0.x` line will receive fixes before
-1.0.
+The `0.x` source line on `main` receives security fixes before 1.0.
+All 10 public packages have `0.9.0-rc.0` on npm. This checkout prepares
+`0.9.0-rc.1`; it must pass the approved staged release workflow before it
+becomes a supported published version. See [release policy](docs/RELEASING.md).
 
 | Line | Status |
 | --- | --- |
-| `0.x` source on `main` (RC prep) | Supported |
-| npm packages | None exist (never published) |
-| Git tags / GitHub Releases | None exist |
+| `0.x` source on `main` | Supported |
+| npm `0.9.0-rc.0` | Current published prerelease |
+| `0.9.0-rc.1` candidate | Under verification; not published |
 
 ## Reporting a vulnerability
 

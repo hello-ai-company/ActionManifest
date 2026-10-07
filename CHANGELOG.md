@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## 0.9.0-rc.1 — prepared candidate (2026-10-07)
+
+All 10 public packages advance together. This entry describes the candidate;
+publication requires the existing exact-SHA FULL gate, staged OIDC workflow,
+human approval and official registry verification. Schema `0.1.0` / `0.2.0`,
+conformance suite `0.2.0` (65 vectors), runtime floors and Xberg `1.1.3` stay fixed.
+
+- Add explicit Matoe server output: full `0.2.0` preserves blocked actions;
+  audited `0.1.0` conversion rejects information loss and invalid contracts.
+- Add the offline agent SDK/CLI interface, strict JSON input handling and
+  installed-consumer documentation with deterministic-provider examples.
+- Snapshot caller input before asynchronous extraction to reject mutation races;
+  cover retries, recovery and independent request isolation.
+- Tighten schema dispatch and verification, and reuse verification state within
+  each request to reduce repeated validation work.
+- Update locked AJV dependency `fast-uri` from `3.1.7` to `3.1.8` for
+  [GHSA-hrr3-gc8f-f4qj](https://github.com/advisories/GHSA-hrr3-gc8f-f4qj).
+
 ## Phase 2.4D — Agent-safe Release Control Plane Checks (no version bump)
 
 Controller verification only. Package versions stay `0.9.0-rc.0`. No npm

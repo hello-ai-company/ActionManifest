@@ -1,20 +1,20 @@
 # Adopt the unpublished branch as a generic consumer
 
-PR #15 base candidate is commit `d50220f871a9627a4b9565b5044c9060bf653d41`.
-The documentation/install-proof follow-up in this checkout is local and unpushed.
+PR #15 is merged. This `0.9.0-rc.1` candidate also includes the input-snapshot
+and recovery follow-up from `50cadbbb0699f3ac07c3e28d00ba664085c8b6e2`.
 Existing npm `0.9.0-rc.0` does not contain the new agent/Matoe APIs. Do not install
 that version expecting the branch additions or replace its published bytes.
 
 | Axis | This local build |
 | --- | --- |
-| Public package labels | All 10 remain `0.9.0-rc.0`; not a new registry release |
+| Public package labels | All 10 prepare `0.9.0-rc.1`; not yet a registry release |
 | Manifest schema | Frozen `0.1.0` and `0.2.0`; default `0.2.0` |
 | Universal conformance suite | `0.2.0`, 65 vectors; 4 separate reference goldens |
 | Builder | Node >=22, exact pnpm `11.23.0` |
 | Consumer | Node >=20; optional native Xberg alone requires >=22 |
 
 Identify an unpublished build with the exact commit, clean/dirty state and tarball
-SHA-256 from its manifest, not its rc.0 label. Check release-manifest.json:
+SHA-256 from its manifest, not its version label. Check release-manifest.json:
 git.head/git.tree/git.dirty, versions, publish_order, packages and SHA256SUMS.
 If dirty=true, it is a working-tree probe rather than an exact-commit candidate.
 Neither a dry-run artifact nor successful tests authorize publishing or merging.
@@ -67,7 +67,7 @@ consumer_dir=$(mktemp -d)
 cd "$consumer_dir"
 npm init -y
 npm install --offline --ignore-scripts --no-audit --no-fund \
-  "$repo"/release-artifacts/tarballs/actionmanifest-{schema,core,temporal,adapters,extractor,verifier,consumer,exporters,cli}-0.9.0-rc.0.tgz
+  "$repo"/release-artifacts/tarballs/actionmanifest-{schema,core,temporal,adapters,extractor,verifier,consumer,exporters,cli}-0.9.0-rc.1.tgz
 cp "$repo/docs/examples/library-quick-start.ts" ./library-quick-start.mjs
 node library-quick-start.mjs
 printf '%s\n' '令和8年10月15日に秋の遠足を実施します。雨天の場合は10月22日に延期します。' > sample.txt

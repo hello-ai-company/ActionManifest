@@ -39,6 +39,8 @@ This is **not** a PDF summarizer, OCR engine, RAG stack, or task manager. It is 
 > versions stage via `.github/workflows/release.yml` after a human
 > completes [docs/RELEASE_TRUSTED_PUBLISHING_SETUP.md](docs/RELEASE_TRUSTED_PUBLISHING_SETUP.md).
 > Pin the exact version (or `next`); do not assume `latest` means “stable”.
+> This checkout prepares `0.9.0-rc.1`; it is not yet published. The new
+> agent/Matoe APIs are available through [reviewed local tarballs](docs/LOCAL-CONSUMER.md).
 
 Install from npm (pin the exact prerelease):
 

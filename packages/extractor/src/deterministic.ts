@@ -12,6 +12,7 @@ import {
   detectModality,
   extractYearContext,
   isCancellationContext,
+  isCorrectionContext,
   isNegation,
   isPastCompletedContext,
   isReferenceContext,
@@ -35,6 +36,8 @@ function extractObject(text: string): string | undefined {
   if (jp) return jp[1];
   const items = text.match(/弁当[、,]?\s*水筒[、,]?\s*タオル/);
   if (items) return items[0];
+  const standaloneItem = text.match(/弁当|水筒|タオル|帽子/);
+  if (standaloneItem) return standaloneItem[0];
   const en = text.match(/\b([A-Z][A-Za-z]+(?:\s+[A-Za-z]+){0,4}\s(?:form|slip|invoice|contract|fee))\b/);
   return en?.[1];
 }
@@ -118,7 +121,7 @@ function targetMatches(action: Action, obj: string): boolean {
 function cancellationSubjects(text: string): string[] {
   const subjects: string[] = [];
   const jp = text.match(
-    /([一-龥ぁ-んァ-ンー]{1,14}(?:説明会|保護者会|懇談会|面談|遠足|行事|運動会|健康診断|発表会|校外学習|総会|集会|検診|集金|式典))/g,
+    /([一-龥ぁ-んァ-ンー]{0,14}(?:説明会|保護者会|懇談会|面談|遠足|行事|運動会|健康診断|発表会|校外学習|総会|集会|検診|集金|式典))/g,
   );
   if (jp) subjects.push(...jp);
   const jpGeneric = text.match(/([一-龥ァ-ンー]{2,10}会)(?=は|が|を|に|の|、|。|$)/g);
@@ -142,6 +145,28 @@ function actionMatchesSubject(action: Action, subject: string): boolean {
     title.includes(ls) ||
     (obj.length > 0 && (obj.includes(ls) || ls.includes(obj)))
   );
+}
+
+/** Destructive corrections require exact form identity, never a substring. */
+function sameCorrectionObject(action: Action, object: string): boolean {
+  const normalize = (value: string) => canonicalTarget(value)
+    .replace(/^.*\d{1,2}月\s*\d{1,2}日(?:までに?|に|は)?/, "")
+    .replace(/^(?:までに|当日は)/, "");
+  return Boolean(action.object) && normalize(action.object!) === normalize(object);
+}
+
+/** Named events follow the same exact-identity rule as forms for corrections. */
+function sameCorrectionSubject(action: Action, subjects: string[]): boolean {
+  const key = (subject: string) => canonicalTarget(subject).replace(/^日に/, "");
+  const names = new Set(action.evidence.flatMap(e => cancellationSubjects(e.text)).map(key));
+  return subjects.some(subject => names.has(key(subject)));
+}
+
+/** Earlier date-only correction quotes are superseded, not eligibility evidence. */
+function isDateOnlyCorrection(text: string): boolean {
+  if (!isCorrectionContext(text)) return false;
+  const mod = detectModality(text);
+  return mod.modality === "unknown" && mod.actor.certainty === "unknown" && mod.conditions.length === 0;
 }
 
 function mergeTemporal(event: Action, alt: Temporal, evidenceText: string, doc: CanonicalDocument): void {
@@ -342,7 +367,7 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
       continue;
     }
 
-    const kind = detectKind(sentence) as ActionKind;
+    let kind = detectKind(sentence) as ActionKind;
     const mod = detectModality(sentence);
     const temporal = primaryTemporal(sentence, ctx);
     const object = extractObject(sentence);
@@ -350,7 +375,7 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
     let title: string;
     if (kind === "event") title = eventTitle(sentence);
     else if (kind === "submit") title = object ? `${object}を提出する` : "提出する";
-    else if (kind === "prepare") title = object ? `${object}を持参する` : sentence.slice(0, 40);
+    else if (kind === "prepare") title = object ? `${object}を${/持参|bring/i.test(sentence) ? "持参" : "用意"}する` : sentence.slice(0, 40);
     else if (kind === "pay") title = object ? `${object}を支払う` : "支払う";
     else title = sentence.replace(/[。．.]$/, "").slice(0, 48);
 
@@ -362,16 +387,46 @@ export function extractDeterministically(doc: CanonicalDocument): Action[] {
       conditions.unshift("参加を希望する");
     }
 
+    // A later correction replaces only the uniquely named prior action. Never
+    // select the last action merely by position or use an unrelated action's date.
+    let corrected: Action | undefined;
+    if (isCorrectionContext(sentence)) {
+      const subjects = cancellationSubjects(sentence);
+      const targets = actions.filter(a =>
+        (a.kind === kind || kind === "deadline" || kind === "other") &&
+        (object ? sameCorrectionObject(a, object) : sameCorrectionSubject(a, subjects)));
+      if (targets.length > 1) {
+        // There is no safe identity to attach the correction to. Keeping any
+        // old exact date (or inventing a new target) would be false certainty.
+        for (const target of targets) actions.splice(actions.indexOf(target), 1);
+        continue;
+      }
+      if (targets.length === 1) {
+        corrected = targets[0]!;
+        actions.splice(actions.indexOf(corrected), 1);
+        if (kind === "deadline" || kind === "other") {
+          kind = corrected.kind;
+          title = corrected.title;
+        }
+      }
+    }
+
     actions.push(
       make({
         kind,
         title,
-        object,
-        modality: mod.modality === "unknown" && kind === "event" ? "required" : mod.modality,
-        actor: mod.actor,
+        object: object ?? corrected?.object,
+        modality: mod.modality === "unknown"
+          ? corrected?.modality ?? (kind === "event" ? "required" : "unknown")
+          : mod.modality,
+        actor: mod.actor.certainty === "unknown" && corrected ? corrected.actor : mod.actor,
         temporal,
         evidenceText: sentence,
-        conditions: conditions.length ? conditions : undefined,
+        // A date-only correction does not erase who/when the action applies to.
+        extraEvidence: corrected?.evidence.map(e => e.text).filter(text => !isDateOnlyCorrection(text)),
+        conditions: corrected || conditions.length
+          ? [...new Set([...(corrected?.conditions ?? []), ...conditions])]
+          : undefined,
       }),
     );
   }

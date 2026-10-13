@@ -1,0 +1,11 @@
+{
+  "id": "adv-jp-chained-date-corrections",
+  "language": "ja",
+  "category": "correction-notice",
+  "tags": [
+    "adversarial",
+    "answer-trust",
+    "correction"
+  ],
+  "golden": false
+}

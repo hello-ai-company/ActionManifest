@@ -1,0 +1,12 @@
+{
+  "id": "adv-jp-ambiguous-correction-target",
+  "language": "ja",
+  "category": "correction-notice",
+  "tags": [
+    "adversarial",
+    "answer-trust",
+    "correction",
+    "ambiguity"
+  ],
+  "golden": false
+}

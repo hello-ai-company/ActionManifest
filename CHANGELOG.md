@@ -2,6 +2,42 @@
 
 All notable changes to this project are documented here. Schema version is independent of package versions; see `docs/SPECIFICATION.md`.
 
+## Unreleased — local document questions
+
+- Add an immutable local evidence index, six structured question categories,
+  source-span citations, stale-citation validation and adjacent-source context.
+- Add `ask-document` for offline extractive answers with explicit source output,
+  bounded inputs, unknown/partial results and value-variant review hints.
+- Reuse sorted token postings for repeated questions without dependencies,
+  network providers or execution grants. Keep original Japanese/Unicode quotes.
+- See `docs/DOCUMENT-QUESTIONS.md` for exact input support and limitations.
+
+## Unreleased — offline batch and workflow review tools
+
+- Add `agent-batch --stdin-json` and the `@actionmanifest/cli/agent-batch`
+  entry point for bounded offline multi-document extraction/re-verification,
+  per-item failures, aggregate counts and exact-source identity conflict review.
+- Add consumer SDK impact previews grouped by local destination and recovery
+  guidance for partial, uncertain, cancelled, expired and stale snapshots.
+- Keep reports non-authorizing: no new host executor, network provider, automatic
+  retry, record deletion, approval bypass, schema or release-control change.
+- See `docs/assistance/WORKFLOW-INSIGHTS.md` and the CLI README for budgets,
+  snapshot limitations, privacy boundaries and examples.
+
+## Unreleased — notice extraction trust hardening
+
+- Require exact dates to be supported by each Action's own evidence; a document
+  may still supply year context, but an unrelated Action cannot supply a date.
+- Reject superseded/unresolved correction dates, cancelled event evidence, and
+  blanket negation of required preparation/payment actions as well as submissions.
+- Preserve Japanese conditional preparation and reject missing/opposite conditions.
+- Resolve uniquely named cross-sentence corrections while retaining prior
+  eligibility, actor and optional modality evidence; recognize bare cancelled
+  event subjects and standalone preparation objects.
+- Add ten synthetic adversarial notice fixtures and focused regression tests.
+  Schema, dependencies, versions and release controls are unchanged. See
+  `docs/evidence/notice-trust-hardening.md` for partial verification and blockers.
+
 ## 0.9.0-rc.1 — prepared candidate (2026-10-07)
 
 All 10 public packages advance together. This entry describes the candidate;

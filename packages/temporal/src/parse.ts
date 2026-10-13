@@ -395,29 +395,34 @@ export function primaryTemporal(text: string, ctx: YearContext = {}): Temporal |
   // "Xに予定していた", "Xとしていました", "Xから…", "changed from X", "was X") and
   // keep the one remaining date. This handles from→to and gerund forms
   // ("10月22日の予定を変更し、10月15日に実施します", "changed from X to Y") as well as
-  // forward and reverse corrections. Secondary rule: the dated temporal nearest
-  // the correction cue. If neither resolves uniquely, omit (Unknown stays unknown).
+  // forward and reverse corrections. If no unique replacement remains, omit
+  // rather than choose by word position (Unknown stays unknown).
   if (isCorrectionContext(text)) {
     const dated = all.filter((t) => t.date && (t.type === "exact" || t.type === "conditional"));
-    if (dated.length === 1) return dated[0];
-    if (dated.length > 1) {
-      const candidates = dated.filter((t) => !isSupersededDate(text, t));
-      if (candidates.length === 1) return candidates[0];
-      const cueIdx = correctionCueIndex(text);
-      if (cueIdx >= 0) {
-        let best: Temporal | undefined;
-        let bestDist = Infinity;
-        for (const t of dated) {
-          const idx = text.indexOf(t.raw_text);
-          if (idx < 0) continue;
-          const dist = Math.abs(idx - cueIdx);
-          if (dist < bestDist) {
-            bestDist = dist;
-            best = t;
-          }
-        }
-        if (best) return best;
+    if (dated.length > 0) {
+      // The existing English planning subjects have two explicit old-plan forms.
+      // Resolve only a positive, complete replacement clause; counting parsed
+      // dates alone would lose yearless/relative alternatives and repeated dates.
+      const englishPlan = /^\s*(?:the\s+)?(?:field trip|health checkups?)\s+(was\s+scheduled\s+for|on)\s+/i.exec(text);
+      if (englishPlan && /\brescheduled\b/i.test(text)) {
+        const remainder = text.slice(englishPlan[0].length);
+        const old = dated.find(t => remainder.startsWith(t.raw_text));
+        if (!old) return undefined;
+        const afterOld = remainder.slice(old.raw_text.length);
+        const connector = englishPlan[1]!.toLowerCase() === "on"
+          ? /^\s*,?\s+has\s+been\s+rescheduled\s+to\s+/i.exec(afterOld)
+          : /^\s*,\s*(?:but|and)\s+has\s+been\s+rescheduled\s+to\s+/i.exec(afterOld);
+        if (!connector) return undefined;
+        const targetText = afterOld.slice(connector[0].length).trim();
+        return parseTemporals(targetText, ctx).find(t => t.type === "exact" && t.date &&
+          (targetText === t.raw_text || targetText === `${t.raw_text}.`));
       }
+      const candidates = dated.filter(t => !isSupersededDate(text, t));
+      const unique = [...new Map(candidates.map(t => [t.date, t])).values()];
+      if (unique.length === 1) return unique[0];
+      // Multiple candidates are not resolved by proximity to a cue. "A or Bに変更"
+      // names alternatives, not a final date; choosing the nearest is false precision.
+      // An old date alone is not a replacement either.
       return undefined;
     }
   }

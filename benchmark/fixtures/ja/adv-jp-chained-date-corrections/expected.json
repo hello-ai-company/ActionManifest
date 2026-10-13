@@ -1,0 +1,40 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "遠足を実施する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-chained-date-corrections",
+          "text": "遠足の日程を10月29日に変更します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-29",
+        "raw_text": "2026-10-29"
+      }
+    }
+  ],
+  "must_not_extract": [
+    {
+      "severity": "critical",
+      "date": "2026-10-15",
+      "failure": "SUPERSEDED_DATE",
+      "reason": "The same explicitly named event was corrected again; earlier dates cannot remain active."
+    },
+    {
+      "severity": "critical",
+      "date": "2026-10-22",
+      "failure": "SUPERSEDED_DATE",
+      "reason": "The same explicitly named event was corrected again; earlier dates cannot remain active."
+    }
+  ]
+}

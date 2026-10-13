@@ -1,0 +1,161 @@
+{
+  "protocol_version": "0.1.0",
+  "ledger_id": "synthetic-ledger",
+  "revision": 5,
+  "changes": [
+    {
+      "change_id": "chg_006c00f36110ae3bd3f814a8",
+      "kind": "corrects",
+      "before": {
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "source_hash": "31b296389c8635cd1a0881a7ce82da33ac82fccf691024b6752c6fa9bcec45ad",
+        "action_id": "act_001"
+      },
+      "after": {
+        "source_id": "00000000-0000-4000-8000-000000000002",
+        "source_hash": "40e04b5e4ce2a7178c6630a0747675f6479a8ef2f182f54146f7b6b718e4bda8",
+        "action_id": "act_001"
+      },
+      "quotes": [
+        {
+          "source_id": "00000000-0000-4000-8000-000000000002",
+          "source_hash": "40e04b5e4ce2a7178c6630a0747675f6479a8ef2f182f54146f7b6b718e4bda8",
+          "action_id": "act_001",
+          "text": "遠足の日程を2026年10月22日に変更します。"
+        },
+        {
+          "source_id": "00000000-0000-4000-8000-000000000001",
+          "source_hash": "31b296389c8635cd1a0881a7ce82da33ac82fccf691024b6752c6fa9bcec45ad",
+          "action_id": "act_001",
+          "text": "遠足は2026年10月15日に実施します。"
+        }
+      ],
+      "changed_fields": [
+        {
+          "field": "temporal.date",
+          "before_value": "2026-10-15",
+          "after_value": "2026-10-22"
+        }
+      ],
+      "reason_codes": [
+        "CONFIRM_REVISION_LINK"
+      ],
+      "target_resolution": "exact",
+      "status": "open"
+    }
+  ],
+  "review_queue": [
+    {
+      "action_ref": {
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "source_hash": "31b296389c8635cd1a0881a7ce82da33ac82fccf691024b6752c6fa9bcec45ad",
+        "action_id": "act_001"
+      },
+      "change_id": "chg_006c00f36110ae3bd3f814a8",
+      "field": "revision_link",
+      "reason_codes": [
+        "CONFIRM_REVISION_LINK"
+      ],
+      "question": "この通知で、前の予定・提出物を変更してよいですか？",
+      "quotes": [
+        {
+          "source_id": "00000000-0000-4000-8000-000000000002",
+          "source_hash": "40e04b5e4ce2a7178c6630a0747675f6479a8ef2f182f54146f7b6b718e4bda8",
+          "action_id": "act_001",
+          "text": "遠足の日程を2026年10月22日に変更します。"
+        },
+        {
+          "source_id": "00000000-0000-4000-8000-000000000001",
+          "source_hash": "31b296389c8635cd1a0881a7ce82da33ac82fccf691024b6752c6fa9bcec45ad",
+          "action_id": "act_001",
+          "text": "遠足は2026年10月15日に実施します。"
+        }
+      ],
+      "item_id": "review_ad92e57eb08b3d33e4e1d8fa",
+      "fingerprint": "ad92e57eb08b3d33e4e1d8faed94d1edc3940acf4d9ddad6ae494ae37c55058d",
+      "status": "open"
+    },
+    {
+      "action_ref": {
+        "source_id": "00000000-0000-4000-8000-000000000003",
+        "source_hash": "2398b4618d2194db62d0ec9384169478e219ead9b1c7a1b0060d33bd35fc970f",
+        "action_id": "act_001"
+      },
+      "profile_id": "local-child-A",
+      "field": "applicability",
+      "reason_codes": [
+        "FACT_MISSING"
+      ],
+      "question": "適用条件を確認してください: participates",
+      "quotes": [
+        {
+          "source_id": "00000000-0000-4000-8000-000000000003",
+          "source_hash": "2398b4618d2194db62d0ec9384169478e219ead9b1c7a1b0060d33bd35fc970f",
+          "action_id": "act_001",
+          "text": "参加者のみ2026年10月20日までに参加票を提出してください。"
+        }
+      ],
+      "item_id": "review_bbde92b22c2b0ae11941bf2a",
+      "fingerprint": "bbde92b22c2b0ae11941bf2a3cd3d63e7a57c71e7256f0e38690d5058038f75c",
+      "status": "open"
+    }
+  ],
+  "evaluations": [
+    {
+      "action_ref": {
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "source_hash": "31b296389c8635cd1a0881a7ce82da33ac82fccf691024b6752c6fa9bcec45ad",
+        "action_id": "act_001"
+      },
+      "profile_id": "local-child-A",
+      "state": "unknown",
+      "reason_codes": [
+        "CONFIRM_REVISION_LINK"
+      ],
+      "missing_facts": [],
+      "workflow_state": "active",
+      "trust": "ready",
+      "ready_for_use": false,
+      "date_state": "exact",
+      "calendar_eligible": false
+    },
+    {
+      "action_ref": {
+        "source_id": "00000000-0000-4000-8000-000000000002",
+        "source_hash": "40e04b5e4ce2a7178c6630a0747675f6479a8ef2f182f54146f7b6b718e4bda8",
+        "action_id": "act_001"
+      },
+      "profile_id": "local-child-A",
+      "state": "unknown",
+      "reason_codes": [
+        "CONFIRM_REVISION_LINK"
+      ],
+      "missing_facts": [],
+      "workflow_state": "active",
+      "trust": "ready",
+      "ready_for_use": false,
+      "date_state": "exact",
+      "calendar_eligible": false
+    },
+    {
+      "action_ref": {
+        "source_id": "00000000-0000-4000-8000-000000000003",
+        "source_hash": "2398b4618d2194db62d0ec9384169478e219ead9b1c7a1b0060d33bd35fc970f",
+        "action_id": "act_001"
+      },
+      "profile_id": "local-child-A",
+      "state": "unknown",
+      "reason_codes": [
+        "FACT_MISSING"
+      ],
+      "missing_facts": [
+        "participates"
+      ],
+      "workflow_state": "active",
+      "trust": "ready",
+      "ready_for_use": false,
+      "date_state": "exact",
+      "calendar_eligible": false
+    }
+  ]
+}

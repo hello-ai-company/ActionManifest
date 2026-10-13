@@ -1,0 +1,10 @@
+{
+  "synthetic_content": true,
+  "fake_llm": false,
+  "analysis_entrypoint": "analyzeMatoeRequest",
+  "provider": "deterministic",
+  "execution_adapter": "FileLocalWorkflowHost",
+  "actual_file_commit_and_reopen": true,
+  "confirmation": "simulated explicit test click, not a real user authorization",
+  "external_writes": false
+}

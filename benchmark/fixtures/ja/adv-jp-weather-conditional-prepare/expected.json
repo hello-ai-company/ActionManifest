@@ -1,0 +1,34 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "prepare",
+      "title": "タオルを持参する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-weather-conditional-prepare",
+          "text": "雨天の場合は、タオルを持参してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "object": "タオル",
+      "conditions": [
+        "雨天の場合は"
+      ]
+    }
+  ],
+  "must_not_extract": [
+    {
+      "severity": "critical",
+      "kind": "prepare",
+      "unconditionalRequired": true,
+      "failure": "CONDITION_LOST",
+      "reason": "A towel is required only when it rains, not unconditionally."
+    }
+  ]
+}

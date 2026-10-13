@@ -1,0 +1,11 @@
+{
+  "id": "adv-jp-prepare-negation",
+  "language": "ja",
+  "category": "negation",
+  "tags": [
+    "adversarial",
+    "answer-trust",
+    "negation"
+  ],
+  "golden": false
+}

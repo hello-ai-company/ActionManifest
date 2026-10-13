@@ -1,0 +1,57 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "遠足を実施する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-cross-sentence-correction",
+          "text": "遠足の日程を10月22日に変更します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-22",
+        "raw_text": "2026-10-22"
+      }
+    },
+    {
+      "id": "act_002",
+      "kind": "event",
+      "title": "説明会を実施する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-cross-sentence-correction",
+          "text": "説明会は10月20日に実施します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-20",
+        "raw_text": "2026-10-20"
+      }
+    }
+  ],
+  "must_not_extract": [
+    {
+      "severity": "critical",
+      "kind": "event",
+      "date": "2026-10-15",
+      "failure": "SUPERSEDED_DATE",
+      "reason": "The earlier trip date is superseded by the named later correction; the unrelated meeting is unchanged."
+    }
+  ]
+}

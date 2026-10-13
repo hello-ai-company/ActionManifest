@@ -1,0 +1,38 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "参加確認票を提出する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-deadline-kind-correction",
+          "text": "参加確認票の締切を10月12日に変更します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "object": "参加確認票",
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-12",
+        "raw_text": "2026-10-12"
+      },
+      "conditions": [
+        "希望者のみ"
+      ]
+    }
+  ],
+  "must_not_extract": [
+    {
+      "severity": "critical",
+      "date": "2026-10-05",
+      "failure": "SUPERSEDED_DATE",
+      "reason": "A 締切 correction changes the named submission date even if the correction sentence has no 提出 verb."
+    }
+  ]
+}

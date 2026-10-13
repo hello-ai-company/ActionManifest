@@ -1,0 +1,12 @@
+import { performance } from "node:perf_hooks";
+import { createDocumentEvidenceIndex } from "../packages/core/src/document-query.js";
+const lines = Array.from({ length: 10_000 }, (_, i) => `${i} 学校の宿題提出期限は明日。希望者のみ。旧版の持ち物は不要です。${"原文を確認。".repeat(20)}`);
+const doc = { id: "synthetic-family-benchmark", text: lines.join("\n") };
+let start = performance.now();
+const index = createDocumentEvidenceIndex(doc);
+const indexMs = performance.now() - start;
+start = performance.now(); const first = index.familyReview({ limit: 20 }); const firstReviewMs = performance.now() - start;
+start = performance.now();
+for (let i = 0; i < 300; i++) index.familyReview({ offset: i * 20, limit: 20, ...(i % 2 ? { domain: "school" as const } : {}) });
+const repeatedReviewMs = performance.now() - start;
+console.log(JSON.stringify({ inputUTF16: doc.text.length, indexedPassages: index.passageCount, firstCoverage: first.coverage, indexMs, firstReviewMs, repeatedQueries: 300, repeatedReviewMs, averageRepeatedMs: repeatedReviewMs / 300, scope: "synthetic cloud CPU timing only; no native, semantic accuracy or peak-memory claim" }, null, 2));

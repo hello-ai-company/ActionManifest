@@ -28,7 +28,12 @@ if (!verificationPassed(flags)) {
 Checks per Action: evidence support (quote must appear in the source),
 temporal support (a declared calendar date must be supported by evidence —
 hallucinated deadlines fail), actor/modality support, negation conflicts,
-page references. Manifest-level fatals (empty source, source hash mismatch)
+condition preservation, cancelled-event conflicts and page references. Exact dates must occur in that Action's evidence; a document-wide
+year may disambiguate a month/day, but another Action's date cannot. Correction
+quotes must identify a unique active replacement. Required preparations and
+payments are checked for negation as well as submissions.
+
+Manifest-level fatals (empty source, source hash mismatch)
 are cross-cutting and block all promotion.
 
 ## Key exports

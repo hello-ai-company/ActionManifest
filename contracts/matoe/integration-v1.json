@@ -1,0 +1,500 @@
+{
+  "contract_version": "1.0.0",
+  "manifest_versions": [
+    "0.1.0",
+    "0.2.0"
+  ],
+  "adoption_manifest_version": "0.2.0",
+  "receipt_version": "1.0.0",
+  "execution_authority": "host_exact_approval_only",
+  "external_execution": false,
+  "real_world_completion": false,
+  "action_kinds": {
+    "event": {
+      "native_type": "event",
+      "preparation_adoption": true,
+      "portable_operation": "local.schedule.create"
+    },
+    "deadline": {
+      "native_type": "deadline",
+      "preparation_adoption": true,
+      "portable_operation": "local.task.create"
+    },
+    "submit": {
+      "native_type": "submission",
+      "preparation_adoption": true,
+      "portable_operation": "local.task.create"
+    },
+    "prepare": {
+      "native_type": "confirmation",
+      "preparation_adoption": true,
+      "portable_operation": "local.task.create"
+    },
+    "pay": {
+      "native_type": "payment",
+      "preparation_adoption": true,
+      "portable_operation": "local.task.create"
+    },
+    "review": {
+      "native_type": "confirmation",
+      "preparation_adoption": false,
+      "portable_operation": "local.task.create"
+    },
+    "reply": {
+      "native_type": "reply",
+      "preparation_adoption": true,
+      "portable_operation": "local.task.create"
+    },
+    "sign": {
+      "native_type": "confirmation",
+      "preparation_adoption": false,
+      "portable_operation": "local.task.create"
+    },
+    "attend": {
+      "native_type": "event",
+      "preparation_adoption": true,
+      "portable_operation": "local.schedule.create"
+    },
+    "contact": {
+      "native_type": "confirmation",
+      "preparation_adoption": false,
+      "portable_operation": "local.task.create"
+    },
+    "read": {
+      "native_type": "notice",
+      "preparation_adoption": true,
+      "portable_operation": "local.task.create"
+    },
+    "complete": {
+      "native_type": "confirmation",
+      "preparation_adoption": false,
+      "portable_operation": "local.task.create"
+    },
+    "other": {
+      "native_type": "confirmation",
+      "preparation_adoption": false,
+      "portable_operation": "local.task.create"
+    }
+  },
+  "local_operations": [
+    "local.task.create",
+    "local.schedule.create",
+    "local.record.adopt",
+    "local.record.verify"
+  ],
+  "receipt_statuses": [
+    "pending",
+    "running",
+    "verified",
+    "failed",
+    "uncertain",
+    "cancelled",
+    "invalidated"
+  ],
+  "native_tools": {
+    "annualCalendar": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "annualImport": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "applyLessonTemplate": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "applyNoticeChange": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "archiveChild": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "archiveCommunicationSource": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "archiveLessonTemplate": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "archiveLocalGroup": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "archiveMembership": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "archiveOrganization": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "assign": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "backup": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "bindLocalGroupSource": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "bindNoticeTarget": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "calendarOccurrence": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "calendarQuery": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "capabilities": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "clarify": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "clearPreparationLead": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "companionSettings": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "complete": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "createChild": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "createCommunicationSource": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "createEvent": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "createLessonTemplate": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "createLocalGroup": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "createManualItem": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "createMembership": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "createOrganization": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "createTask": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "deleteData": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "documentHandoff": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "editChild": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "editCommunicationSource": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "editLessonTemplate": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "editManualItem": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "editMembership": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "editOrganization": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "exportCalendar": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "familySharing": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "gmailImport": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "groupChat": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "history": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "humanAdoptCandidate": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "importDocument": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "inspect": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "intakeLocalOnly": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "manageRecurrence": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "manualItem": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "noticeChanges": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "notifications": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "occurrenceAssign": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "occurrenceComplete": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "occurrenceReopen": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "ocrPDFPages": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "offlineCheck": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "offlineLibrary": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "openCalendar": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "openChildren": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "openDocument": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "openInbox": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "openSettings": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "openToday": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "organizationSettings": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "organize": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "organizeTomorrow": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "pdfPages": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "preparationSettings": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "prepare": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "pruneOrphanOCRReceipts": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "recordHandoff": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "recurrenceCancel": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "recurrenceChangeFollowing": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "recurrenceChangeSeries": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "recurrenceCreate": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "recurrenceDisable": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "recurrenceMove": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "recurrenceResetException": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "renameLocalGroup": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "reopen": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "restore": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "restoreChild": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "restoreCommunicationSource": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "restoreLessonTemplate": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "restoreLocalGroup": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "restoreMembership": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "restoreOrganization": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "retryOriginalOCR": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "reviewAccept": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "reviewDocument": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "reviewNoticeCard": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "reviewNoticeQuestion": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "reviewPDFPage": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "reviewReject": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "revokeLocalGroupBinding": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "routeDocument": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "selectLocalGroup": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "setCompanionPreferences": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "setPreparationLead": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    },
+    "subscription": {
+      "route": "foreground",
+      "authority": "foreground_user_action"
+    },
+    "undoNoticeChange": {
+      "route": "local",
+      "authority": "exact_plan_approval"
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "申込書を提出する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-distinct-form-correction",
+          "text": "申込書を令和8年10月5日までに提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "object": "申込書",
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-05",
+        "raw_text": "2026-10-05"
+      }
+    },
+    {
+      "id": "act_002",
+      "kind": "submit",
+      "title": "追加申込書を提出する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-distinct-form-correction",
+          "text": "追加申込書の提出期限を10月12日に変更します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "object": "追加申込書",
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-12",
+        "raw_text": "2026-10-12"
+      }
+    }
+  ],
+  "must_not_extract": [
+    {
+      "severity": "critical",
+      "kind": "submit",
+      "object": "追加申込書",
+      "date": "2026-10-05",
+      "failure": "WRONG_TEMPORAL",
+      "reason": "申込書 and 追加申込書 are distinct forms. The added form must not inherit the original deadline, and the original form remains active."
+    }
+  ]
+}

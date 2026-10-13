@@ -16,3 +16,9 @@ export * from "./trust.js";
 export * from "./manifest.js";
 
 export const EXTRACTOR_VERSION = "0.1.0";
+
+export * from "./document-query.js";
+
+export * from "./family-review.js";
+
+export * from "./evidence-freshness.js";

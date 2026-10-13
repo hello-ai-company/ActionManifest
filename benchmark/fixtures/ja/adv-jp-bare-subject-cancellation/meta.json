@@ -1,0 +1,11 @@
+{
+  "id": "adv-jp-bare-subject-cancellation",
+  "language": "ja",
+  "category": "cancellation",
+  "tags": [
+    "adversarial",
+    "answer-trust",
+    "cancellation"
+  ],
+  "golden": false
+}

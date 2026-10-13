@@ -278,6 +278,8 @@ describe("verifyPackagesOnRegistry (three independent injectors)", () => {
       version: RC0,
       canonicalSha256: new Map([[NAME, hash]]),
       retries: 1,
+      // Fully offline fixture: exact metadata may still trigger artifact inspection.
+      downloadTarball: () => ({ bytes: Buffer.from("canonical-rc0") }),
       readRegistry: (url) => {
         if (url.endsWith(`/${RC0}`)) {
           return {

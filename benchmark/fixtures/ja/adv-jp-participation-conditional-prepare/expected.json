@@ -1,0 +1,34 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "prepare",
+      "title": "帽子を用意する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-participation-conditional-prepare",
+          "text": "屋外活動に参加する場合のみ、帽子を用意してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "object": "帽子",
+      "conditions": [
+        "屋外活動に参加する場合のみ"
+      ]
+    }
+  ],
+  "must_not_extract": [
+    {
+      "severity": "critical",
+      "kind": "prepare",
+      "unconditionalRequired": true,
+      "failure": "CONDITION_LOST",
+      "reason": "Preparation applies only when participating in the outdoor activity."
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "説明会を実施する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-bare-subject-cancellation",
+          "text": "説明会は10月20日に実施します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "temporal": {
+        "type": "exact",
+        "date": "2026-10-20",
+        "raw_text": "2026-10-20"
+      }
+    }
+  ],
+  "must_not_extract": [
+    {
+      "severity": "critical",
+      "kind": "event",
+      "date": "2026-10-15",
+      "failure": "WRONG_CANCELLATION_TARGET",
+      "reason": "The bare subject 遠足 is cancelled; the unrelated 説明会 remains active."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "adv-jp-distinct-form-correction",
+  "language": "ja",
+  "category": "correction-notice",
+  "tags": [
+    "adversarial",
+    "answer-trust",
+    "correction",
+    "target-discrimination"
+  ],
+  "golden": false
+}

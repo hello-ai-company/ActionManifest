@@ -1,0 +1,100 @@
+{
+  "synthetic": true,
+  "ingress_verified": false,
+  "description": "Pure projection fixtures; production frozen-schema/AJV ingress remains a separate gate.",
+  "sources": [
+    {
+      "source_id": "00000000-0000-4000-8000-000000000001",
+      "source_hash": "31b296389c8635cd1a0881a7ce82da33ac82fccf691024b6752c6fa9bcec45ad",
+      "canonical_text": "遠足は2026年10月15日に実施します。",
+      "actions": [
+        {
+          "id": "act_001",
+          "kind": "event",
+          "title": "遠足",
+          "object": "遠足",
+          "modality": "required",
+          "actor": {
+            "certainty": "unknown"
+          },
+          "temporal": {
+            "type": "exact",
+            "date": "2026-10-15",
+            "raw_text": "2026-10-15"
+          },
+          "evidence": [
+            {
+              "source_id": "00000000-0000-4000-8000-000000000001",
+              "text": "遠足は2026年10月15日に実施します。"
+            }
+          ],
+          "inference": "explicit",
+          "status": "verified"
+        }
+      ]
+    },
+    {
+      "source_id": "00000000-0000-4000-8000-000000000002",
+      "source_hash": "40e04b5e4ce2a7178c6630a0747675f6479a8ef2f182f54146f7b6b718e4bda8",
+      "canonical_text": "遠足の日程を2026年10月22日に変更します。",
+      "actions": [
+        {
+          "id": "act_001",
+          "kind": "event",
+          "title": "遠足",
+          "object": "遠足",
+          "modality": "required",
+          "actor": {
+            "certainty": "unknown"
+          },
+          "temporal": {
+            "type": "exact",
+            "date": "2026-10-22",
+            "raw_text": "2026-10-22"
+          },
+          "evidence": [
+            {
+              "source_id": "00000000-0000-4000-8000-000000000002",
+              "text": "遠足の日程を2026年10月22日に変更します。"
+            }
+          ],
+          "inference": "explicit",
+          "status": "verified"
+        }
+      ]
+    },
+    {
+      "source_id": "00000000-0000-4000-8000-000000000003",
+      "source_hash": "2398b4618d2194db62d0ec9384169478e219ead9b1c7a1b0060d33bd35fc970f",
+      "canonical_text": "参加者のみ2026年10月20日までに参加票を提出してください。",
+      "actions": [
+        {
+          "id": "act_001",
+          "kind": "submit",
+          "title": "参加確認票を提出する",
+          "object": "参加確認票",
+          "modality": "required",
+          "actor": {
+            "certainty": "unknown"
+          },
+          "temporal": {
+            "type": "exact",
+            "date": "2026-10-20",
+            "raw_text": "2026-10-20"
+          },
+          "evidence": [
+            {
+              "source_id": "00000000-0000-4000-8000-000000000003",
+              "text": "参加者のみ2026年10月20日までに参加票を提出してください。"
+            }
+          ],
+          "inference": "explicit",
+          "status": "verified",
+          "conditions": [
+            "参加者のみ"
+          ]
+        }
+      ]
+    }
+  ]
+}

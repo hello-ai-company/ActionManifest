@@ -334,8 +334,10 @@ console.log("STANDALONE-OK");
 `,
   },
   consumer: {
-    ts: `import { classifyManifest, readyActions, CONSUMABLE_STATUSES, manifestFatalReasons } from "@actionmanifest/consumer";
+    ts: `import { classifyManifest, readyActions, CONSUMABLE_STATUSES, manifestFatalReasons, createAssistanceState, restoreAssistanceState, type AssistanceState } from "@actionmanifest/consumer";
 import { validateActionManifest } from "@actionmanifest/core";
+const assistance: AssistanceState = restoreAssistanceState(JSON.stringify(createAssistanceState("standalone-ledger")));
+if (assistance.ledger_id !== "standalone-ledger" || assistance.revision !== 0) throw new Error("assistance public types wrong");
 const manifest = validateActionManifest({
   schema_version: "0.2.0",
   source: { id: "d1" },
@@ -359,8 +361,10 @@ const report = classifyManifest(manifest);
 if (report.counts.ready !== 1 || readyActions(manifest).length !== 1) throw new Error("consumer wrong");
 if (!Array.isArray(CONSUMABLE_STATUSES) || typeof manifestFatalReasons !== "function") throw new Error("consumer surface wrong");
 `,
-    mjs: `import { classifyManifest } from "@actionmanifest/consumer";
+    mjs: `import { classifyManifest, createAssistanceState, restoreAssistanceState } from "@actionmanifest/consumer";
 import { validateActionManifest } from "@actionmanifest/core";
+const assistance = restoreAssistanceState(JSON.stringify(createAssistanceState("standalone-ledger")));
+if (assistance.ledger_id !== "standalone-ledger" || assistance.revision !== 0) throw new Error("assistance public entrypoint wrong");
 const manifest = validateActionManifest({
   schema_version: "0.2.0",
   source: { id: "d1" },

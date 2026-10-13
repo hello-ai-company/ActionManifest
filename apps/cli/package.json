@@ -17,6 +17,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./agent-batch": {
+      "types": "./dist/agent-batch.d.ts",
+      "import": "./dist/agent-batch.js"
     }
   },
   "files": [

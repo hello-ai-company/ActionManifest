@@ -20,11 +20,11 @@ function input(text = "2026年10月15日までに参加票を提出してくだ�
 
 beforeEach(() => vi.clearAllMocks());
 describe("verification work scales per request, without shared trust state", () => {
-  it("parses the source once, rather than once per action (deterministic performance regression)", () => {
+  it("reads the source year once and parses dates only from each action evidence (deterministic performance regression)", () => {
     const { doc, manifest } = input();
     expect(verifyManifest(manifest, doc).flags.passed).toBe(true);
     expect(temporal.extractYearContext).toHaveBeenCalledTimes(1);
-    expect(temporal.parseTemporals).toHaveBeenCalledTimes(manifest.actions.length + 1);
+    expect(temporal.parseTemporals).toHaveBeenCalledTimes(manifest.actions.length);
   });
 
   it("does not parse source dates at all when no action has an exact date", () => {

@@ -1,0 +1,113 @@
+{
+  "workflow_version": "0.1.0",
+  "plan_id": "b9caa6df-e6f1-41fa-9289-fe425ef5c478",
+  "intent": "来週の準備をして",
+  "created_at": "2026-10-11T10:00:00.000Z",
+  "expires_at": "2026-10-12T10:00:00.000Z",
+  "ledger_id": "local-preparation-example",
+  "ledger_revision": 1,
+  "scope_key": "school-A",
+  "profile_id": "local-profile-A",
+  "context_fingerprint": "a23e34c7eb9f8ed459fe4d47aad07ba4421b3b494d535f4402374b70a5667cff",
+  "permission_fingerprint": "4e742276df409d243334da4e932e3cd41ef1866dde8c6f47f78b42bfd65757f6",
+  "destinations": [
+    {
+      "destination_id": "local-tasks",
+      "scope_key": "school-A",
+      "locality": "device_local",
+      "kind": "task_list",
+      "revision": 0
+    },
+    {
+      "destination_id": "local-schedule",
+      "scope_key": "school-A",
+      "locality": "device_local",
+      "kind": "schedule",
+      "revision": 0
+    }
+  ],
+  "steps": [
+    {
+      "action_ref": {
+        "source_id": "22222222-2222-4222-8222-222222222222",
+        "source_hash": "ae2a44fc80bb312aba8769071cd0800753f8791a62e52ad04391043cb993809e",
+        "action_id": "act_001"
+      },
+      "operation": "local.schedule.create",
+      "destination_id": "local-schedule",
+      "step_id": "step_1",
+      "scope_key": "school-A",
+      "profile_id": "local-profile-A",
+      "args": {
+        "title": "遠足は2026年10月14日に実施します",
+        "date": "2026-10-14",
+        "all_day": true
+      },
+      "evidence": [
+        {
+          "source_id": "22222222-2222-4222-8222-222222222222",
+          "source_hash": "ae2a44fc80bb312aba8769071cd0800753f8791a62e52ad04391043cb993809e",
+          "action_id": "act_001",
+          "text": "遠足は2026年10月14日に実施します。"
+        }
+      ],
+      "action_fingerprint": "f1f4dd882588accb8fe683d153fb518e1e8a35c257d817529fede419aac22230",
+      "binding": "da5914e398c1daebb404ac15f4aca834379f5f12a3785e38fad487464d505002"
+    },
+    {
+      "action_ref": {
+        "source_id": "22222222-2222-4222-8222-222222222222",
+        "source_hash": "ae2a44fc80bb312aba8769071cd0800753f8791a62e52ad04391043cb993809e",
+        "action_id": "act_002"
+      },
+      "operation": "local.task.create",
+      "destination_id": "local-tasks",
+      "step_id": "step_2",
+      "scope_key": "school-A",
+      "profile_id": "local-profile-A",
+      "args": {
+        "title": "参加票を提出する",
+        "due_date": "2026-10-15"
+      },
+      "evidence": [
+        {
+          "source_id": "22222222-2222-4222-8222-222222222222",
+          "source_hash": "ae2a44fc80bb312aba8769071cd0800753f8791a62e52ad04391043cb993809e",
+          "action_id": "act_002",
+          "text": "参加票を2026年10月15日までに提出してください。"
+        }
+      ],
+      "action_fingerprint": "574efb1bbf92690a8321f78fdf21fbc47db717ac4c1696b91d2a979907124850",
+      "binding": "f4d361cf47df4ab3a7f15fd894dc77694f30acfd357daab205072d6e88ddd97b"
+    },
+    {
+      "action_ref": {
+        "source_id": "22222222-2222-4222-8222-222222222222",
+        "source_hash": "ae2a44fc80bb312aba8769071cd0800753f8791a62e52ad04391043cb993809e",
+        "action_id": "act_003"
+      },
+      "operation": "local.task.create",
+      "destination_id": "local-tasks",
+      "step_id": "step_3",
+      "scope_key": "school-A",
+      "profile_id": "local-profile-A",
+      "args": {
+        "title": "2026年10月16日までに水筒を準備してください",
+        "due_date": "2026-10-16"
+      },
+      "evidence": [
+        {
+          "source_id": "22222222-2222-4222-8222-222222222222",
+          "source_hash": "ae2a44fc80bb312aba8769071cd0800753f8791a62e52ad04391043cb993809e",
+          "action_id": "act_003",
+          "text": "2026年10月16日までに水筒を準備してください。"
+        }
+      ],
+      "action_fingerprint": "2e15e72cde2576f9d1baf3253e75fa4a9b4871a655256d41bcb5fe18aa772cff",
+      "binding": "ae4c80e91ad227d333a317078ef07ba2a0c39613d14cc28d0d19b88fbfb1e517"
+    }
+  ],
+  "blocked": [],
+  "review_items": [],
+  "digest": "5b2979da69d345cbebed8bb5f1bf101496e3db059d98f0bf7b3caf021fd487b2"
+}

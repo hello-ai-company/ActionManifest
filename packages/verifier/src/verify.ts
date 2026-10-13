@@ -7,17 +7,22 @@ import {
   type ActionManifest,
   type ActionVerificationResult,
   type CanonicalDocument,
-  type Temporal,
   type VerificationFlags,
   type VerificationIssue,
 } from "@actionmanifest/core";
 import {
   extractYearContext,
-  isApproximateCue,
   isNegation,
-  parseTemporals,
   type YearContext,
 } from "@actionmanifest/temporal";
+
+import {
+  cancellationConflict,
+  conditionsSupported,
+  evidenceCorpus,
+  negationConflict,
+  temporalEvidenceSupported,
+} from "./semantics.js";
 
 export interface VerifyOptions {
   now?: Date;
@@ -32,20 +37,11 @@ function issue(
   return { code, message, ...(action_id ? { action_id } : {}), severity };
 }
 
-function flattenTemporals(t?: Temporal): Temporal[] {
-  if (!t) return [];
-  return [t, ...(t.alternatives ?? []).flatMap(flattenTemporals)];
-}
-
-function evidenceCorpus(action: Action): string {
-  return action.evidence.map((e) => e.text).join("\n");
-}
-
 interface VerificationContext {
   matchesQuote: (quote: string) => boolean;
   pages: Set<number>;
   hasPages: boolean;
-  temporalSource: () => { year: YearContext; dates: Set<string | undefined> };
+  temporalSource: () => YearContext;
 }
 
 function verificationContext(doc: CanonicalDocument, source: string): VerificationContext {
@@ -56,8 +52,7 @@ function verificationContext(doc: CanonicalDocument, source: string): Verificati
     hasPages: (doc.pages?.length ?? 0) > 0,
     temporalSource: () => {
       if (!temporal) {
-        const year = extractYearContext(source);
-        temporal = { year, dates: new Set(parseTemporals(source, year).filter(t => t.date).map(t => t.date)) };
+        temporal = extractYearContext(source);
       }
       return temporal;
     },
@@ -65,34 +60,11 @@ function verificationContext(doc: CanonicalDocument, source: string): Verificati
 }
 
 function dateSupportedByEvidence(action: Action, context: VerificationContext): boolean {
-  const temporals = flattenTemporals(action.temporal);
-  const exactDates = temporals.filter((t) => t.date && (t.type === "exact" || t.type === "conditional"));
-  if (exactDates.length === 0) {
-    // Approximate must not invent a date.
-    for (const t of temporals) {
-      if (t.type === "approximate" && t.date) return false;
-    }
-    return true;
-  }
-
-  const { year, dates } = context.temporalSource();
-  const corpus = evidenceCorpus(action);
-  const evidenceDates = new Set(parseTemporals(corpus, year).filter(p => p.date).map(p => p.date));
-
-  for (const t of exactDates) {
-    if (!t.date) continue;
-    if (dates.has(t.date) || evidenceDates.has(t.date)) continue;
-    // Hallucination: exact date from approximate cue only
-    if (isApproximateCue(corpus) && !/\d{1,2}日/.test(corpus)) {
-      return false;
-    }
-    return false;
-  }
-
-  for (const t of temporals) {
-    if (t.type === "approximate" && t.date) return false;
-  }
-  return true;
+  // Keep undated verification cheap. Year context is request-local and lazy.
+  const hasDate = (t: NonNullable<Action["temporal"]>): boolean =>
+    Boolean(t.date) || (t.alternatives ?? []).some(hasDate);
+  const year = action.temporal && hasDate(action.temporal) ? context.temporalSource() : {};
+  return temporalEvidenceSupported(action, year);
 }
 
 /**
@@ -142,24 +114,6 @@ function modalitySupported(action: Action): boolean {
     return /希望者のみ|任意|optional|those who wish/i.test(corpus);
   }
   return true;
-}
-
-function negationConflict(action: Action): boolean {
-  if (action.modality === "prohibited") return false;
-  if (action.kind !== "submit" || action.modality !== "required") return false;
-
-  const corpus = evidenceCorpus(action);
-  const conditions = (action.conditions ?? []).join(" ");
-  const hasNeg =
-    isNegation(corpus) || /提出不要|提出は不要/.test(corpus) || isNegation(conditions) || /提出不要|提出は不要/.test(conditions);
-  if (!hasNeg) return false;
-
-  // An eligibility / prior-submission exemption ("希望者のみ", "再提出不要",
-  // "already submitted", "前回提出した方") legitimately narrows a required submit.
-  // A blanket negation ("提出は不要", "提出する必要はありません") that applies to
-  // everyone contradicts a required submit and must NOT be verified.
-  const isExemption = /再提出|already submitted|希望者|参加者|提出した方|前回|exemption/i.test(conditions);
-  return !isExemption;
 }
 
 function pageValid(action: Action, context: VerificationContext): boolean {
@@ -248,7 +202,15 @@ function verifyActionWithContext(
   const actor_supported = actor.ok;
   if (actor.issue) issues.push(actor.issue);
 
-  const modality_supported = modalitySupported(action);
+  const conditions_supported = conditionsSupported(action);
+  if (!conditions_supported) {
+    issues.push(issue("CONDITION_LOST", "A stated condition is missing from this Action", action.id));
+  }
+  const cancelled = cancellationConflict(action);
+  if (cancelled) {
+    issues.push(issue("CANCELLATION_CONFLICT", "A cancelled event cannot be verified as active", action.id));
+  }
+  const modality_supported = modalitySupported(action) && conditions_supported && !cancelled;
   if (!modality_supported) {
     issues.push(issue("MODALITY_UNSUPPORTED", "Modality is not supported by evidence", action.id));
   }

@@ -1,0 +1,31 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "submit",
+      "title": "参加確認票を提出する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-prepare-negation",
+          "text": "参加確認票を提出してください。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed",
+      "object": "参加確認票"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "severity": "critical",
+      "kind": "prepare",
+      "modality": "required",
+      "failure": "NEGATION_LOST",
+      "reason": "The water bottle instruction was withdrawn; it must not remain verified."
+    }
+  ]
+}

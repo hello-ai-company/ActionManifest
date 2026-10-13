@@ -1,0 +1,11 @@
+{
+  "id": "adv-jp-cross-sentence-correction",
+  "language": "ja",
+  "category": "correction-notice",
+  "tags": [
+    "adversarial",
+    "answer-trust",
+    "correction"
+  ],
+  "golden": false
+}

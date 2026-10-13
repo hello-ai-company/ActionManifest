@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { resolve } from "node:path";
+import { resolve, extname } from "node:path";
 import { Command } from "commander";
 import { resolveAdapter } from "@actionmanifest/adapters";
-import { MATOE_INPUT_LIMITS, prepareMatoeManifest } from "@actionmanifest/consumer";
+import { MATOE_INPUT_LIMITS, prepareMatoeManifest, formatActionGuidance } from "@actionmanifest/consumer";
 import {
   ActionManifestError,
   validateActionManifest,
   type CanonicalDocument,
+  type DocumentQuestionKind,
+  createDocumentEvidenceIndex, type FamilyDomain, type FamilyTopic,
 } from "@actionmanifest/core";
 import {
   ActionExtractor,
@@ -21,6 +23,9 @@ import { verificationPassed, verifyManifest } from "@actionmanifest/verifier";
 import { defaultFixtureRoot, formatBenchmark, runBenchmark } from "./benchmark.js";
 import { readMatoeInput } from "./matoe-input.js";
 import { analyzeMatoeRequest, matoeAnalysisFailure, readMatoeStdin } from "./matoe-analysis.js";
+import { answerDocumentQuestion } from "./document-query.js";
+import { explainCandidate, explanationFailure } from "./explain.js";
+import { agentBatchFailure, readAgentBatchStdin, runAgentBatch } from "./agent-batch.js";
 import { agentFailure, readAgentStdin, runAgentRequest } from "./agent.js";
 import {
   defaultConformanceRoot,
@@ -102,6 +107,51 @@ program
   });
 
 program
+  .command("ask-document")
+  .description("offline source-excerpt answers with citations; no semantic AI or action execution")
+  .argument("<file>", "UTF-8 text, Markdown, CSV, or canonical document JSON")
+  .option("--canonical-json", "read a CanonicalDocument JSON with existing page provenance")
+  .option("--kind <kind>", "search | deadline | cost | requirements | contact | table", "search")
+  .option("--subject <text>", "literal/token subject filter, not a natural-language semantic question")
+  .option("--limit <number>", "maximum matching excerpts (1–50)", "8")
+  .requiredOption("--include-evidence", "include original source excerpts in local stdout")
+  .action(async (file: string, opts: { canonicalJson?: boolean; kind: string; subject?: string; limit: string }) => {
+    try {
+      if (!opts.canonicalJson && ![".txt", ".text", ".md", ".csv", ""].includes(extname(file).toLowerCase())) throw new TypeError("Unsupported file type");
+      const raw = await readMatoeInput(resolve(file), 8_000_000);
+      if (raw.includes("\0")) throw new TypeError("Binary input unsupported");
+      const document: CanonicalDocument = opts.canonicalJson ? JSON.parse(raw) : { id: resolve(file), text: raw };
+      const answer = answerDocumentQuestion(document, { kind: opts.kind as DocumentQuestionKind, text: opts.subject, limit: Number(opts.limit) });
+      process.stdout.write(JSON.stringify(answer, null, 2) + "\n");
+    } catch {
+      fail(new ActionManifestError("DOCUMENT_QUERY_INVALID", "Document query failed. Check supported UTF-8 input, question kind and limits."));
+    }
+  });
+
+program
+  .command("review-family")
+  .description("offline family evidence review; keyword hints, no identity inference or actions")
+  .argument("<file>", "UTF-8 text, Markdown, CSV, or canonical document JSON")
+  .option("--canonical-json", "read existing canonical text/page provenance")
+  .option("--domain <domain>", "optional family domain cue filter")
+  .option("--topic <topic>", "optional family topic cue filter")
+  .option("--offset <number>", "matching passage offset", "0")
+  .option("--limit <number>", "maximum passages (1–50)", "20")
+  .requiredOption("--include-evidence", "include original source excerpts in local stdout")
+  .action(async (file: string, opts: { canonicalJson?: boolean; domain?: FamilyDomain; topic?: FamilyTopic; offset: string; limit: string }) => {
+    try {
+      if (!opts.canonicalJson && ![".txt", ".text", ".md", ".csv", ""].includes(extname(file).toLowerCase())) throw new TypeError("Unsupported file type");
+      const raw = await readMatoeInput(resolve(file), 8_000_000);
+      if (raw.includes("\0")) throw new TypeError("Binary input unsupported");
+      const document: CanonicalDocument = opts.canonicalJson ? JSON.parse(raw) : { id: resolve(file), text: raw };
+      const result = createDocumentEvidenceIndex(document).familyReview({ domain: opts.domain, topic: opts.topic, offset: Number(opts.offset), limit: Number(opts.limit) });
+      process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+    } catch {
+      fail(new ActionManifestError("FAMILY_REVIEW_INVALID", "Family review failed. Check supported UTF-8 input, categories and limits."));
+    }
+  });
+
+program
   .command("analyze-matoe")
   .description("offline deterministic analysis for the explicit new Matoe v0.2 server route")
   .option("--stdin-json", "read the bounded sourceId/ocrText request and emit the complete v0.2 manifest")
@@ -115,6 +165,25 @@ program
     } catch (error) {
       process.stderr.write(JSON.stringify(matoeAnalysisFailure(error)) + "\n");
       process.exitCode = 1;
+    }
+  });
+
+program
+  .command("explain")
+  .description("offline next-step guide: reverify a v0.2 candidate against its exact source; never execute")
+  .argument("<manifest>", "unfiltered proposed/verified candidate JSON path")
+  .requiredOption("--doc <file>", "exact source text (UTF-8; no normalization)")
+  .option("--json", "print the display-only report as JSON")
+  .option("--include-evidence", "explicitly include original source quotes in the chosen local output")
+  .action(async (manifestPath: string, opts: { doc: string; json?: boolean; includeEvidence?: boolean }) => {
+    try {
+      const raw = JSON.parse(await readMatoeInput(resolve(manifestPath), MATOE_INPUT_LIMITS.manifestBytes));
+      const text = await readMatoeInput(resolve(opts.doc), MATOE_INPUT_LIMITS.ocrBytes);
+      const report = await explainCandidate(raw, text, Boolean(opts.includeEvidence));
+      process.stdout.write((opts.json ? JSON.stringify(report, null, 2) : formatActionGuidance(report)) + "\n");
+      if (report.manifest_fatal || report.counts.blocked || report.counts.review_required) process.exitCode = 2;
+    } catch {
+      fail(explanationFailure());
     }
   });
 
@@ -277,14 +346,31 @@ program
     }
   });
 
+program
+  .command("agent-batch")
+  .description("bounded offline multi-document analysis; isolated results, never execute")
+  .option("--stdin-json", "read one batch v1 JSON envelope; output includes original evidence")
+  .action(async () => {
+    try {
+      const report = await runAgentBatch(await readAgentBatchStdin(process.stdin));
+      process.stdout.write(JSON.stringify(report) + "\n");
+      if (!report.ok || report.summary.manifest_fatal || report.summary.blocked || report.summary.review_required || report.source_reviews.length) process.exitCode = 2;
+    } catch (error) {
+      process.stdout.write(JSON.stringify(agentBatchFailure(error)) + "\n");
+      process.exitCode = 1;
+    }
+  });
+
 // Check machine entry argv before Commander can divert a request into help or
 // version output. Standalone help is still available to a human caller.
 const machineCommand = process.argv[2];
 const machineArgs = process.argv.slice(3);
-const machineEntry = machineCommand === "agent" || machineCommand === "analyze-matoe";
+const machineEntry = machineCommand === "agent" || machineCommand === "agent-batch" || machineCommand === "analyze-matoe";
 const machineArgsValid = machineArgs.length === 1 && ["--stdin-json", "--help", "-h"].includes(machineArgs[0]!);
 if (machineEntry && !machineArgsValid) {
-  if (machineCommand === "agent") {
+  if (machineCommand === "agent-batch") {
+    process.stdout.write(JSON.stringify(agentBatchFailure(new ActionManifestError("AGENT_BATCH_INVALID", "Invalid batch arguments"))) + "\n");
+  } else if (machineCommand === "agent") {
     process.stdout.write(JSON.stringify(agentFailure(new ActionManifestError("AGENT_REQUEST_INVALID", "Invalid agent arguments"))) + "\n");
   } else {
     process.stderr.write(JSON.stringify(matoeAnalysisFailure(new ActionManifestError("MATOE_REQUEST_INVALID", "Invalid analysis arguments"))) + "\n");

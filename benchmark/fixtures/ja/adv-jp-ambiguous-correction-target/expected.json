@@ -1,0 +1,26 @@
+{
+  "actions": [],
+  "must_not_extract": [
+    {
+      "severity": "critical",
+      "kind": "event",
+      "date": "2026-10-15",
+      "failure": "AMBIGUITY_COLLAPSED",
+      "reason": "Two same-named prior events make the correction target ambiguous; omit or leave unverified instead of picking an event."
+    },
+    {
+      "severity": "critical",
+      "kind": "event",
+      "date": "2026-10-20",
+      "failure": "AMBIGUITY_COLLAPSED",
+      "reason": "Two same-named prior events make the correction target ambiguous; omit or leave unverified instead of picking an event."
+    },
+    {
+      "severity": "critical",
+      "kind": "event",
+      "date": "2026-10-22",
+      "failure": "AMBIGUITY_COLLAPSED",
+      "reason": "Two same-named prior events make the correction target ambiguous; omit or leave unverified instead of picking an event."
+    }
+  ]
+}

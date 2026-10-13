@@ -1,3 +1,10 @@
+## v8 local family evidence review
+
+[Family review and limits](docs/FAMILY-REVIEW.md): ten family domain labels, eight
+topic labels, exact source/context, caution cues, full passage paging, explicit
+member annotations and source-bound corrections. Local read-only source candidate;
+no universal understanding, new parser, automatic contact or execution.
+
 # Action Manifest
 
 **Turn documents into actions you can verify.**

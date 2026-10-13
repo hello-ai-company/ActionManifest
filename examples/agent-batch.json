@@ -1,0 +1,21 @@
+{
+  "batch_version": "1",
+  "items": [
+    {
+      "item_id": "school-notice",
+      "request": {
+        "protocol_version": "1",
+        "operation": "extract",
+        "source": { "id": "school-notice-2026-10", "text": "参加票を2026年10月15日までに提出してください。" }
+      }
+    },
+    {
+      "item_id": "club-notice",
+      "request": {
+        "protocol_version": "1",
+        "operation": "extract",
+        "source": { "id": "club-notice-2026-10", "text": "保護者会を2026年10月18日に開催します。" }
+      }
+    }
+  ]
+}

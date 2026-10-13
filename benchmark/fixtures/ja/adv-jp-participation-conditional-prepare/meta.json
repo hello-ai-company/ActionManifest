@@ -1,0 +1,11 @@
+{
+  "id": "adv-jp-participation-conditional-prepare",
+  "language": "ja",
+  "category": "conditional-eligibility",
+  "tags": [
+    "adversarial",
+    "answer-trust",
+    "conditional"
+  ],
+  "golden": false
+}

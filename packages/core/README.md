@@ -47,3 +47,20 @@ Full reference: [docs/API.md](../../docs/API.md).
 - Integration contract: [docs/INTEGRATION-CONTRACT.md](../../docs/INTEGRATION-CONTRACT.md)
 
 Apache-2.0.
+
+## Local document questions
+
+`createDocumentEvidenceIndex(document)` provides reusable, dependency-free local
+extractive answers for deadlines, costs, requirements, contacts, table-like rows
+and subjects. `verifyDocumentCitation` rejects stale source quotes. See
+[document question APIs and limits](../../docs/DOCUMENT-QUESTIONS.md). No semantic
+AI, binary parser or action authorization is implied.
+
+### Family review
+
+`createDocumentEvidenceIndex(document).familyReview(options)` reuses the source
+index for read-only family cue review with complete passage paging and exact
+source/context. `annotateFamilyCitation` validates a separate user correction
+against the current source snapshot. No inferred person, authoritative action,
+absolute date, latest-version choice or persistence is created. See
+[family review](../../docs/FAMILY-REVIEW.md).

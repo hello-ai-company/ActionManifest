@@ -1,0 +1,35 @@
+{
+  "actions": [
+    {
+      "id": "act_001",
+      "kind": "event",
+      "title": "遠足の日程を変更する",
+      "modality": "required",
+      "actor": {
+        "certainty": "unknown"
+      },
+      "evidence": [
+        {
+          "source_id": "adv-jp-unresolved-correction",
+          "text": "遠足の日程を令和8年10月15日または10月22日に変更します。"
+        }
+      ],
+      "inference": "explicit",
+      "status": "proposed"
+    }
+  ],
+  "must_not_extract": [
+    {
+      "severity": "critical",
+      "date": "2026-10-15",
+      "failure": "AMBIGUITY_COLLAPSED",
+      "reason": "Two replacement candidates are unresolved; neither may become a verified exact date."
+    },
+    {
+      "severity": "critical",
+      "date": "2026-10-22",
+      "failure": "AMBIGUITY_COLLAPSED",
+      "reason": "Two replacement candidates are unresolved; neither may become a verified exact date."
+    }
+  ]
+}

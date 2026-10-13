@@ -1,0 +1,150 @@
+{
+  "workflow_version": "0.1.0",
+  "workflow_id": "b9caa6df-e6f1-41fa-9289-fe425ef5c478",
+  "status": "completed",
+  "steps": [
+    {
+      "step_id": "step_1",
+      "status": "verified",
+      "attempts": 1,
+      "record": {
+        "record_id": "be5f6e3a-e966-4a50-be1f-cef7bf34e9b5",
+        "idempotency_key": "8dd380d84d3bf38361bd1ef173a4b8da63c49256b1289b7fd6a92eede8b31965",
+        "workflow_id": "b9caa6df-e6f1-41fa-9289-fe425ef5c478",
+        "step_id": "step_1",
+        "binding": "da5914e398c1daebb404ac15f4aca834379f5f12a3785e38fad487464d505002",
+        "operation": "local.schedule.create",
+        "destination_id": "local-schedule",
+        "scope_key": "school-A",
+        "args": {
+          "title": "遠足は2026年10月14日に実施します",
+          "date": "2026-10-14",
+          "all_day": true
+        },
+        "action_ref": {
+          "source_id": "22222222-2222-4222-8222-222222222222",
+          "source_hash": "ae2a44fc80bb312aba8769071cd0800753f8791a62e52ad04391043cb993809e",
+          "action_id": "act_001"
+        },
+        "destination_revision": 1
+      },
+      "verified_at": "2026-10-11T10:00:00.000Z"
+    },
+    {
+      "step_id": "step_2",
+      "status": "verified",
+      "attempts": 1,
+      "record": {
+        "record_id": "67e09bf0-c728-47eb-92f4-8aea3c359736",
+        "idempotency_key": "3d049bd3883d4fe8425fc0b2fdb175ebff7d5e6f60913b66033689ef7bc47961",
+        "workflow_id": "b9caa6df-e6f1-41fa-9289-fe425ef5c478",
+        "step_id": "step_2",
+        "binding": "f4d361cf47df4ab3a7f15fd894dc77694f30acfd357daab205072d6e88ddd97b",
+        "operation": "local.task.create",
+        "destination_id": "local-tasks",
+        "scope_key": "school-A",
+        "args": {
+          "title": "参加票を提出する",
+          "due_date": "2026-10-15"
+        },
+        "action_ref": {
+          "source_id": "22222222-2222-4222-8222-222222222222",
+          "source_hash": "ae2a44fc80bb312aba8769071cd0800753f8791a62e52ad04391043cb993809e",
+          "action_id": "act_002"
+        },
+        "destination_revision": 1
+      },
+      "verified_at": "2026-10-11T10:00:00.000Z"
+    },
+    {
+      "step_id": "step_3",
+      "status": "verified",
+      "attempts": 1,
+      "record": {
+        "record_id": "ff529f03-368d-42af-a22e-4e43668ce272",
+        "idempotency_key": "88fb18229e7eda45f1fee24656786b1c8d1d89b0431259e956ce5eea99d39aeb",
+        "workflow_id": "b9caa6df-e6f1-41fa-9289-fe425ef5c478",
+        "step_id": "step_3",
+        "binding": "ae4c80e91ad227d333a317078ef07ba2a0c39613d14cc28d0d19b88fbfb1e517",
+        "operation": "local.task.create",
+        "destination_id": "local-tasks",
+        "scope_key": "school-A",
+        "args": {
+          "title": "2026年10月16日までに水筒を準備してください",
+          "due_date": "2026-10-16"
+        },
+        "action_ref": {
+          "source_id": "22222222-2222-4222-8222-222222222222",
+          "source_hash": "ae2a44fc80bb312aba8769071cd0800753f8791a62e52ad04391043cb993809e",
+          "action_id": "act_003"
+        },
+        "destination_revision": 2
+      },
+      "verified_at": "2026-10-11T10:00:00.000Z"
+    }
+  ],
+  "reopened_status": "completed",
+  "persisted_records": [
+    {
+      "record_id": "be5f6e3a-e966-4a50-be1f-cef7bf34e9b5",
+      "idempotency_key": "8dd380d84d3bf38361bd1ef173a4b8da63c49256b1289b7fd6a92eede8b31965",
+      "workflow_id": "b9caa6df-e6f1-41fa-9289-fe425ef5c478",
+      "step_id": "step_1",
+      "binding": "da5914e398c1daebb404ac15f4aca834379f5f12a3785e38fad487464d505002",
+      "operation": "local.schedule.create",
+      "destination_id": "local-schedule",
+      "scope_key": "school-A",
+      "args": {
+        "title": "遠足は2026年10月14日に実施します",
+        "date": "2026-10-14",
+        "all_day": true
+      },
+      "action_ref": {
+        "source_id": "22222222-2222-4222-8222-222222222222",
+        "source_hash": "ae2a44fc80bb312aba8769071cd0800753f8791a62e52ad04391043cb993809e",
+        "action_id": "act_001"
+      },
+      "destination_revision": 1
+    },
+    {
+      "record_id": "67e09bf0-c728-47eb-92f4-8aea3c359736",
+      "idempotency_key": "3d049bd3883d4fe8425fc0b2fdb175ebff7d5e6f60913b66033689ef7bc47961",
+      "workflow_id": "b9caa6df-e6f1-41fa-9289-fe425ef5c478",
+      "step_id": "step_2",
+      "binding": "f4d361cf47df4ab3a7f15fd894dc77694f30acfd357daab205072d6e88ddd97b",
+      "operation": "local.task.create",
+      "destination_id": "local-tasks",
+      "scope_key": "school-A",
+      "args": {
+        "title": "参加票を提出する",
+        "due_date": "2026-10-15"
+      },
+      "action_ref": {
+        "source_id": "22222222-2222-4222-8222-222222222222",
+        "source_hash": "ae2a44fc80bb312aba8769071cd0800753f8791a62e52ad04391043cb993809e",
+        "action_id": "act_002"
+      },
+      "destination_revision": 1
+    },
+    {
+      "record_id": "ff529f03-368d-42af-a22e-4e43668ce272",
+      "idempotency_key": "88fb18229e7eda45f1fee24656786b1c8d1d89b0431259e956ce5eea99d39aeb",
+      "workflow_id": "b9caa6df-e6f1-41fa-9289-fe425ef5c478",
+      "step_id": "step_3",
+      "binding": "ae4c80e91ad227d333a317078ef07ba2a0c39613d14cc28d0d19b88fbfb1e517",
+      "operation": "local.task.create",
+      "destination_id": "local-tasks",
+      "scope_key": "school-A",
+      "args": {
+        "title": "2026年10月16日までに水筒を準備してください",
+        "due_date": "2026-10-16"
+      },
+      "action_ref": {
+        "source_id": "22222222-2222-4222-8222-222222222222",
+        "source_hash": "ae2a44fc80bb312aba8769071cd0800753f8791a62e52ad04391043cb993809e",
+        "action_id": "act_003"
+      },
+      "destination_revision": 2
+    }
+  ]
+}

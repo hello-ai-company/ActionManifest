@@ -158,3 +158,23 @@ always: **cannot identify the target safely → omission / unverified**, never
 3. Run `pnpm benchmark`; if a critical false-verified appears, fix the
    extractor/verifier **minimally** — do not rewrite the expected truth.
 4. Keep the Golden Fixture and existing metrics from regressing.
+
+
+## Japanese notice trust regressions (additional ten synthetic fixtures)
+
+The `answer-trust` tag covers an unresolved replacement date, a bare cancelled
+subject, a named cross-sentence correction, a withdrawn preparation, and weather
+and participation conditions on preparations. These are not additions to the
+frozen conformance suite. Their expected truth and negative expectations are
+independent of extractor output.
+
+The verifier additionally checks evidence-local dates and does not accept a real
+but superseded date as active. A correction with multiple unresolved candidates
+keeps the date unknown. Date-only corrections retain original eligibility/actor
+provenance instead of making an optional action mandatory. These checks are
+conservative deterministic heuristics, not general language understanding or a
+claim that arbitrary provider output is fully supported by its quotes.
+
+See [the verification report](evidence/notice-trust-hardening.md) for results,
+measured scope and remaining gates. The full official benchmark must still be run
+with the pinned dependencies before approval or any release claim.

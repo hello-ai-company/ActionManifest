@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "mode": "local-family-evidence",
+  "cases": [
+    {"id":"school", "quote":"小学校の集合日時", "context":"小学校の集合日時", "domains":["school"], "topics":["schedule"], "flags":[]},
+    {"id":"lessons", "quote":"ピアノ教室の持ち物", "context":"ピアノ教室の持ち物", "domains":["lessons"], "topics":["requirements"], "flags":[]},
+    {"id":"childcare", "quote":"保育所のお迎え予定", "context":"保育所のお迎え予定", "domains":["childcare"], "topics":["schedule"], "flags":[]},
+    {"id":"health", "quote":"病院の予約は電話で", "context":"病院の予約は電話で", "domains":["health"], "topics":["reservation","contact"], "flags":[]},
+    {"id":"travel", "quote":"旅行のホテル予約", "context":"旅行のホテル予約", "domains":["travel"], "topics":["reservation"], "flags":[]},
+    {"id":"homework", "quote":"宿題の提出期限", "context":"宿題の提出期限", "domains":["homework"], "topics":["deadline","submission"], "flags":[]},
+    {"id":"library", "quote":"図書館の返却は明日", "context":"図書館の返却は明日", "domains":["library"], "topics":["other"], "flags":["relative_date"]},
+    {"id":"safety", "quote":"警察への問い合わせ", "context":"警察への問い合わせ", "domains":["safety"], "topics":["contact"], "flags":[]},
+    {"id":"household", "quote":"家事の準備", "context":"家事の準備", "domains":["household"], "topics":["requirements"], "flags":[]},
+    {"id":"other", "quote":"ひとこと", "context":"ひとこと", "domains":["other"], "topics":["other"], "flags":[]},
+    {"id":"conditional-negated", "quote":"持ち物は不要", "context":"希望者のみ\n持ち物は不要\n前回から変更", "domains":["other"], "topics":["requirements"], "flags":["conditional","negated","revision"]},
+    {"id":"unicode", "quote":"𠮷・図書館の料金は１５０円", "context":"𠮷・図書館の料金は１５０円", "domains":["library"], "topics":["cost"], "flags":[]},
+    {"id":"nfkc", "quote":"ＳＣＨＯＯＬ ＤＥＡＤＬＩＮＥ", "context":"ＳＣＨＯＯＬ ＤＥＡＤＬＩＮＥ", "domains":["school"], "topics":["deadline"], "flags":[]},
+    {"id":"lesson-boundary", "quote":"piano lesson", "context":"piano lesson", "domains":["lessons"], "topics":["other"], "flags":[]},
+    {"id":"notification-boundary", "quote":"notification", "context":"notification", "domains":["other"], "topics":["other"], "flags":[]},
+    {"id":"motif-boundary", "quote":"motif", "context":"motif", "domains":["other"], "topics":["other"], "flags":[]},
+    {"id":"carpet-boundary", "quote":"carpet", "context":"carpet", "domains":["other"], "topics":["other"], "flags":[]},
+    {"id":"upstart-boundary", "quote":"upstart", "context":"upstart", "domains":["other"], "topics":["other"], "flags":[]},
+    {"id":"revision", "quote":"School submission due tomorrow", "context":"Previous version cancelled\nSchool submission due tomorrow\nOnly if applicable", "domains":["school"], "topics":["deadline","submission"], "flags":["conditional","negated","revision","relative_date"]},
+    {"id":"pages-not-inferred", "quote":"対象は３年生のみ", "context":"対象は３年生のみ", "domains":["other"], "topics":["other"], "flags":["conditional"]}
+  ]
+}

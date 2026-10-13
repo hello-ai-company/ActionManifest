@@ -126,3 +126,54 @@ The default extraction schema remains v0.2. See
 `manifest` member to a backend. The command makes no network calls.
 Choose file output (mode 0600) or explicitly print the complete original/audit
 bundle with `--json`. It does not implicitly print source-derived private data.
+
+## Offline multi-document batch analysis
+
+`actionman agent-batch --stdin-json < examples/agent-batch.json` reads a batch v1
+JSON envelope with 1–16 `{ item_id, request }` entries. Each request uses the existing
+agent v1 `extract` or `verify` protocol. Stable ASCII item IDs (1–64 characters,
+letters/digits followed by letters/digits/dot/underscore/hyphen) must be unique.
+The command never uses a live provider, even if provider environment variables are set.
+
+The report preserves input order and full per-document manifests, verification
+failures, and exact claimed source ID/text SHA256 plus request fingerprint. Failed
+items retain sanitized error codes, not raw diagnostics. Success for one item does
+not discard failures in another. Repeated source IDs trigger `REPEATED_SOURCE` or
+`SOURCE_ID_CONFLICT` review entries. Nothing is merged or deduplicated, and source
+identity is not authenticated. Same hashes are correlation data, not approval or
+execution idempotency keys. Counts describe supplied document candidates only;
+zero actions does not prove there are no obligations in a document.
+
+Limits: 2 MiB aggregate UTF-8 JSON, 16 items, 28 nesting levels and 100,000 traversal
+nodes (including object keys), plus each existing agent request's own budgets.
+All items are cloned before asynchronous analysis; processing is sequential and
+offline. The public `@actionmanifest/cli/agent-batch` entry point exports `runAgentBatch`,
+`readAgentBatchStdin`, `agentBatchFailure`, and `AGENT_BATCH_LIMITS`. Its
+JavaScript API accepts inert JSON data only, not hostile
+Proxy objects. Getters, custom `toJSON`, cycles and non-JSON values are rejected.
+
+Exit codes: 0 = all documents analyzed without blocked/review-required rows or
+source review entries; 2 = complete report with one or more failed items, blocked
+rows, review-required rows or source reviews; 1 = invalid envelope/input/command.
+`ok: true` means every item was analyzed, not that its actions passed verification.
+JSON goes to stdout for both success and failure. Standalone `--help` is human output;
+other flags cannot enable execution or change providers. Output includes source
+quotes and titles, so choose a private destination and do not treat it as anonymized.
+The report cannot grant permission, authenticate an issuer or prove real-world completion.
+
+## Offline document questions
+
+`actionman ask-document notice.txt --kind cost --subject 遠足 --include-evidence`
+returns exact source excerpts and adjacent context, with no model/network call.
+Use `--canonical-json` for parsed canonical documents with page provenance.
+Supported kinds: search, deadline, cost, requirements, contact and table.
+This is bounded local extractive retrieval, not semantic AI. See
+[document question limits](../../docs/DOCUMENT-QUESTIONS.md).
+
+## Family evidence review (v8 local source candidate)
+
+`actionman review-family notice.txt --include-evidence` pages exact source
+passages with family domain/topic hints and caution flags. Use `--offset`,
+`--limit`, `--domain` and `--topic` for bounded navigation; `--canonical-json`
+preserves real page provenance. No provider or execution is invoked. Unknown
+passages remain accessible under `other`. See [scope and limits](../../docs/FAMILY-REVIEW.md).

@@ -1,0 +1,56 @@
+[
+  {
+    "receipt": {
+      "receipt_version": "1.0.0",
+      "adapter": "matoe-native",
+      "plan_id": "plan_日本/😀",
+      "plan_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "state": "partial",
+      "observed_at": "2026-10-12T02:00:00Z",
+      "scope": "device_local",
+      "real_world_completion": false,
+      "authorization": "none",
+      "steps": [
+        {
+          "step_id": "step_1",
+          "operation": "local.record.adopt",
+          "status": "verified",
+          "destination_id": "local/端末 ",
+          "record_id": "item_1",
+          "source_id": "doc_1",
+          "source_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "action_id": "action_1"
+        }
+      ]
+    },
+    "canonical": "{\"adapter\":\"matoe-native\",\"authorization\":\"none\",\"observed_at\":\"2026-10-12T02:00:00Z\",\"plan_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_id\":\"plan_日本/😀\",\"real_world_completion\":false,\"receipt_version\":\"1.0.0\",\"scope\":\"device_local\",\"state\":\"partial\",\"steps\":[{\"action_id\":\"action_1\",\"destination_id\":\"local/端末 \",\"operation\":\"local.record.adopt\",\"record_id\":\"item_1\",\"source_hash\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"source_id\":\"doc_1\",\"status\":\"verified\",\"step_id\":\"step_1\"}]}",
+    "sha256": "9430a9d4559dfb398a5143a7d1bcbfa0b726bf611ab916e813a02630606c5435"
+  },
+  {
+    "receipt": {
+      "receipt_version": "1.0.0",
+      "adapter": "actionmanifest-portable",
+      "plan_id": "plan_日本/😀",
+      "plan_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "state": "partial",
+      "observed_at": "2026-10-12T02:00:00Z",
+      "scope": "device_local",
+      "real_world_completion": false,
+      "authorization": "none",
+      "steps": [
+        {
+          "step_id": "step_1",
+          "operation": "local.task.create",
+          "status": "verified",
+          "destination_id": "local/端末 ",
+          "record_id": "item_1",
+          "source_id": "doc_1",
+          "source_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "action_id": "action_1"
+        }
+      ]
+    },
+    "canonical": "{\"adapter\":\"actionmanifest-portable\",\"authorization\":\"none\",\"observed_at\":\"2026-10-12T02:00:00Z\",\"plan_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_id\":\"plan_日本/😀\",\"real_world_completion\":false,\"receipt_version\":\"1.0.0\",\"scope\":\"device_local\",\"state\":\"partial\",\"steps\":[{\"action_id\":\"action_1\",\"destination_id\":\"local/端末 \",\"operation\":\"local.task.create\",\"record_id\":\"item_1\",\"source_hash\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"source_id\":\"doc_1\",\"status\":\"verified\",\"step_id\":\"step_1\"}]}",
+    "sha256": "c4c4741591fd5b88dc965d7fbdd1a68fdc6c28d06622600de982d4503e056bde"
+  }
+]

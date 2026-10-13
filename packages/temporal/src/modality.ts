@@ -23,9 +23,18 @@ const CONDITION_CUES: Array<{ re: RegExp; label: string }> = [
 
 const ENGLISH_PLANNED_EVENT = /^\s*(?:the\s+)?(?:field trip|health checkups?)\b(?:\s+on\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?)?\s+(?:is|are|has been|have been|was|were)\s+(?:planned|scheduled|rescheduled)\b/i;
 
+/** Preserve the stated Japanese predicate, not a guessed eligibility label. */
+export function conditionalClauses(text: string): string[] {
+  const clauses = [...text.matchAll(/([^、,。！？\n]{1,60}(?:場合|とき)(?:に限り|のみ|だけ)?(?:には|は)?)/g)]
+    .map(match => match[1]!.trim());
+  // Common short weather forms. Do not treat arbitrary clock times (10時) as conditions.
+  const weather = [...text.matchAll(/雨天(?:時(?:には|は)?|なら(?:ば)?)/g)].map(match => match[0]);
+  return [...new Set([...clauses, ...weather])];
+}
+
 export function detectModality(text: string): ModalityHit {
   const cues: string[] = [];
-  const conditions: string[] = [];
+  const conditions: string[] = conditionalClauses(text);
   const negated = isNegation(text);
 
   for (const c of CONDITION_CUES) {

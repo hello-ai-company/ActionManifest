@@ -14,5 +14,5 @@ export {
   correctionCueIndex,
 } from "./parse.js";
 export type { YearContext } from "./parse.js";
-export { detectModality, detectKind } from "./modality.js";
+export { detectModality, detectKind, conditionalClauses } from "./modality.js";
 export type { ModalityHit } from "./modality.js";

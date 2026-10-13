@@ -1,0 +1,24 @@
+/** Offline synthetic projection fixtures. Does not exercise or replace production AJV ingress. */
+import { writeFileSync, mkdirSync } from "node:fs";
+import { resolve } from "node:path";
+import { notice, withDocuments, localProfile, NOW } from "./assistance-fixtures.js";
+import { suggestDocumentChanges, proposeAssistanceChange, decideAssistanceChange } from "../src/assistance-ledger.js";
+import { refreshAssistance } from "../src/assistance-project.js";
+import { quotesFor } from "../src/assistance-common.js";
+import { validateAssistanceCompanion } from "../src/assistance-wire.js";
+import type { ActionRuleSet } from "../src/assistance-types.js";
+const dir = resolve(process.argv[2] ?? "docs/assistance/fixtures"); mkdirSync(dir, { recursive: true });
+const old = notice("00000000-0000-4000-8000-000000000001", "2026-10-15", { subject: "school-A:trip-2026", text: "遠足は2026年10月15日に実施します。", action: { kind: "event", title: "遠足", object: "遠足" } });
+const next = notice("00000000-0000-4000-8000-000000000002", "2026-10-22", { subject: "school-A:trip-2026", text: "遠足の日程を2026年10月22日に変更します。", action: { kind: "event", title: "遠足", object: "遠足" } });
+const conditional = notice("00000000-0000-4000-8000-000000000003", "2026-10-20", { text: "参加者のみ2026年10月20日までに参加票を提出してください。", action: { conditions: ["参加者のみ"] } });
+let state = withDocuments(old, next, conditional);
+const proposal = suggestDocumentChanges(state, next.source_id)[0]!;
+state = proposeAssistanceChange(state, proposal, state.revision);
+const rule: ActionRuleSet = { action_ref: { source_id: conditional.source_id, source_hash: conditional.source_hash, action_id: "act_001" }, confirmation: "user_confirmed", condition: { op: "eq", fact: "participates", value: true }, covers_conditions: ["参加者のみ"], quotes: quotesFor(conditional, "act_001") };
+const open = refreshAssistance(state, [localProfile], [rule], NOW, state.revision);
+const applied = decideAssistanceChange(open.state, proposal.change_id, "apply", true, open.state.revision);
+const resolved = refreshAssistance(applied, [{ ...localProfile, facts: [{ key: "participates", value: true, expires_at: "2026-10-19T00:00:00Z" }] }], [rule], NOW, applied.revision);
+const reopened = decideAssistanceChange(resolved.state, proposal.change_id, "reopen", true, resolved.state.revision);
+const undo = refreshAssistance(reopened, [localProfile], [rule], NOW, reopened.revision);
+for (const [name, result] of [["open", open], ["resolved", resolved], ["undo", undo]] as const) writeFileSync(resolve(dir, `companion-${name}.json`), JSON.stringify(validateAssistanceCompanion(result.companion), null, 2) + "\n");
+writeFileSync(resolve(dir, "sources.json"), JSON.stringify({ synthetic: true, ingress_verified: false, description: "Pure projection fixtures; production frozen-schema/AJV ingress remains a separate gate.", sources: [old, next, conditional].map(doc => ({ source_id: doc.source_id, source_hash: doc.source_hash, canonical_text: doc.canonical_text, actions: doc.actions.map(a => a.action) })) }, null, 2) + "\n");
